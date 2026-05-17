@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titulo_html %}Atestado · {{ paciente.nome | e }}{% endblock %}
+
+{% block titulo %}
+<h1 class="titulo" style="text-align:center; font-size: 34pt; letter-spacing: 4px;">ATESTADO</h1>
+{% endblock %}
+
+{% block conteudo %}
+<p class="formal">
+  Atesto, para os devidos fins, que o(a) Sr(a). <strong>{{ paciente.nome | e }}</strong>,
+  portador(a) do CPF <strong>{% if paciente.cpf %}{{ paciente.cpf | cpf }}{% else %}—{% endif %}</strong>,
+  esteve sob meu(minha) atendimento profissional no dia
+  <strong>{{ data | br_data }}</strong>
+  das <strong>{{ hora_inicio | e }}</strong> às <strong>{{ hora_fim | e }}</strong>,
+  necessitando de afastamento de suas atividades habituais por
+  <strong>{{ dias_afastamento | e }}</strong> dia(s).
+</p>
+
+{% if cid_10 %}
+<p style="margin-top: 24px; font-size: 11pt;">
+  <strong>CID-10:</strong> {{ cid_10 | e }}
+</p>
+{% endif %}
+
+<div class="local-data">
+  {% if clinica.endereco_cidade %}{{ clinica.endereco_cidade | e }}, {% endif %}{{ data_emissao | br_data }}.
+</div>
+
+<div class="assinatura">
+  <div class="linha">
+    <div class="nome">{% if clinica.responsavel_tecnico %}{{ clinica.responsavel_tecnico | e }}{% else %}—{% endif %}</div>
+    <div class="registro">{% if clinica.registro_conselho %}{{ clinica.registro_conselho | e }}{% endif %}</div>
+  </div>
+</div>
+{% endblock %}

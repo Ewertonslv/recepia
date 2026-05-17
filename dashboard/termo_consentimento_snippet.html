@@ -1,0 +1,27 @@
+<!-- Vai dentro do else-if do abrirGerarDocumento(tipo) quando tipo==='termo_consentimento' -->
+<!-- Bloco de campos (substitua <HOJE> em tempo de render pelo new Date().toISOString().slice(0,10)) -->
+<div><label class="lbl">Procedimento <span class="text-rose-500">*</span></label><input id="gd-proc" placeholder="Ex: extração do siso 48" class="field" required></div>
+<div><label class="lbl">Riscos (opcional)</label><textarea id="gd-riscos" rows="2" class="field" placeholder="Sangramento, edema..."></textarea></div>
+<div><label class="lbl">Cuidados pós (opcional)</label><textarea id="gd-cuidados" rows="2" class="field" placeholder="Gelo nas primeiras 24h..."></textarea></div>
+<div><label class="lbl">Data</label><input id="gd-data" type="date" value="<HOJE>" class="field"></div>
+
+<!--
+  No botão Gerar (handler de submit do modal "Gerar documento"), quando tipo==='termo_consentimento':
+
+  const proc     = document.getElementById('gd-proc').value.trim();
+  const riscos   = document.getElementById('gd-riscos').value.trim();
+  const cuidados = document.getElementById('gd-cuidados').value.trim();
+  const dataStr  = document.getElementById('gd-data').value; // YYYY-MM-DD
+
+  if (!proc) { alert('Informe o procedimento.'); return; }
+
+  const qs = new URLSearchParams();
+  qs.set('procedimento', proc);
+  if (riscos)   qs.set('riscos', riscos);
+  if (cuidados) qs.set('cuidados_pos', cuidados);
+  if (dataStr)  qs.set('data', dataStr);
+
+  const url = `/api/pacientes/${pacienteId}/documentos/termo_consentimento.pdf?${qs.toString()}`;
+  // abre/baixa o PDF (mesmo padrão dos outros documentos):
+  window.open(url, '_blank');
+-->

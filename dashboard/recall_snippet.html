@@ -1,0 +1,227 @@
+<!--
+  Snippet: painel de Recall Automático para a aba "Configurações" do dashboard.
+
+  Como integrar (NÃO aplicar agora — Ewerton integra à mão):
+  1) Colar o bloco HTML dentro do container da aba Configurações, idealmente
+     abaixo do bloco "Horários de funcionamento".
+  2) Colar o <script> uma única vez no escopo global do dashboard.
+  3) Chamar `Recall.init()` quando a aba Configurações ficar visível (ou no DOMContentLoaded).
+
+  Depende de:
+    - window.apiFetch(method, path, body?) — helper já existente no dashboard
+      que injeta Authorization Bearer e trata 401.
+    - Tailwind (utility classes) + lucide icons (opcional).
+    - Endpoints expostos em api/clinicas.py (router_me):
+        GET    /api/clinicas/me/recall
+        PUT    /api/clinicas/me/recall
+        GET    /api/clinicas/me/recall/preview
+        POST   /api/clinicas/me/recall/disparar
+-->
+
+<!-- ============================================================ HTML -->
+<section id="recall-panel" class="bg-white rounded-2xl shadow-sm p-5 space-y-4 max-w-3xl">
+  <header class="flex items-start justify-between gap-3">
+    <div>
+      <h3 class="text-lg font-semibold text-rose-900">Recall automático</h3>
+      <p class="text-sm text-slate-500">
+        Manda um lembrete no WhatsApp pra pacientes que fizeram um procedimento âncora
+        (ex.: limpeza) há mais de N dias e ainda não voltaram.
+      </p>
+    </div>
+    <label class="inline-flex items-center cursor-pointer">
+      <input type="checkbox" id="recall-ativo" class="sr-only peer">
+      <span class="w-11 h-6 bg-slate-300 rounded-full peer peer-checked:bg-rose-500
+                   relative after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                   after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                   peer-checked:after:translate-x-5"></span>
+    </label>
+  </header>
+
+  <div id="recall-stats" class="text-xs text-slate-500"></div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <label for="recall-intervalo" class="block text-sm font-medium text-slate-700">
+        Intervalo (dias): <span id="recall-intervalo-val" class="text-rose-600 font-semibold">180</span>
+      </label>
+      <input type="range" id="recall-intervalo" min="30" max="365" step="15" value="180"
+             class="w-full accent-rose-500">
+      <p class="text-xs text-slate-400">Padrão: 180 (6 meses). Mín 30, máx 365.</p>
+    </div>
+    <div>
+      <label for="recall-chave" class="block text-sm font-medium text-slate-700">
+        Palavra-chave do procedimento âncora
+      </label>
+      <input type="text" id="recall-chave" maxlength="80" placeholder="limpeza"
+             class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm
+                    focus:border-rose-500 focus:ring-rose-500">
+      <p class="text-xs text-slate-400">Busca em "procedimentos realizados" do prontuário (case insensitive).</p>
+    </div>
+  </div>
+
+  <div>
+    <label for="recall-template" class="block text-sm font-medium text-slate-700">
+      Mensagem (use <code>{nome}</code> e <code>{clinica}</code>)
+    </label>
+    <textarea id="recall-template" rows="3" maxlength="2000"
+              class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm
+                     focus:border-rose-500 focus:ring-rose-500"
+              placeholder="Deixe vazio pra usar o template padrão."></textarea>
+  </div>
+
+  <div class="flex flex-wrap gap-2 pt-2">
+    <button type="button" id="recall-salvar"
+            class="inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white
+                   text-sm font-medium px-4 py-2 rounded-md">
+      Salvar configuração
+    </button>
+    <button type="button" id="recall-preview"
+            class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700
+                   text-sm font-medium px-4 py-2 rounded-md">
+      Ver candidatos agora
+    </button>
+    <button type="button" id="recall-disparar"
+            class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white
+                   text-sm font-medium px-4 py-2 rounded-md">
+      Disparar manualmente
+    </button>
+  </div>
+
+  <p id="recall-msg" class="text-sm hidden"></p>
+</section>
+
+<!-- Modal de candidatos -->
+<div id="recall-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-xl p-5 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-3">
+      <h4 class="text-lg font-semibold text-rose-900">Pacientes elegíveis</h4>
+      <button type="button" id="recall-modal-close" class="text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <ul id="recall-modal-list" class="divide-y divide-slate-100 text-sm"></ul>
+    <p id="recall-modal-empty" class="text-sm text-slate-500 hidden">Nenhum candidato no momento.</p>
+  </div>
+</div>
+
+<!-- ============================================================ JS -->
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  const Recall = {
+    async init() {
+      $("recall-intervalo").addEventListener("input", (e) => {
+        $("recall-intervalo-val").textContent = e.target.value;
+      });
+      $("recall-salvar").addEventListener("click", Recall.salvar);
+      $("recall-preview").addEventListener("click", Recall.preview);
+      $("recall-disparar").addEventListener("click", Recall.disparar);
+      $("recall-modal-close").addEventListener("click", () => Recall.modal(false));
+      await Recall.carregar();
+    },
+
+    msg(texto, tipo = "info") {
+      const el = $("recall-msg");
+      el.textContent = texto;
+      el.className = "text-sm " + (
+        tipo === "erro" ? "text-red-600" :
+        tipo === "ok"   ? "text-emerald-600" : "text-slate-600"
+      );
+      el.classList.remove("hidden");
+      setTimeout(() => el.classList.add("hidden"), 5000);
+    },
+
+    modal(show) {
+      const m = $("recall-modal");
+      m.classList.toggle("hidden", !show);
+      m.classList.toggle("flex", show);
+    },
+
+    async carregar() {
+      try {
+        const cfg = await window.apiFetch("GET", "/api/clinicas/me/recall");
+        $("recall-ativo").checked = !!cfg.ativo;
+        $("recall-intervalo").value = cfg.intervalo_dias;
+        $("recall-intervalo-val").textContent = cfg.intervalo_dias;
+        $("recall-chave").value = cfg.procedimento_chave || "limpeza";
+        $("recall-template").value = cfg.template || "";
+        const wp = cfg.whatsapp_conectado ? "WhatsApp conectado" : "WhatsApp DESCONECTADO (nada será enviado)";
+        $("recall-stats").innerHTML =
+          `<span>${cfg.recalls_ultimos_30d} recalls disparados nos últimos 30 dias</span>
+           · <span class="${cfg.whatsapp_conectado ? 'text-emerald-600' : 'text-amber-600'}">${wp}</span>`;
+      } catch (e) {
+        Recall.msg("Erro ao carregar config: " + (e.message || e), "erro");
+      }
+    },
+
+    async salvar() {
+      const body = {
+        ativo: $("recall-ativo").checked,
+        intervalo_dias: parseInt($("recall-intervalo").value, 10),
+        procedimento_chave: ($("recall-chave").value || "limpeza").trim(),
+        template: $("recall-template").value.trim() || null,
+      };
+      try {
+        await window.apiFetch("PUT", "/api/clinicas/me/recall", body);
+        Recall.msg("Configuração salva.", "ok");
+        await Recall.carregar();
+      } catch (e) {
+        Recall.msg("Erro ao salvar: " + (e.message || e), "erro");
+      }
+    },
+
+    async preview() {
+      try {
+        const data = await window.apiFetch("GET", "/api/clinicas/me/recall/preview");
+        const list = $("recall-modal-list");
+        list.innerHTML = "";
+        const empty = $("recall-modal-empty");
+        if (!data.candidatos.length) {
+          empty.classList.remove("hidden");
+        } else {
+          empty.classList.add("hidden");
+          data.candidatos.slice(0, 10).forEach(c => {
+            const li = document.createElement("li");
+            li.className = "py-2";
+            const data_str = new Date(c.ultima_visita).toLocaleDateString("pt-BR");
+            li.innerHTML = `
+              <div class="font-medium text-slate-800">${c.paciente_nome}</div>
+              <div class="text-xs text-slate-500">
+                ${c.telefone_mascarado} · última visita ${data_str}
+                ${c.ultimo_procedimento ? "· " + c.ultimo_procedimento : ""}
+              </div>`;
+            list.appendChild(li);
+          });
+        }
+        const header = data.elegivel
+          ? `<div class="mb-2 text-sm text-emerald-700">${data.total} candidato(s) hoje</div>`
+          : `<div class="mb-2 text-sm text-amber-700">Inelegível: ${data.motivo_inelegivel}</div>`;
+        list.insertAdjacentHTML("beforebegin", header);
+        Recall.modal(true);
+      } catch (e) {
+        Recall.msg("Erro no preview: " + (e.message || e), "erro");
+      }
+    },
+
+    async disparar() {
+      if (!confirm("Disparar recalls AGORA pros candidatos elegíveis?")) return;
+      try {
+        const r = await window.apiFetch("POST", "/api/clinicas/me/recall/disparar", {});
+        if (r.skip_whatsapp_offline) {
+          Recall.msg("WhatsApp desconectado — nada foi enviado.", "erro");
+        } else {
+          Recall.msg(`Enviados: ${r.enviados} · Falhas: ${r.falhas} · Candidatos: ${r.candidatos}`, "ok");
+        }
+        await Recall.carregar();
+      } catch (e) {
+        const msg = (e.message || "").includes("429")
+          ? "Aguarde 1 hora entre disparos manuais."
+          : "Erro: " + (e.message || e);
+        Recall.msg(msg, "erro");
+      }
+    },
+  };
+
+  // Expor pra integração manual (Ewerton chama Recall.init() depois de montar a aba)
+  window.Recall = Recall;
+})();
+</script>

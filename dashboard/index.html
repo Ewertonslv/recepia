@@ -1,0 +1,2911 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>recepia — painel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              rose: { 50: '#fdf2f3', 100: '#f5dde0', 200: '#edc4c8', 300: '#E8B4B8', 400: '#d99ca0', 500: '#c97f85', 600: '#a8666b' },
+              ink:  { 50: '#f6f6f8', 100: '#e8e8ee', 300: '#aaa6b8', 600: '#5C5552', 800: '#3d4256', 900: '#2D3142', 950: '#1a1d2a' },
+              sage: { 100: '#e0eedb', 300: '#b3d3a6', 400: '#7FB069', 500: '#6a9856', 700: '#4a6c3d' },
+              cream:'#FAF7F5',
+            },
+            fontFamily: {
+              sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+              serif: ['Fraunces', 'Georgia', 'serif'],
+            },
+          }
+        }
+      }
+    </script>
+    <style>
+      /* aurora */
+      body { background: #FAF7F5; position: relative; min-height: 100vh; overflow-x: hidden; }
+      body::before, body::after {
+        content: ''; position: fixed; border-radius: 50%; filter: blur(80px); z-index: 0; pointer-events: none;
+      }
+      body::before { width: 600px; height: 600px; background: radial-gradient(circle, #E8B4B8 0%, transparent 70%); top: -200px; left: -100px; opacity: 0.45; animation: float1 18s ease-in-out infinite; }
+      body::after  { width: 500px; height: 500px; background: radial-gradient(circle, #7FB069 0%, transparent 70%); bottom: -150px; right: -100px; opacity: 0.28; animation: float2 22s ease-in-out infinite; }
+      @keyframes float1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(100px, 50px); } }
+      @keyframes float2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-80px, -40px); } }
+      @media (max-width: 768px) { body::before, body::after { display: none; } /* perf mobile */ }
+
+      #login-screen, #app, .overlay { position: relative; z-index: 1; }
+
+      .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); border: 1px solid rgba(255,255,255,0.5); }
+      .glass-dark { background: rgba(45,49,66,0.92); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); }
+
+      input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+        -webkit-text-fill-color: #2D3142;
+        -webkit-box-shadow: 0 0 0 1000px #FAF7F5 inset;
+        transition: background-color 5000s ease-in-out 0s;
+      }
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: rgba(232,180,184,0.4); border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(232,180,184,0.7); }
+
+      /* tabs (AA fix: 0.85 opacity branca = ratio 6+:1 em #2D3142) */
+      .tab-link { position: relative; transition: all 200ms ease; color: rgba(255,255,255,0.85); }
+      .tab-link:not(.active):hover { color: white; background: rgba(255,255,255,0.06); }
+      .tab-link.active { background: linear-gradient(135deg, rgba(232,180,184,0.95) 0%, rgba(217,156,160,0.95) 100%); color: #2D3142; font-weight: 600; box-shadow: 0 4px 20px -4px rgba(232,180,184,0.5); }
+      .tab-link [data-lucide] { width: 18px; height: 18px; flex-shrink: 0; }
+
+      /* badges com paleta da marca */
+      .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
+      .badge::before { content: '●'; font-size: 8px; }
+      .badge-pendente   { background: #fef3c7; color: #92400e; }
+      .badge-confirmado { background: #e0eedb; color: #4a6c3d; }     /* sálvia */
+      .badge-cancelado  { background: #fee2e2; color: #991b1b; }
+      .badge-reagendado { background: #f5dde0; color: #a8666b; }     /* rosé */
+      .badge-no_show    { background: #f3e8ff; color: #6b21a8; }
+      .badge-realizado  { background: #e0eedb; color: #4a6c3d; }
+
+      /* anims */
+      .fade-in { animation: fadeIn 400ms ease both; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      .slide-down { animation: slideDown 300ms cubic-bezier(.16,1,.3,1); }
+      @keyframes slideDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+      .slide-right { animation: slideRight 350ms cubic-bezier(.16,1,.3,1); }
+      @keyframes slideRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+      .card-hover { transition: all 250ms cubic-bezier(.16,1,.3,1); }
+      .card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 32px -8px rgba(45,49,66,0.15); }
+
+      /* btn */
+      .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; transition: all 200ms; cursor: pointer; }
+      .btn-primary { background: #2D3142; color: white; padding: 12px 20px; border-radius: 12px; }
+      .btn-primary:hover { background: #3d4256; transform: translateY(-1px); box-shadow: 0 8px 20px -6px rgba(45,49,66,0.4); }
+      .btn-primary:active { transform: translateY(0); }
+      .btn-accent { background: linear-gradient(135deg, #7FB069 0%, #6a9856 100%); color: white; padding: 12px 20px; border-radius: 12px; }
+      .btn-accent:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -6px rgba(127,176,105,0.4); }
+      .btn-ghost { background: rgba(45,49,66,0.04); color: #5C5552; padding: 12px 20px; border-radius: 12px; }
+      .btn-ghost:hover { background: rgba(45,49,66,0.08); }
+      .btn-danger { background: #fee2e2; color: #991b1b; padding: 12px 20px; border-radius: 12px; }
+      .btn-danger:hover { background: #fecaca; }
+      .btn [data-lucide] { width: 16px; height: 16px; }
+
+      /* inputs */
+      .field { width: 100%; padding: 12px 16px; background: rgba(250,247,245,0.6); border: 1px solid transparent; border-radius: 12px; color: #2D3142; font-size: 14px; transition: all 200ms; }
+      .field:focus { outline: none; background: white; border-color: #E8B4B8; box-shadow: 0 0 0 4px rgba(232,180,184,0.15); }
+      .field::placeholder { color: #8b8581; }
+      label.lbl { display: block; font-size: 13px; font-weight: 600; color: #2D3142; margin-bottom: 8px; }
+      /* select nativo: padroniza estilo + força legibilidade das <option> no Windows/Chrome */
+      select.field { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%232D3142' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
+      select.field option { background: #FAF7F5; color: #2D3142; padding: 8px; }
+      select.field option:checked, select.field option:hover { background: #E8B4B8; color: #2D3142; }
+
+      /* Planos de tratamento — progress + badges */
+      .pt-progress { height: 6px; border-radius: 999px; background: rgba(45,49,66,.08); overflow: hidden; }
+      .pt-progress > span { display: block; height: 100%; background: linear-gradient(90deg, #E8B4B8, #D49AA0); transition: width .35s ease; }
+      .pt-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+      .pt-badge.ativo { background: #FCE7EB; color: #9B5560; }
+      .pt-badge.concluido { background: #DDF0E0; color: #4A7A50; }
+      .pt-badge.cancelado { background: #ECECEC; color: #6E6E6E; }
+
+      /* skeleton */
+      .skel { background: linear-gradient(90deg, rgba(232,180,184,0.1) 0%, rgba(232,180,184,0.25) 50%, rgba(232,180,184,0.1) 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; }
+      @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+      /* drawer (side panel) */
+      .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100%); z-index: 60; box-shadow: -16px 0 64px -16px rgba(45,49,66,0.25); }
+
+      /* drawer responsivo em mobile (<640px) — full screen, com tabs scrolláveis */
+      @media (max-width: 640px) {
+        .drawer { width: 100% !important; max-width: 100% !important; max-height: 100vh; }
+        #drawer-paciente .drawer { width: 100% !important; max-width: 100% !important; }
+        #drawer-paciente .tab-link-active,
+        #drawer-paciente [class*="overflow-x-auto"] { flex-wrap: nowrap; }
+      }
+
+      /* focus visible (acessibilidade) */
+      *:focus-visible { outline: 2px solid #E8B4B8; outline-offset: 2px; border-radius: 6px; }
+
+      /* mobile sidebar */
+      @media (max-width: 1024px) {
+        #sidebar { position: fixed; top: 0; left: 0; bottom: 0; transform: translateX(-100%); transition: transform 250ms; z-index: 50; margin: 0; border-radius: 0; height: 100vh; width: 80%; max-width: 320px; }
+        #sidebar.open { transform: translateX(0); }
+        #sidebar-backdrop { display: none; }
+        #sidebar.open + #sidebar-backdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 49; }
+        #burger { display: inline-flex; }
+        main { padding: 16px !important; }
+      }
+      @media (min-width: 1025px) { #burger { display: none; } }
+    </style>
+</head>
+<body class="font-sans text-ink-900 antialiased">
+
+<!-- ============================================================ LOGIN -->
+<div id="login-screen" class="hidden min-h-screen flex items-center justify-center px-4 py-12">
+  <div class="w-full max-w-md fade-in">
+    <div class="text-center mb-10">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-300 to-rose-400 mb-5 shadow-lg">
+        <i data-lucide="sparkles" class="w-7 h-7 text-white"></i>
+      </div>
+      <h1 class="font-serif text-6xl lowercase text-ink-900 tracking-tight mb-2">recepia</h1>
+      <p class="text-ink-600 text-sm">recepcionista IA pelo whatsapp</p>
+    </div>
+    <div class="glass rounded-3xl shadow-2xl p-10">
+      <h2 class="text-2xl font-bold mb-1 text-ink-900">Bem-vinda de volta 💛</h2>
+      <p class="text-sm text-ink-600 mb-8">Sua clínica te esperando.</p>
+      <form onsubmit="event.preventDefault(); doLogin();" class="space-y-5">
+        <div>
+          <label for="login-email" class="lbl">Email</label>
+          <input id="login-email" type="email" required autocomplete="username" placeholder="voce@clinica.com.br" class="field">
+        </div>
+        <div>
+          <label for="login-senha" class="lbl">Senha</label>
+          <input id="login-senha" type="password" required autocomplete="current-password" placeholder="••••••••" class="field">
+        </div>
+        <button type="submit" class="w-full btn btn-primary py-4 text-base mt-2">
+          Entrar <i data-lucide="arrow-right"></i>
+        </button>
+        <div id="login-erro" class="text-sm text-red-600 text-center min-h-[20px]" role="alert" aria-live="polite"></div>
+      </form>
+    </div>
+    <p class="text-center text-xs text-ink-600 mt-8">Esqueceu a senha? Fale com seu consultor recepia.</p>
+  </div>
+</div>
+
+<!-- ============================================================ APP -->
+<div id="app" class="hidden min-h-screen flex">
+  <!-- Sidebar -->
+  <aside id="sidebar" class="w-72 lg:m-4 rounded-3xl glass-dark text-white flex flex-col p-3 shadow-2xl lg:sticky lg:top-4 lg:self-start" style="height: calc(100vh - 32px);">
+    <div class="px-4 py-5 mb-2">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-300 to-rose-400 flex items-center justify-center shadow-lg">
+          <i data-lucide="sparkles" class="w-5 h-5 text-ink-900"></i>
+        </div>
+        <div>
+          <h1 class="font-serif text-2xl leading-none lowercase">recepia</h1>
+          <p class="text-xs text-rose-200 mt-1 truncate max-w-[160px]" id="clinica-nome">—</p>
+        </div>
+      </div>
+      <button onclick="cmdkOpen()" class="mt-4 w-full text-left px-3 py-2 rounded-xl text-xs bg-white/5 hover:bg-white/10 transition flex items-center justify-between text-white/70">
+        <span class="flex items-center gap-2"><i data-lucide="search" class="w-3.5 h-3.5"></i> buscar...</span>
+        <kbd class="px-1.5 py-0.5 bg-white/10 rounded text-[10px]">Ctrl K</kbd>
+      </button>
+    </div>
+    <nav class="flex-1 space-y-1" role="tablist" aria-label="Navegação principal">
+      <button onclick="showTab('dashboard')" data-tab="dashboard" role="tab" aria-controls="tab-dashboard" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="layout-dashboard"></i> Painel</button>
+      <button onclick="showTab('agendamentos')" data-tab="agendamentos" role="tab" aria-controls="tab-agendamentos" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="calendar-days"></i> Agenda</button>
+      <button onclick="showTab('pacientes')" data-tab="pacientes" role="tab" aria-controls="tab-pacientes" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="users"></i> Pacientes</button>
+      <button onclick="showTab('profissionais')" data-tab="profissionais" role="tab" aria-controls="tab-profissionais" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="user-cog"></i> Equipe</button>
+      <button onclick="showTab('prontuarios')" data-tab="prontuarios" role="tab" aria-controls="tab-prontuarios" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="clipboard-list"></i> Prontuários</button>
+      <button onclick="showTab('plano')" data-tab="plano" role="tab" aria-controls="tab-plano" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="sparkles"></i> Plano</button>
+      <button onclick="showTab('configuracoes')" data-tab="configuracoes" role="tab" aria-controls="tab-configuracoes" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="message-square"></i> Mensagens</button>
+      <button onclick="showTab('horarios')" data-tab="horarios" role="tab" aria-controls="tab-horarios" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="clock"></i> Horários</button>
+      <button onclick="showTab('whatsapp')" data-tab="whatsapp" role="tab" aria-controls="tab-whatsapp" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="message-circle"></i> WhatsApp</button>
+    </nav>
+    <div class="border-t border-white/10 pt-3 mt-3">
+      <button onclick="doLogout()" class="w-full text-left px-4 py-2.5 rounded-xl text-xs text-white/70 hover:text-white hover:bg-white/5 transition flex items-center gap-2">
+        <i data-lucide="log-out" class="w-4 h-4"></i> Sair
+      </button>
+    </div>
+  </aside>
+  <div id="sidebar-backdrop" onclick="toggleSidebar()" aria-hidden="true"></div>
+
+  <!-- Main -->
+  <main class="flex-1 p-8 overflow-y-auto">
+    <!-- Mobile top bar -->
+    <div class="lg:hidden flex items-center justify-between mb-6">
+      <button id="burger" onclick="toggleSidebar()" class="p-2 rounded-xl glass" aria-label="Abrir menu">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+      <button onclick="cmdkOpen()" class="p-2 rounded-xl glass" aria-label="Busca rápida (Ctrl+K)"><i data-lucide="search" class="w-5 h-5"></i></button>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed top-6 right-6 px-5 py-3 rounded-xl shadow-2xl z-[70] font-medium text-sm" role="status" aria-live="polite"></div>
+
+    <!-- Trial countdown banner -->
+    <div id="trial-banner" class="hidden mb-5 p-4 rounded-2xl flex items-center justify-between gap-4 slide-down bg-amber-50 border border-amber-200 text-amber-900" role="status">
+      <div class="flex items-center gap-3">
+        <i data-lucide="gift" class="w-5 h-5"></i>
+        <div>
+          <div class="font-semibold text-sm" id="trial-banner-title">—</div>
+          <div class="text-xs opacity-80" id="trial-banner-sub">—</div>
+        </div>
+      </div>
+      <button onclick="abrirOverlayUpgrade()" class="btn btn-primary text-sm" style="padding: 8px 16px;">Ver planos</button>
+    </div>
+
+    <!-- Banner WhatsApp -->
+    <div id="banner-whatsapp" class="hidden mb-5 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-4 slide-down">
+      <div class="flex items-center gap-3">
+        <i data-lucide="message-circle-off" class="w-5 h-5 text-amber-700"></i>
+        <div>
+          <div class="font-semibold text-amber-900 text-sm">Seu WhatsApp não está conectado</div>
+          <div class="text-xs text-amber-700">A IA não vai conseguir conversar com suas pacientes até você reconectar.</div>
+        </div>
+      </div>
+      <button onclick="showTab('whatsapp')" class="btn btn-primary text-sm" style="padding: 8px 16px;">Conectar agora</button>
+    </div>
+
+    <!-- TAB: Painel -->
+    <section id="tab-dashboard" class="hidden fade-in" role="tabpanel" aria-labelledby="dashboard">
+      <header class="mb-10">
+        <p class="text-rose-500 text-xs font-bold mb-2 uppercase tracking-widest" id="saudacao-data">—</p>
+        <h2 class="font-serif text-4xl md:text-5xl text-ink-900 tracking-tight mb-3"><span id="saudacao-greet">Olá</span> <span id="saudacao-nome" class="text-rose-400 font-medium"></span> 💛</h2>
+        <p class="text-ink-600">Vê só como tá o dia.</p>
+      </header>
+
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-8" id="kpi-grid">
+        <div class="glass rounded-2xl p-5 md:p-6 card-hover">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs text-ink-600 uppercase tracking-wider font-semibold">Hoje</span>
+            <i data-lucide="calendar-days" class="w-5 h-5 text-ink-600"></i>
+          </div>
+          <div class="font-serif text-4xl md:text-5xl font-semibold text-ink-900 mb-1" id="kpi-total">—</div>
+          <div class="text-xs md:text-sm text-ink-600">agendamentos</div>
+          <svg class="w-full h-8 mt-2" id="spark-total" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+        <div class="glass rounded-2xl p-5 md:p-6 card-hover">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs text-ink-600 uppercase tracking-wider font-semibold">Confirmados</span>
+            <i data-lucide="check-circle-2" class="w-5 h-5 text-sage-400"></i>
+          </div>
+          <div class="font-serif text-4xl md:text-5xl font-semibold text-sage-500 mb-1" id="kpi-confirmados">—</div>
+          <div class="text-xs md:text-sm text-ink-600">responderam SIM</div>
+          <svg class="w-full h-8 mt-2" id="spark-confirmados" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+        <div class="glass rounded-2xl p-5 md:p-6 card-hover">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs text-ink-600 uppercase tracking-wider font-semibold">Pendentes</span>
+            <i data-lucide="clock" class="w-5 h-5 text-amber-500"></i>
+          </div>
+          <div class="font-serif text-4xl md:text-5xl font-semibold text-amber-600 mb-1" id="kpi-pendentes">—</div>
+          <div class="text-xs md:text-sm text-ink-600">aguardando resposta</div>
+          <svg class="w-full h-8 mt-2" id="spark-pendentes" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+        <div class="rounded-2xl p-5 md:p-6 card-hover relative overflow-hidden" style="background: linear-gradient(135deg, #E8B4B8 0%, #d99ca0 100%);">
+          <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/20 blur-2xl"></div>
+          <div class="relative">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs text-ink-900/80 uppercase tracking-wider font-semibold">R$ recuperado</span>
+              <i data-lucide="trending-up" class="w-5 h-5 text-ink-900/80"></i>
+            </div>
+            <div class="font-serif text-3xl md:text-4xl font-semibold text-ink-900 mb-1" id="kpi-receita">R$ —</div>
+            <div class="text-xs md:text-sm text-ink-900/80" id="kpi-receita-help">no-shows evitados hoje</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Onboarding checklist (estado vazio) -->
+      <div id="onboarding-card" class="hidden glass rounded-3xl p-7 mb-8 fade-in">
+        <h3 class="font-serif text-2xl text-ink-900 mb-2">Vamos começar?</h3>
+        <p class="text-ink-600 text-sm mb-5">4 passos rápidos pra a recepia começar a trabalhar pra você.</p>
+        <div class="space-y-3" id="onboarding-steps"></div>
+      </div>
+
+      <!-- Próximos -->
+      <div class="glass rounded-3xl p-7" id="proximos-card">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="font-serif text-2xl text-ink-900">Próximas consultas</h3>
+          <button onclick="showTab('agendamentos')" class="text-sm text-rose-500 hover:text-rose-600 flex items-center gap-1 font-semibold transition">
+            Ver todas <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <div id="dashboard-proximos" class="divide-y divide-ink-100/50"></div>
+      </div>
+    </section>
+
+    <!-- TAB: Agenda -->
+    <section id="tab-agendamentos" class="hidden fade-in" role="tabpanel">
+      <header class="flex items-end justify-between mb-8 flex-wrap gap-4">
+        <div>
+          <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight mb-2">Agenda</h2>
+          <p class="text-ink-600 text-sm">Clica no nome da paciente pra ver a conversa que a IA teve com ela.</p>
+        </div>
+        <button onclick="openNovoAgendamento()" class="btn btn-primary"><i data-lucide="plus"></i> Novo</button>
+      </header>
+
+      <div class="glass rounded-3xl p-7 mb-5 hidden slide-down" id="form-agendamento">
+        <h3 class="font-serif text-xl text-ink-900 mb-5">Novo agendamento</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+          <div><label class="lbl" for="ag-paciente-id">Paciente</label><select id="ag-paciente-id" class="field"></select></div>
+          <div><label class="lbl" for="ag-data-hora">Data e hora</label><input id="ag-data-hora" type="datetime-local" required class="field"></div>
+          <div><label class="lbl" for="ag-servico">Serviço</label><input id="ag-servico" placeholder="Ex: Limpeza de pele" class="field"></div>
+          <div><label class="lbl" for="ag-profissional">Profissional</label><input id="ag-profissional" placeholder="Ex: Ana" class="field"></div>
+        </div>
+        <div class="flex gap-2"><button onclick="criarAgendamento()" class="btn btn-primary"><i data-lucide="check"></i> Criar</button><button onclick="closeNovoAgendamento()" class="btn btn-ghost">Cancelar</button></div>
+      </div>
+
+      <div class="glass rounded-3xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm min-w-[640px]">
+            <thead class="bg-white/50 text-ink-600 text-left text-xs uppercase tracking-wider">
+              <tr><th class="px-7 py-4 font-semibold">Data/Hora</th><th class="px-7 py-4 font-semibold">Paciente</th><th class="px-7 py-4 font-semibold">Serviço</th><th class="px-7 py-4 font-semibold">Status</th><th class="px-7 py-4 font-semibold"></th></tr>
+            </thead>
+            <tbody id="lista-agendamentos" class="divide-y divide-ink-100/50"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: Pacientes -->
+    <section id="tab-pacientes" class="hidden fade-in" role="tabpanel">
+      <header class="flex items-end justify-between mb-8 flex-wrap gap-4">
+        <div>
+          <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight mb-2">Pacientes</h2>
+          <p class="text-ink-600 text-sm">Sua base de clientes. A gente cuida do telefone — você só digita.</p>
+        </div>
+        <button onclick="openNovoPaciente()" class="btn btn-primary"><i data-lucide="user-plus"></i> Nova</button>
+      </header>
+
+      <div class="glass rounded-3xl p-7 mb-5 hidden slide-down" id="form-paciente">
+        <h3 class="font-serif text-xl text-ink-900 mb-5">Nova paciente</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+          <div><label class="lbl" for="pac-nome">Nome</label><input id="pac-nome" required class="field"></div>
+          <div><label class="lbl" for="pac-telefone">Telefone</label><input id="pac-telefone" placeholder="+55 11 99999-9999" required class="field"></div>
+          <div><label class="lbl" for="pac-email">Email <span class="text-ink-600 font-normal">(opcional)</span></label><input id="pac-email" type="email" class="field"></div>
+          <div><label class="lbl" for="pac-notas">Notas <span class="text-ink-600 font-normal">(opcional)</span></label><input id="pac-notas" class="field"></div>
+        </div>
+        <div class="flex gap-2"><button onclick="criarPaciente()" class="btn btn-primary"><i data-lucide="check"></i> Criar</button><button onclick="closeNovoPaciente()" class="btn btn-ghost">Cancelar</button></div>
+      </div>
+
+      <div class="glass rounded-3xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm min-w-[640px]">
+            <thead class="bg-white/50 text-ink-600 text-left text-xs uppercase tracking-wider">
+              <tr><th class="px-7 py-4 font-semibold">Nome</th><th class="px-7 py-4 font-semibold">Telefone</th><th class="px-7 py-4 font-semibold">Email</th><th class="px-7 py-4 font-semibold">Status</th></tr>
+            </thead>
+            <tbody id="lista-pacientes" class="divide-y divide-ink-100/50"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: Mensagens -->
+    <section id="tab-configuracoes" class="hidden fade-in" role="tabpanel">
+      <header class="mb-8">
+        <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight mb-2">Mensagens da IA</h2>
+        <p class="text-ink-600 text-sm">Personaliza o tom — use <code class="bg-rose-100 px-1.5 py-0.5 rounded font-mono text-xs">{nome}</code>, <code class="bg-rose-100 px-1.5 py-0.5 rounded font-mono text-xs">{clinica}</code>, <code class="bg-rose-100 px-1.5 py-0.5 rounded font-mono text-xs">{data_hora}</code>.</p>
+      </header>
+      <div id="lista-configuracoes" class="space-y-4"></div>
+
+      <!-- Recall automático (config de clínica) -->
+      <section id="recall-panel" class="glass rounded-3xl p-7 mt-8 space-y-4 max-w-3xl">
+        <header class="flex items-start justify-between gap-3">
+          <div>
+            <h3 class="font-serif text-2xl text-ink-900">Recall automático</h3>
+            <p class="text-sm text-ink-600 mt-1">
+              Manda um lembrete no WhatsApp pra pacientes que fizeram um procedimento âncora
+              (ex.: limpeza) há mais de N dias e ainda não voltaram.
+            </p>
+          </div>
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="recall-ativo" class="sr-only peer">
+            <span class="w-11 h-6 bg-slate-300 rounded-full peer peer-checked:bg-rose-500
+                         relative after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                         after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                         peer-checked:after:translate-x-5"></span>
+          </label>
+        </header>
+
+        <div id="recall-stats" class="text-xs text-ink-600"></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="recall-intervalo" class="lbl">
+              Intervalo (dias): <span id="recall-intervalo-val" class="text-rose-600 font-semibold">180</span>
+            </label>
+            <input type="range" id="recall-intervalo" min="30" max="365" step="15" value="180"
+                   class="w-full accent-rose-500">
+            <p class="text-xs text-ink-600">Padrão: 180 (6 meses). Mín 30, máx 365.</p>
+          </div>
+          <div>
+            <label for="recall-chave" class="lbl">Palavra-chave do procedimento âncora</label>
+            <input type="text" id="recall-chave" maxlength="80" placeholder="limpeza" class="field">
+            <p class="text-xs text-ink-600 mt-1">Busca em "procedimentos realizados" do prontuário (case insensitive).</p>
+          </div>
+        </div>
+
+        <div>
+          <label for="recall-template" class="lbl">
+            Mensagem (use <code class="bg-rose-100 px-1.5 py-0.5 rounded font-mono text-xs">{nome}</code>
+            e <code class="bg-rose-100 px-1.5 py-0.5 rounded font-mono text-xs">{clinica}</code>)
+          </label>
+          <textarea id="recall-template" rows="3" maxlength="2000" class="field"
+                    placeholder="Deixe vazio pra usar o template padrão."></textarea>
+        </div>
+
+        <div class="flex flex-wrap gap-2 pt-2">
+          <button type="button" id="recall-salvar" class="btn btn-primary text-sm" style="padding:10px 18px;">
+            <i data-lucide="save" class="w-4 h-4"></i> Salvar configuração
+          </button>
+          <button type="button" id="recall-preview" class="btn btn-ghost text-sm" style="padding:10px 18px;">
+            <i data-lucide="eye" class="w-4 h-4"></i> Ver candidatos agora
+          </button>
+          <button type="button" id="recall-disparar" class="btn btn-accent text-sm" style="padding:10px 18px;">
+            <i data-lucide="send" class="w-4 h-4"></i> Disparar manualmente
+          </button>
+        </div>
+
+        <p id="recall-msg" class="text-sm hidden"></p>
+      </section>
+
+      <!-- Modal de candidatos de recall -->
+      <div id="recall-modal" class="fixed inset-0 bg-ink-900/40 backdrop-blur-sm hidden items-center justify-center z-[90] p-4">
+        <div class="glass rounded-3xl shadow-2xl max-w-lg w-full p-7 max-h-[80vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-3">
+            <h4 class="font-serif text-2xl text-ink-900">Pacientes elegíveis</h4>
+            <button type="button" id="recall-modal-close" class="p-2 rounded-xl hover:bg-white/40 text-ink-600 hover:text-ink-900">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <ul id="recall-modal-list" class="divide-y divide-ink-100/50 text-sm"></ul>
+          <p id="recall-modal-empty" class="text-sm text-ink-600 hidden">Nenhum candidato no momento.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: Horários -->
+    <section id="tab-horarios" class="hidden fade-in" role="tabpanel">
+      <header class="mb-8">
+        <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight mb-2">Horários</h2>
+        <p class="text-ink-600 text-sm">Quando você atende. A IA usa pra sugerir reagendamentos.</p>
+      </header>
+      <div class="glass rounded-3xl p-7"><div id="lista-horarios" class="space-y-3"></div></div>
+    </section>
+
+    <!-- TAB: Profissionais -->
+    <section id="tab-profissionais" class="hidden fade-in" role="tabpanel">
+      <header class="flex items-end justify-between mb-8 flex-wrap gap-4">
+        <div>
+          <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight mb-2">Equipe</h2>
+          <p class="text-ink-600 text-sm">Profissionais que atendem na clínica. A IA usa pra distribuir agendamentos.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div id="prof-counter" class="text-xs text-ink-600 px-3 py-2 rounded-xl bg-white/50 border border-ink-100/50 hidden">
+            <span id="prof-counter-text">—</span>
+          </div>
+          <button onclick="openNovoProfissional()" class="btn btn-primary"><i data-lucide="user-plus"></i> Novo</button>
+        </div>
+      </header>
+
+      <div id="profs-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    </section>
+
+    <!-- TAB: Prontuários -->
+    <section id="tab-prontuarios" class="hidden fade-in" role="tabpanel">
+      <header class="flex items-end justify-between mb-6 flex-wrap gap-4">
+        <div>
+          <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight mb-2">Prontuários</h2>
+          <p class="text-ink-600 text-sm">Histórico de atendimentos. <span class="text-rose-500 font-semibold">Dado sensível</span> — todo acesso é registrado (LGPD Art. 11).</p>
+        </div>
+        <button onclick="openNovoProntuario()" id="btn-novo-prontuario" class="btn btn-primary hidden"><i data-lucide="plus"></i> Novo</button>
+      </header>
+
+      <div class="glass rounded-3xl p-7 mb-6">
+        <label class="lbl">Paciente</label>
+        <select id="pront-paciente-sel" onchange="loadProntuariosDoPaciente()" class="field">
+          <option value="">— escolhe uma paciente —</option>
+        </select>
+      </div>
+
+      <div id="pront-lista" class="space-y-4"></div>
+    </section>
+
+    <!-- TAB: Plano -->
+    <section id="tab-plano" class="hidden fade-in" role="tabpanel">
+      <header class="mb-8">
+        <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight mb-2">Seu plano</h2>
+        <p class="text-ink-600 text-sm">Acompanha o uso e libera mais recursos quando precisar.</p>
+      </header>
+
+      <div id="plano-snapshot" class="mb-8"></div>
+
+      <h3 class="font-serif text-2xl text-ink-900 mb-5">Compare os planos</h3>
+      <div id="plano-comparativo" class="grid grid-cols-1 md:grid-cols-3 gap-5"></div>
+    </section>
+
+    <!-- TAB: WhatsApp -->
+    <section id="tab-whatsapp" class="hidden fade-in" role="tabpanel">
+      <header class="mb-8">
+        <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight mb-2">WhatsApp</h2>
+        <p class="text-ink-600 text-sm">Conecte uma vez e a recepia atende por você 24h.</p>
+      </header>
+      <div class="glass rounded-3xl p-8">
+        <div id="whatsapp-status" class="mb-6"></div>
+        <div class="flex flex-wrap gap-3 mb-6">
+          <button onclick="conectarWhatsapp()" class="btn btn-accent"><i data-lucide="qr-code"></i> Conectar / Gerar QR</button>
+          <button onclick="checarStatus()" class="btn btn-ghost"><i data-lucide="refresh-cw"></i> Atualizar</button>
+          <button onclick="desconectarWhatsapp()" class="btn btn-danger"><i data-lucide="power"></i> Desconectar</button>
+        </div>
+        <div id="qrcode-area" class="text-center min-h-[100px]"></div>
+        <details class="mt-8 bg-cream/60 rounded-2xl p-5 border border-rose-100">
+          <summary class="cursor-pointer text-sm font-semibold text-ink-900 flex items-center gap-2"><i data-lucide="info" class="w-4 h-4 text-rose-400"></i> Como funciona?</summary>
+          <p class="mt-3 text-sm text-ink-600 leading-relaxed">A recepia usa um servidor próprio que loga no seu WhatsApp igual ao WhatsApp Web. Você escaneia o QR Code UMA vez. Depois disso, a IA atende por você 24h por dia. Pode desconectar quando quiser — sem perder o histórico nem mexer no seu WhatsApp normal.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Popover do Odontograma (modal de edição de dente) -->
+<div id="odo-popover" class="hidden fixed inset-0 z-[95] bg-ink-900/40 backdrop-blur-sm" onclick="if(event.target===this)fecharMenuDente()">
+  <div class="absolute glass rounded-2xl p-6 shadow-2xl" style="left:50%;top:50%;transform:translate(-50%,-50%);width:360px;">
+    <div class="flex items-center justify-between mb-4">
+      <h4 class="font-serif text-lg text-ink-900">Dente <span id="odo-popover-fdi">—</span></h4>
+      <button onclick="fecharMenuDente()" class="text-ink-600 hover:text-ink-900 p-1 rounded-lg hover:bg-white/40" aria-label="Fechar painel"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <label class="lbl">Estado</label>
+    <select id="odo-popover-estado" class="field mb-3"></select>
+    <label class="lbl">Observação <span class="text-ink-600 font-normal">(opcional)</span></label>
+    <textarea id="odo-popover-obs" rows="3" maxlength="500" placeholder="Anotação clínica do dente" class="field mb-4"></textarea>
+    <div class="flex gap-2">
+      <button onclick="fecharMenuDente()" class="btn btn-ghost flex-1 text-sm">Cancelar</button>
+      <button id="odo-popover-salvar" onclick="salvarDenteDoPopover()" class="btn btn-primary flex-1 text-sm"><i data-lucide="save"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ Trial overlay (pós-trial) -->
+<div id="trial-overlay" class="hidden fixed inset-0 bg-ink-900/70 backdrop-blur-sm z-[95] overflow-y-auto" role="dialog" aria-modal="true">
+  <div class="min-h-full flex items-center justify-center p-4">
+    <div class="glass rounded-3xl shadow-2xl max-w-4xl w-full p-7 md:p-10">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-rose-300 to-rose-400 flex items-center justify-center"><i data-lucide="sparkles" class="w-8 h-8 text-ink-900"></i></div>
+        <h2 class="font-serif text-3xl md:text-4xl text-ink-900 mb-2">Seu trial acabou 💛</h2>
+        <p class="text-ink-600">Escolha um plano pra continuar trabalhando com a recepia.</p>
+      </div>
+      <div id="trial-overlay-planos" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"></div>
+      <div class="flex flex-wrap justify-center gap-3 text-sm">
+        <button onclick="fecharTrialOverlay()" class="text-ink-600 hover:text-ink-900 underline">Fechar e continuar visualizando</button>
+        <span class="text-ink-300">·</span>
+        <a href="https://wa.me/5511999999999?text=oi%2C%20preciso%20de%20ajuda%20com%20o%20plano" target="_blank" class="text-rose-500 hover:text-rose-600 underline">Falar com a gente</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ CMD+K -->
+<div id="cmdk" class="hidden fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[80] flex items-start justify-center pt-24 px-4 overlay" role="dialog" aria-modal="true" aria-label="Busca rápida">
+  <div class="glass rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden">
+    <div class="flex items-center gap-3 px-5 py-4 border-b border-ink-100/50">
+      <i data-lucide="search" class="w-5 h-5 text-ink-600"></i>
+      <input id="cmdk-input" placeholder="Buscar paciente, ir pra aba, ação..." class="flex-1 bg-transparent outline-none text-ink-900 placeholder-ink-300">
+      <kbd class="px-2 py-1 bg-ink-100 rounded text-xs text-ink-600">esc</kbd>
+    </div>
+    <div id="cmdk-results" class="max-h-96 overflow-y-auto py-2"></div>
+  </div>
+</div>
+
+<!-- ============================================================ JS -->
+<script>
+const $ = (id) => document.getElementById(id);
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtData = (iso) => !iso ? '—' : new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const fmtHora = (iso) => !iso ? '—' : new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+const TICKET_MEDIO = 200; // R$ — heurística pro KPI receita (configurável depois)
+
+// localStorage seguro (Safari private mode lança QuotaExceededError no setItem)
+function safeLocalSet(key, value) {
+  try { localStorage.setItem(key, value); return true; }
+  catch (e) { console.warn('localStorage indisponível (private mode?)', e); return false; }
+}
+function safeLocalGet(key) {
+  try { return localStorage.getItem(key); }
+  catch (e) { return null; }
+}
+function safeLocalClear() {
+  try { localStorage.clear(); } catch (e) { /* ignore */ }
+}
+
+let token = safeLocalGet('recepia_token');
+let clinicaNome = safeLocalGet('recepia_clinica_nome');
+let usuarioRole = safeLocalGet('recepia_usuario_role') || 'admin';
+let usuarioNome = safeLocalGet('recepia_usuario_nome') || '';
+let pacientesCache = [];
+let profissionaisCache = [];
+let especialidadeConfig = null;  // carregado no init, cacheado durante a sessão
+let trialStatus = null;          // {em_trial, expirado, dias_restantes, planos_disponiveis, ...}
+
+function refreshIcons() { if (window.lucide) lucide.createIcons(); }
+
+function init() {
+  // Detecção early de localStorage indisponível (Safari private mode)
+  if (!safeLocalSet('__recepia_probe__', '1')) {
+    document.body.innerHTML = '<div style="padding:40px;font-family:Inter,sans-serif;text-align:center;max-width:480px;margin:80px auto;"><h1 style="font-size:22px;margin-bottom:12px;">Modo privado detectado</h1><p style="color:#5C5552;">Seu navegador bloqueou o armazenamento local. Saia do modo privado/anônimo pra usar a Recepia.</p></div>';
+    return;
+  }
+  if (token) {
+    $('app').classList.remove('hidden');
+    $('clinica-nome').textContent = clinicaNome || '';
+    $('saudacao-nome').textContent = (usuarioNome || '').split(' ')[0] || '';
+    // carrega config da especialidade (cache durante a sessão). Backend retorna {config, especialidades_disponiveis, clinica}
+    api('/api/clinicas/me/especialidade-config').then(d => { especialidadeConfig = d.config || d; aplicarLabelsEspecialidade(); }).catch(() => {});
+    carregarTrialStatus();
+    setInterval(() => { if (token) carregarTrialStatus(); }, 5 * 60 * 1000);
+    const hora = new Date().getHours();
+    $('saudacao-greet').textContent = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+    $('saudacao-data').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+    showTab('dashboard');
+    setupKeyboard();
+  } else {
+    $('login-screen').classList.remove('hidden');
+  }
+  refreshIcons();
+}
+
+// ============================================================ Toast & Modal
+function toast(msg, isError = false) {
+  const t = $('toast');
+  t.innerHTML = `<span class="flex items-center gap-2"><i data-lucide="${isError ? 'alert-circle' : 'check-circle-2'}" class="w-4 h-4"></i> ${escapeHtml(msg)}</span>`;
+  t.className = `fixed top-6 right-6 px-5 py-3 rounded-xl shadow-2xl z-[70] font-medium text-sm slide-down ${isError ? 'bg-red-600 text-white' : 'glass-dark text-white'}`;
+  t.classList.remove('hidden');
+  refreshIcons();
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.add('hidden'), 3500);
+}
+
+function customConfirm(titulo, mensagem, btnText = 'Confirmar', danger = true) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4 fade-in overlay';
+    overlay.setAttribute('role', 'alertdialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.innerHTML = `
+      <div class="glass rounded-3xl shadow-2xl max-w-sm w-full p-7">
+        <h3 class="font-serif text-2xl text-ink-900 mb-2">${escapeHtml(titulo)}</h3>
+        <p class="text-ink-600 mb-6 text-sm">${escapeHtml(mensagem)}</p>
+        <div class="flex gap-2 justify-end">
+          <button data-cancel class="btn btn-ghost text-sm" style="padding:10px 16px;">Cancelar</button>
+          <button data-confirm class="btn ${danger ? 'btn-danger' : 'btn-primary'} text-sm" style="padding:10px 16px;">${escapeHtml(btnText)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = (v) => { overlay.remove(); resolve(v); };
+    overlay.querySelector('[data-cancel]').onclick = () => close(false);
+    overlay.querySelector('[data-confirm]').onclick = () => close(true);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
+    // Foco no botão CANCELAR pra evitar disparo acidental de ação destrutiva via Enter
+    overlay.querySelector('[data-cancel]').focus();
+  });
+}
+
+// ============================================================ API
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const r = await fetch(path, { ...opts, headers });
+  if (r.status === 401 && path !== '/auth/login') { doLogout(); throw new Error('Sessão expirada'); }
+  if (r.status === 402) {
+    // tier limit, feature bloqueada ou trial expirado
+    try {
+      const j = await r.json();
+      const detail = j.detail || {};
+      if (detail.erro === 'trial_expirado') {
+        // recarrega trial-status pra ter planos atualizados; se já estava expirado, abre direto
+        if (!trialStatus || !trialStatus.expirado) {
+          await carregarTrialStatus();
+        } else {
+          abrirTrialOverlay();
+        }
+      } else {
+        openUpgradeModal(detail);  // mantém comportamento antigo pra limite/feature
+      }
+      throw new Error(detail.mensagem || 'Upgrade necessário');
+    } catch (e) {
+      throw e instanceof Error ? e : new Error('Upgrade necessário');
+    }
+  }
+  if (!r.ok) {
+    let err = `HTTP ${r.status}`;
+    try { const j = await r.json(); err = (typeof j.detail === 'string' ? j.detail : j.detail?.mensagem) || err; } catch {}
+    throw new Error(err);
+  }
+  return r.status === 204 ? null : r.json();
+}
+
+// ============================================================ Modal de upgrade (HTTP 402)
+const PLANO_LABEL = { trial: 'Trial', essencial: 'Essencial', pro: 'Pro', enterprise: 'Enterprise' };
+function openUpgradeModal(detail) {
+  const isFeature = detail.erro === 'feature_bloqueada';
+  const planoAtual = PLANO_LABEL[detail.plano_atual] || detail.plano_atual || '—';
+  const sugerido = PLANO_LABEL[detail.upgrade_para] || detail.upgrade_para || 'Pro';
+  const titulo = isFeature ? 'Recurso do plano ' + sugerido : 'Você chegou ao limite do plano ' + planoAtual;
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-ink-900/50 backdrop-blur-sm z-[95] flex items-center justify-center p-4 fade-in overlay';
+  overlay.setAttribute('role', 'alertdialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.innerHTML = `
+    <div class="glass rounded-3xl shadow-2xl max-w-md w-full p-8 text-center">
+      <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-rose-300 to-rose-400 flex items-center justify-center shadow-lg">
+        <i data-lucide="sparkles" class="w-7 h-7 text-ink-900"></i>
+      </div>
+      <h3 class="font-serif text-2xl text-ink-900 mb-3">${escapeHtml(titulo)}</h3>
+      <p class="text-ink-600 text-sm mb-6 leading-relaxed">${escapeHtml(detail.mensagem || 'Faça upgrade pra desbloquear esse recurso.')}</p>
+      <div class="flex gap-2 justify-center">
+        <button data-cancel class="btn btn-ghost text-sm" style="padding:10px 18px;">Agora não</button>
+        <button data-upgrade class="btn btn-primary text-sm" style="padding:10px 18px;"><i data-lucide="arrow-up-right"></i> Ver planos</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-cancel]').onclick = close;
+  overlay.querySelector('[data-upgrade]').onclick = () => { close(); showTab('plano'); };
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  refreshIcons();
+}
+
+// ============================================================ Trial status (banner + overlay pós-trial)
+async function carregarTrialStatus() {
+  try {
+    const s = await api('/api/clinicas/me/trial-status');
+    trialStatus = s;
+    renderTrialBanner();
+    if (s.expirado) abrirTrialOverlay();
+  } catch (e) { /* silencioso */ }
+}
+
+function renderTrialBanner() {
+  const b = $('trial-banner');
+  if (!b || !trialStatus) return;
+  if (!trialStatus.em_trial) { b.classList.add('hidden'); return; }
+  b.classList.remove('hidden');
+  const d = trialStatus.dias_restantes;
+  const exp = trialStatus.expirado;
+  let cls, titulo, sub;
+  if (exp) {
+    cls = 'bg-red-100 border border-red-400 text-red-800';
+    titulo = 'Seu trial expirou'; sub = 'Escolha um plano pra liberar tudo de novo.';
+  } else if (d <= 2) {
+    cls = 'bg-rose-100 border border-rose-300 text-rose-700';
+    titulo = `⚠️ Seu trial acaba em ${d} dia${d===1?'':'s'}`; sub = 'Garanta seu plano antes que expire pra não perder o ritmo.';
+  } else {
+    cls = 'bg-amber-50 border border-amber-200 text-amber-900';
+    titulo = `🎁 Trial: ${d} dias restantes`; sub = 'Aproveita pra testar tudo e escolher o plano que cabe.';
+  }
+  b.className = `mb-5 p-4 rounded-2xl flex items-center justify-between gap-4 slide-down ${cls}`;
+  $('trial-banner-title').textContent = titulo;
+  $('trial-banner-sub').textContent = sub;
+  refreshIcons();
+}
+
+function abrirOverlayUpgrade() { abrirTrialOverlay(); }
+
+function abrirTrialOverlay() {
+  if (!trialStatus) return;
+  const ov = $('trial-overlay');
+  if (!ov) return;
+  const grid = $('trial-overlay-planos');
+  grid.innerHTML = (trialStatus.planos_disponiveis || []).map((p, i) => `
+    <div class="glass rounded-2xl p-5 ${i===1 ? 'ring-2 ring-rose-400' : ''} flex flex-col">
+      ${i===1 ? '<span class="text-[10px] uppercase tracking-wider font-bold text-rose-500 mb-2">★ mais escolhido</span>' : ''}
+      <h3 class="font-serif text-xl text-ink-900 mb-1">${escapeHtml(p.nome)}</h3>
+      <p class="font-serif text-3xl text-ink-900 mb-3">R$ ${p.preco_mensal_reais.toLocaleString('pt-BR', {minimumFractionDigits:0})}<span class="text-sm text-ink-600">/mês</span></p>
+      ${p.link_hotmart
+        ? `<a href="${escapeHtml(p.link_hotmart)}" target="_blank" rel="noopener" class="btn btn-primary w-full justify-center text-sm mt-auto" style="padding:10px;">Assinar ${escapeHtml(p.nome)}</a>`
+        : `<a href="https://wa.me/5511999999999?text=${encodeURIComponent('oi, quero assinar o plano ' + p.nome)}" target="_blank" class="btn btn-primary w-full justify-center text-sm mt-auto" style="padding:10px;">Assinar ${escapeHtml(p.nome)}</a>`}
+    </div>`).join('');
+  ov.classList.remove('hidden');
+  refreshIcons();
+}
+
+function fecharTrialOverlay() { $('trial-overlay').classList.add('hidden'); }
+
+// ============================================================ Auth
+async function doLogin() {
+  const email = $('login-email').value;
+  const senha = $('login-senha').value;
+  $('login-erro').textContent = '';
+  try {
+    const d = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, senha }) });
+    token = d.access_token;
+    clinicaNome = d.clinica_nome;
+    usuarioRole = d.role || 'admin';
+    usuarioNome = d.usuario_nome || '';
+    safeLocalSet('recepia_token', token);
+    safeLocalSet('recepia_clinica_nome', clinicaNome);
+    safeLocalSet('recepia_usuario_role', usuarioRole);
+    safeLocalSet('recepia_usuario_nome', usuarioNome);
+    location.reload();
+  } catch (e) { $('login-erro').textContent = e.message; }
+}
+function doLogout() { safeLocalClear(); token = null; location.reload(); }
+
+// ============================================================ Tabs & Sidebar
+function showTab(name) {
+  document.querySelectorAll('section[id^="tab-"]').forEach(s => s.classList.add('hidden'));
+  document.querySelectorAll('.tab-link').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+  $('tab-' + name).classList.remove('hidden');
+  const btn = document.querySelector(`[data-tab="${name}"]`);
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  if (window.innerWidth < 1025) $('sidebar').classList.remove('open');
+  const loaders = { dashboard: loadDashboard, agendamentos: loadAgendamentos, pacientes: loadPacientes, profissionais: loadProfissionais, prontuarios: loadProntuarios, plano: loadPlano, configuracoes: loadConfiguracoes, horarios: loadHorarios, whatsapp: checarStatus };
+  if (loaders[name]) loaders[name]();
+}
+function toggleSidebar() { $('sidebar').classList.toggle('open'); }
+
+// ============================================================ Sparklines (mock progressivo — depois plugar histórico real)
+function renderSparkline(svgId, baseValue) {
+  const svg = $(svgId);
+  if (!svg) return;
+  const pts = [];
+  for (let i = 0; i < 7; i++) {
+    const noise = (Math.sin(i * 1.3 + baseValue * 0.7) + 1) / 2;
+    const v = Math.max(0, baseValue * (0.6 + noise * 0.6));
+    pts.push(v);
+  }
+  pts.push(baseValue);
+  const max = Math.max(...pts, 1);
+  const path = pts.map((v, i) => `${i * (100 / (pts.length - 1))},${30 - (v / max) * 28}`).join(' L ');
+  svg.innerHTML = `
+    <defs><linearGradient id="g-${svgId}" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#E8B4B8" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#E8B4B8" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="M 0,30 L ${path} L 100,30 Z" fill="url(#g-${svgId})"/>
+    <path d="M ${path}" fill="none" stroke="#E8B4B8" stroke-width="1.5" stroke-linecap="round"/>`;
+}
+
+// ============================================================ Onboarding checklist
+async function checarOnboarding() {
+  try {
+    const [pacs, ags, wppS] = await Promise.all([
+      api('/api/pacientes').catch(() => []),
+      api('/api/agendamentos').catch(() => []),
+      api('/api/whatsapp/status').catch(() => ({ conectado: false })),
+    ]);
+    const passos = [
+      { id: 'pac', ok: pacs.length > 0, label: 'Cadastrar primeira paciente', icon: 'user-plus', action: () => showTab('pacientes') },
+      { id: 'ag', ok: ags.length > 0, label: 'Criar primeiro agendamento', icon: 'calendar-plus', action: () => showTab('agendamentos') },
+      { id: 'wpp', ok: wppS.conectado, label: 'Conectar WhatsApp da clínica', icon: 'message-circle', action: () => showTab('whatsapp') },
+      { id: 'msg', ok: false, label: 'Personalizar mensagens (opcional)', icon: 'message-square', action: () => showTab('configuracoes'), optional: true },
+    ];
+    const allRequired = passos.filter(p => !p.optional).every(p => p.ok);
+    if (allRequired && pacs.length > 0) {
+      $('onboarding-card').classList.add('hidden');
+      return;
+    }
+    $('onboarding-card').classList.remove('hidden');
+    $('onboarding-steps').innerHTML = passos.map((p, i) => `
+      <div class="flex items-center gap-4 p-3 rounded-2xl ${p.ok ? 'bg-sage-100/50' : 'bg-white/40 cursor-pointer hover:bg-white/60'} transition" ${!p.ok ? `onclick="window._onbAct[${i}]()"` : ''}>
+        <div class="w-10 h-10 rounded-full ${p.ok ? 'bg-sage-400' : 'bg-rose-300'} flex items-center justify-center text-white">
+          <i data-lucide="${p.ok ? 'check' : p.icon}" class="w-5 h-5"></i>
+        </div>
+        <div class="flex-1">
+          <div class="font-semibold text-ink-900 ${p.ok ? 'line-through text-ink-600' : ''}">${escapeHtml(p.label)}</div>
+        </div>
+        ${!p.ok ? '<i data-lucide="arrow-right" class="w-4 h-4 text-ink-600"></i>' : ''}
+      </div>
+    `).join('');
+    window._onbAct = passos.map(p => p.action);
+    refreshIcons();
+  } catch (e) { /* silent */ }
+}
+
+// ============================================================ Dashboard
+function skeletonProx(n=3) {
+  let h = '';
+  for (let i = 0; i < n; i++) h += `<div class="flex items-center gap-4 py-4"><div class="skel w-12 h-12 rounded-2xl"></div><div class="flex-1"><div class="skel h-4 w-2/3 mb-2"></div><div class="skel h-3 w-1/2"></div></div><div class="skel w-20 h-6 rounded-full"></div></div>`;
+  return h;
+}
+
+async function loadDashboard() {
+  $('dashboard-proximos').innerHTML = skeletonProx(3);
+  ['kpi-total','kpi-confirmados','kpi-pendentes'].forEach(id => $(id).innerHTML = '<span class="skel inline-block w-12 h-10"></span>');
+  $('kpi-receita').textContent = 'R$ —';
+
+  try {
+    const m = await api('/api/relatorios/dashboard');
+    $('kpi-total').textContent = m.total_dia;
+    $('kpi-confirmados').textContent = m.confirmados;
+    $('kpi-pendentes').textContent = m.pendentes;
+    const receita = m.confirmados * TICKET_MEDIO;
+    $('kpi-receita').textContent = 'R$ ' + receita.toLocaleString('pt-BR');
+    $('kpi-receita-help').textContent = `≈ ${m.confirmados} no-show evitado${m.confirmados !== 1 ? 's' : ''}`;
+    renderSparkline('spark-total', m.total_dia || 1);
+    renderSparkline('spark-confirmados', m.confirmados || 1);
+    renderSparkline('spark-pendentes', m.pendentes || 1);
+
+    const ags = await api('/api/agendamentos');
+    const proxs = ags.slice(0, 5);
+    $('dashboard-proximos').innerHTML = proxs.length === 0
+      ? '<div class="text-ink-600 py-12 text-center"><i data-lucide="calendar-x" class="w-12 h-12 mx-auto mb-3 opacity-40"></i><p class="text-sm">Nenhuma consulta marcada ainda.</p><button onclick="showTab(\'agendamentos\')" class="mt-3 text-rose-500 text-sm hover:underline">Criar primeira</button></div>'
+      : proxs.map(a => {
+          const d = new Date(a.data_hora_utc || a.data_hora);
+          const mesAbr = d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',month:'short'}).replace('.','');
+          return `
+          <div class="flex justify-between items-center py-4 cursor-pointer hover:bg-white/30 -mx-3 px-3 rounded-xl transition" onclick="abrirDrawerAgendamento('${escapeHtml(a.id)}')">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-rose-100 flex flex-col items-center justify-center flex-shrink-0">
+                <span class="text-[10px] uppercase font-bold text-ink-600">${escapeHtml(mesAbr)}</span>
+                <span class="text-base font-bold text-ink-900 leading-none">${d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit'})}</span>
+              </div>
+              <div class="min-w-0">
+                <div class="font-semibold text-ink-900 truncate">${escapeHtml(fmtHora(a.data_hora_utc || a.data_hora))} · ${escapeHtml(a.servico || 'sem serviço')}</div>
+                <div class="text-xs text-ink-600 mt-0.5 truncate">${escapeHtml(a.profissional || 'sem profissional')}</div>
+              </div>
+            </div>
+            <span class="badge badge-${escapeHtml(a.status)}">${escapeHtml(a.status)}</span>
+          </div>
+        `}).join('');
+    refreshIcons();
+    checarOnboarding();
+    checarStatusBanner();
+  } catch (e) {
+    $('dashboard-proximos').innerHTML = `<div class="text-center py-8"><p class="text-red-600 text-sm mb-3">${escapeHtml(e.message)}</p><button onclick="loadDashboard()" class="btn btn-ghost text-sm">Tentar de novo</button></div>`;
+    refreshIcons();
+  }
+}
+
+async function checarStatusBanner() {
+  try {
+    const s = await api('/api/whatsapp/status');
+    $('banner-whatsapp').classList.toggle('hidden', !!s.conectado);
+  } catch { /* silent */ }
+}
+
+// ============================================================ Agendamentos
+async function loadAgendamentos() {
+  $('lista-agendamentos').innerHTML = `<tr><td colspan="5" class="px-7 py-12"><div class="skel h-6 w-full"></div></td></tr>`;
+  try {
+    const [ags, pacs] = await Promise.all([api('/api/agendamentos'), api('/api/pacientes')]);
+    pacientesCache = pacs;
+    const pacMap = Object.fromEntries(pacs.map(p => [p.id, p.nome]));
+    $('lista-agendamentos').innerHTML = ags.length === 0
+      ? `<tr><td colspan="5" class="px-7 py-16 text-center text-ink-600"><i data-lucide="calendar-x" class="w-12 h-12 mx-auto mb-3 opacity-40"></i><p class="text-sm mb-3">Nenhum agendamento ainda.</p><button onclick="openNovoAgendamento()" class="btn btn-primary text-sm" style="padding:8px 16px;">+ Criar primeiro</button></td></tr>`
+      : ags.map(a => `
+          <tr class="hover:bg-white/40 transition cursor-pointer" onclick="abrirDrawerAgendamento('${escapeHtml(a.id)}')">
+            <td class="px-7 py-4 font-medium text-ink-900">${escapeHtml(fmtData(a.data_hora_utc || a.data_hora))}</td>
+            <td class="px-7 py-4">
+              <span class="text-ink-900 hover:text-rose-500 font-medium inline-flex items-center gap-1.5">
+                ${escapeHtml(pacMap[a.paciente_id] || '?')} <i data-lucide="message-circle" class="w-3.5 h-3.5 text-ink-600"></i>
+              </span>
+            </td>
+            <td class="px-7 py-4 text-ink-600">${escapeHtml(a.servico || '—')}</td>
+            <td class="px-7 py-4"><span class="badge badge-${escapeHtml(a.status)}">${escapeHtml(a.status)}</span></td>
+            <td class="px-7 py-4 text-right">${a.status === 'pendente' ? `<button onclick="event.stopPropagation(); cancelarAg('${escapeHtml(a.id)}')" class="text-red-600 text-xs hover:underline font-medium">Cancelar</button>` : ''}</td>
+          </tr>
+        `).join('');
+    refreshIcons();
+  } catch (e) {
+    $('lista-agendamentos').innerHTML = `<tr><td colspan="5" class="px-7 py-12 text-center"><p class="text-red-600 text-sm mb-3">${escapeHtml(e.message)}</p><button onclick="loadAgendamentos()" class="btn btn-ghost text-sm">Tentar de novo</button></td></tr>`;
+  }
+}
+
+function openNovoAgendamento() {
+  $('form-agendamento').classList.remove('hidden');
+  const sel = $('ag-paciente-id');
+  sel.innerHTML = pacientesCache.length === 0
+    ? '<option value="">Cadastre uma paciente primeiro</option>'
+    : pacientesCache.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.nome)} — ${escapeHtml(p.telefone)}</option>`).join('');
+  refreshIcons();
+}
+function closeNovoAgendamento() { $('form-agendamento').classList.add('hidden'); }
+
+async function criarAgendamento() {
+  const payload = {
+    paciente_id: $('ag-paciente-id').value,
+    data_hora: $('ag-data-hora').value + ':00',
+    servico: $('ag-servico').value || null,
+    profissional: $('ag-profissional').value || null,
+  };
+  if (!payload.paciente_id) return toast('Selecione uma paciente', true);
+  try {
+    await api('/api/agendamentos', { method: 'POST', body: JSON.stringify(payload) });
+    toast('Agendamento criado!');
+    closeNovoAgendamento();
+    loadAgendamentos();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function cancelarAg(id) {
+  const ok = await customConfirm('Cancelar consulta?', 'A paciente será notificada que o horário foi cancelado.', 'Sim, cancelar', true);
+  if (!ok) return;
+  try { await api('/api/agendamentos/' + id, { method: 'DELETE' }); toast('Cancelado'); loadAgendamentos(); }
+  catch (e) { toast(e.message, true); }
+}
+
+// ============================================================ Drawer (substitui modal de interações)
+async function abrirDrawerAgendamento(agId) {
+  const a = (await api('/api/agendamentos/' + agId).catch(() => null));
+  if (!a) return toast('Agendamento não encontrado', true);
+  const pac = pacientesCache.find(p => p.id === a.paciente_id) || { nome: '?', telefone: '?' };
+  const ints = await api('/api/agendamentos/' + agId + '/interacoes').catch(() => []);
+
+  const html = `
+    <div class="drawer slide-right glass flex flex-col">
+      <div class="flex items-start justify-between p-6 border-b border-ink-100/50">
+        <div>
+          <h3 class="font-serif text-2xl text-ink-900">${escapeHtml(pac.nome)}</h3>
+          <p class="text-sm text-ink-600 mt-1">${escapeHtml(fmtData(a.data_hora_utc || a.data_hora))} · ${escapeHtml(a.servico || 'sem serviço')}</p>
+          <span class="badge badge-${escapeHtml(a.status)} mt-2">${escapeHtml(a.status)}</span>
+        </div>
+        <button onclick="fecharDrawer()" class="text-ink-600 hover:text-ink-900 p-2 -mr-2" aria-label="Fechar"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-6">
+        <p class="text-xs text-ink-600 uppercase font-semibold tracking-wider mb-4">Conversa com a IA</p>
+        ${ints.length === 0
+          ? `<div class="text-center py-12 text-ink-600"><i data-lucide="message-circle-off" class="w-10 h-10 mx-auto mb-2 opacity-40"></i><p class="text-sm">Sem mensagens ainda. A IA vai falar com ela 24h antes da consulta.</p></div>`
+          : ints.map(i => `
+            <div class="mb-4">
+              <div class="text-xs text-ink-600 mb-1.5">${escapeHtml(fmtData(i.quando))} · ${escapeHtml(i.tipo)}</div>
+              ${i.mensagem_enviada ? `<div class="bg-rose-100 p-3 rounded-2xl rounded-tl-sm text-sm text-ink-900 max-w-[85%]">${escapeHtml(i.mensagem_enviada)}</div>` : ''}
+              ${i.mensagem_recebida ? `<div class="bg-cream p-3 rounded-2xl rounded-tr-sm text-sm text-ink-900 max-w-[85%] ml-auto mt-1">${escapeHtml(i.mensagem_recebida)}</div>` : ''}
+            </div>
+          `).join('')
+        }
+      </div>
+      <div class="p-4 border-t border-ink-100/50 flex gap-2">
+        ${a.status === 'pendente' ? `<button onclick="cancelarAg('${escapeHtml(a.id)}'); fecharDrawer();" class="btn btn-danger text-sm flex-1">Cancelar consulta</button>` : ''}
+        <button onclick="fecharDrawer()" class="btn btn-ghost text-sm flex-1">Fechar</button>
+      </div>
+    </div>
+    <div class="fixed inset-0 bg-ink-900/30 backdrop-blur-sm z-[55] overlay" onclick="fecharDrawer()" aria-hidden="true"></div>
+  `;
+  const container = document.createElement('div');
+  container.id = 'drawer-container';
+  container.innerHTML = html;
+  document.body.appendChild(container);
+  refreshIcons();
+}
+function fecharDrawer() {
+  const d = $('drawer-container');
+  if (d) d.remove();
+}
+
+// ============================================================ Pacientes
+async function loadPacientes() {
+  $('lista-pacientes').innerHTML = `<tr><td colspan="4" class="px-7 py-12"><div class="skel h-6 w-full"></div></td></tr>`;
+  try {
+    const pacs = await api('/api/pacientes');
+    pacientesCache = pacs;
+    $('lista-pacientes').innerHTML = pacs.length === 0
+      ? `<tr><td colspan="4" class="px-7 py-16 text-center text-ink-600"><i data-lucide="users" class="w-12 h-12 mx-auto mb-3 opacity-40"></i><p class="text-sm mb-3">Nenhuma paciente cadastrada ainda.</p><button onclick="openNovoPaciente()" class="btn btn-primary text-sm" style="padding:8px 16px;">+ Cadastrar primeira</button></td></tr>`
+      : pacs.map(p => `
+          <tr class="hover:bg-white/40 transition cursor-pointer" onclick="abrirDrawerPaciente('${escapeHtml(p.id)}')">
+            <td class="px-7 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-rose-200 to-rose-400 flex items-center justify-center text-ink-900 font-bold text-sm flex-shrink-0 overflow-hidden" data-avatar-pac="${escapeHtml(p.id)}" data-foto-key="${escapeHtml(p.foto_key || '')}">${escapeHtml((p.nome[0] || '?').toUpperCase())}</div>
+                <span class="font-medium text-ink-900">${escapeHtml(p.nome)}</span>
+              </div>
+            </td>
+            <td class="px-7 py-4 text-ink-600 font-mono text-xs">${escapeHtml(p.telefone)}</td>
+            <td class="px-7 py-4 text-ink-600">${escapeHtml(p.email || '—')}</td>
+            <td class="px-7 py-4">${p.opt_out ? '<span class="badge badge-cancelado">opt-out</span>' : '<span class="badge badge-confirmado">ativa</span>'}</td>
+          </tr>
+        `).join('');
+    // carrega avatares pra quem tem foto_key (precisa de auth header → blob URL)
+    pacs.filter(p => p.foto_key).forEach(p => carregarAvatarPaciente(p.id));
+    refreshIcons();
+  } catch (e) {
+    $('lista-pacientes').innerHTML = `<tr><td colspan="4" class="px-7 py-12 text-center"><p class="text-red-600 text-sm mb-3">${escapeHtml(e.message)}</p><button onclick="loadPacientes()" class="btn btn-ghost text-sm">Tentar de novo</button></td></tr>`;
+  }
+}
+
+function openNovoPaciente() { $('form-paciente').classList.remove('hidden'); refreshIcons(); }
+function closeNovoPaciente() { $('form-paciente').classList.add('hidden'); }
+
+async function criarPaciente() {
+  const payload = {
+    nome: $('pac-nome').value, telefone: $('pac-telefone').value,
+    email: $('pac-email').value || null, notas: $('pac-notas').value || null,
+  };
+  if (!payload.nome || !payload.telefone) return toast('Nome e telefone obrigatórios', true);
+  try {
+    await api('/api/pacientes', { method: 'POST', body: JSON.stringify(payload) });
+    toast('Paciente criada!');
+    closeNovoPaciente();
+    ['pac-nome','pac-telefone','pac-email','pac-notas'].forEach(id => $(id).value = '');
+    loadPacientes();
+  } catch (e) { toast(e.message, true); }
+}
+
+// ============================================================ Mensagens
+async function loadConfiguracoes() {
+  $('lista-configuracoes').innerHTML = `<div class="glass rounded-2xl p-6"><div class="skel h-6 w-1/2 mb-3"></div><div class="skel h-20 w-full"></div></div>`;
+  try {
+    const cfgs = await api('/api/configuracoes');
+    $('lista-configuracoes').innerHTML = cfgs.map(c => `
+      <div class="glass rounded-2xl p-6 card-hover">
+        <label class="block font-serif text-xl text-ink-900 mb-3" for="cfg-${escapeHtml(c.chave)}">${escapeHtml(chaveAmigavel(c.chave))}</label>
+        <textarea id="cfg-${escapeHtml(c.chave)}" rows="3" class="field font-mono text-sm">${escapeHtml(c.valor)}</textarea>
+        <div class="flex items-center justify-between mt-3 flex-wrap gap-2">
+          <p class="text-xs text-ink-600">Variáveis: <code class="bg-rose-100 px-1.5 py-0.5 rounded text-ink-900 font-mono">{nome}</code> <code class="bg-rose-100 px-1.5 py-0.5 rounded text-ink-900 font-mono">{clinica}</code> <code class="bg-rose-100 px-1.5 py-0.5 rounded text-ink-900 font-mono">{data_hora}</code></p>
+          <button onclick="salvarConfig('${escapeHtml(c.chave)}')" class="btn btn-primary text-sm" style="padding:8px 16px;"><i data-lucide="save"></i> Salvar</button>
+        </div>
+      </div>
+    `).join('');
+    refreshIcons();
+  } catch (e) { toast(e.message, true); }
+  // boota o painel de Recall automático (idempotente)
+  try { if (window.Recall && typeof window.Recall.init === 'function') window.Recall.init(); } catch (e) { /* silent */ }
+}
+
+// ============================================================ Recall automático (config de clínica)
+(function () {
+  let _bound = false;
+  const Recall = {
+    async init() {
+      // re-carrega config sempre que a aba abrir, mas registra handlers só 1x
+      if (!_bound) {
+        const slider = $('recall-intervalo');
+        if (!slider) return; // painel não montado ainda
+        slider.addEventListener('input', (e) => {
+          $('recall-intervalo-val').textContent = e.target.value;
+        });
+        $('recall-salvar').addEventListener('click', Recall.salvar);
+        $('recall-preview').addEventListener('click', Recall.preview);
+        $('recall-disparar').addEventListener('click', Recall.disparar);
+        $('recall-modal-close').addEventListener('click', () => Recall.modal(false));
+        _bound = true;
+      }
+      await Recall.carregar();
+    },
+
+    msg(texto, tipo) {
+      const el = $('recall-msg');
+      if (!el) return;
+      el.textContent = texto;
+      el.className = 'text-sm ' + (
+        tipo === 'erro' ? 'text-red-600' :
+        tipo === 'ok'   ? 'text-emerald-600' : 'text-ink-600'
+      );
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 5000);
+    },
+
+    modal(show) {
+      const m = $('recall-modal');
+      if (!m) return;
+      m.classList.toggle('hidden', !show);
+      m.classList.toggle('flex', show);
+    },
+
+    async carregar() {
+      try {
+        const cfg = await api('/api/clinicas/me/recall');
+        $('recall-ativo').checked = !!cfg.ativo;
+        $('recall-intervalo').value = cfg.intervalo_dias;
+        $('recall-intervalo-val').textContent = cfg.intervalo_dias;
+        $('recall-chave').value = cfg.procedimento_chave || 'limpeza';
+        $('recall-template').value = cfg.template || '';
+        const wp = cfg.whatsapp_conectado ? 'WhatsApp conectado' : 'WhatsApp DESCONECTADO (nada será enviado)';
+        $('recall-stats').innerHTML =
+          `<span>${cfg.recalls_ultimos_30d} recalls disparados nos últimos 30 dias</span>
+           · <span class="${cfg.whatsapp_conectado ? 'text-emerald-600' : 'text-amber-600'}">${escapeHtml(wp)}</span>`;
+      } catch (e) {
+        Recall.msg('Erro ao carregar config: ' + (e.message || e), 'erro');
+      }
+    },
+
+    async salvar() {
+      const body = {
+        ativo: $('recall-ativo').checked,
+        intervalo_dias: parseInt($('recall-intervalo').value, 10),
+        procedimento_chave: ($('recall-chave').value || 'limpeza').trim(),
+        template: $('recall-template').value.trim() || null,
+      };
+      try {
+        await api('/api/clinicas/me/recall', { method: 'PUT', body: JSON.stringify(body) });
+        Recall.msg('Configuração salva.', 'ok');
+        await Recall.carregar();
+      } catch (e) {
+        Recall.msg('Erro ao salvar: ' + (e.message || e), 'erro');
+      }
+    },
+
+    async preview() {
+      try {
+        const data = await api('/api/clinicas/me/recall/preview');
+        const list = $('recall-modal-list');
+        list.innerHTML = '';
+        const empty = $('recall-modal-empty');
+        const cands = Array.isArray(data.candidatos) ? data.candidatos : [];
+        if (!cands.length) {
+          empty.classList.remove('hidden');
+        } else {
+          empty.classList.add('hidden');
+          cands.slice(0, 10).forEach(c => {
+            const li = document.createElement('li');
+            li.className = 'py-2';
+            const data_str = new Date(c.ultima_visita).toLocaleDateString('pt-BR');
+            li.innerHTML = `
+              <div class="font-medium text-ink-900">${escapeHtml(c.paciente_nome || '')}</div>
+              <div class="text-xs text-ink-600">
+                ${escapeHtml(c.telefone_mascarado || '')} · última visita ${escapeHtml(data_str)}
+                ${c.ultimo_procedimento ? '· ' + escapeHtml(c.ultimo_procedimento) : ''}
+              </div>`;
+            list.appendChild(li);
+          });
+        }
+        const header = data.elegivel
+          ? `<div class="mb-2 text-sm text-emerald-700">${data.total} candidato(s) hoje</div>`
+          : `<div class="mb-2 text-sm text-amber-700">Inelegível: ${escapeHtml(data.motivo_inelegivel || '')}</div>`;
+        list.insertAdjacentHTML('beforebegin', header);
+        Recall.modal(true);
+      } catch (e) {
+        Recall.msg('Erro no preview: ' + (e.message || e), 'erro');
+      }
+    },
+
+    async disparar() {
+      const ok = await customConfirm(
+        'Disparar recalls agora?',
+        'Vai enviar mensagens via WhatsApp pros candidatos elegíveis. Tem certeza?',
+        'Disparar', false
+      );
+      if (!ok) return;
+      try {
+        const r = await api('/api/clinicas/me/recall/disparar', { method: 'POST', body: JSON.stringify({}) });
+        if (r.skip_whatsapp_offline) {
+          Recall.msg('WhatsApp desconectado — nada foi enviado.', 'erro');
+        } else {
+          Recall.msg(`Enviados: ${r.enviados} · Falhas: ${r.falhas} · Candidatos: ${r.candidatos}`, 'ok');
+        }
+        await Recall.carregar();
+      } catch (e) {
+        const msg = (e.message || '').includes('429')
+          ? 'Aguarde 1 hora entre disparos manuais.'
+          : 'Erro: ' + (e.message || e);
+        Recall.msg(msg, 'erro');
+      }
+    },
+  };
+
+  window.Recall = Recall;
+})();
+function chaveAmigavel(k) {
+  const mapa = {
+    msg_primeiro_contato: '👋 Primeiro contato (LGPD)', msg_confirmacao_24h: '📅 Confirmação 24h antes',
+    msg_lembrete_2h: '⏰ Lembrete 2h antes', msg_confirmado: '✅ Resposta a "sim"',
+    msg_cancelado: '❌ Resposta a "não"', msg_reagendar_opcoes: '🔄 Resposta a "reagendar"',
+    msg_nao_entendido: '❓ Quando não entender', msg_pos_atendimento: '💆 Pós atendimento',
+    msg_recuperacao_sumida: '👋 Recuperar cliente sumida', msg_aniversario: '🎂 Aniversário',
+    msg_pacote_lembrete: '📦 Lembrete de pacote',
+  };
+  return mapa[k] || k;
+}
+async function salvarConfig(chave) {
+  try { await api('/api/configuracoes/' + chave, { method: 'PUT', body: JSON.stringify({ valor: $('cfg-' + chave).value }) }); toast('Salvo!'); }
+  catch (e) { toast(e.message, true); }
+}
+
+// ============================================================ Horários
+const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+async function loadHorarios() {
+  $('lista-horarios').innerHTML = `<div class="skel h-12 w-full mb-2"></div>`.repeat(7);
+  try {
+    const hs = await api('/api/horarios');
+    const byDia = Object.fromEntries(hs.map(h => [h.dia_semana, h]));
+    $('lista-horarios').innerHTML = DIAS.map((nome, dia) => {
+      const h = byDia[dia] || { hora_inicio: '09:00', hora_fim: '18:00', intervalo_slot_min: 60, ativo: false };
+      return `
+        <div class="flex flex-wrap items-center gap-3 p-4 rounded-2xl transition ${h.ativo ? 'bg-white/60 border border-rose-100' : 'bg-ink-50/50 opacity-60'}">
+          <div class="w-24 md:w-28 font-semibold text-ink-900">${escapeHtml(nome)}</div>
+          <label class="flex items-center gap-2 text-sm cursor-pointer select-none"><input type="checkbox" id="h-ativo-${dia}" ${h.ativo ? 'checked' : ''} class="w-4 h-4 accent-rose-400"> Aberto</label>
+          <input type="time" id="h-inicio-${dia}" value="${escapeHtml(h.hora_inicio)}" class="px-3 py-2 bg-white rounded-xl border border-ink-100 text-sm w-28" aria-label="Hora início ${nome}">
+          <span class="text-ink-600 text-sm">até</span>
+          <input type="time" id="h-fim-${dia}" value="${escapeHtml(h.hora_fim)}" class="px-3 py-2 bg-white rounded-xl border border-ink-100 text-sm w-28" aria-label="Hora fim ${nome}">
+          <span class="text-ink-600 text-sm">slot</span>
+          <input type="number" id="h-slot-${dia}" value="${h.intervalo_slot_min}" min="15" max="240" class="px-3 py-2 bg-white rounded-xl border border-ink-100 text-sm w-20" aria-label="Duração slot ${nome}">
+          <span class="text-ink-600 text-sm">min</span>
+          <button onclick="salvarHorario(${dia})" class="ml-auto btn btn-primary text-xs" style="padding:6px 12px;">Salvar</button>
+        </div>`;
+    }).join('');
+  } catch (e) { toast(e.message, true); }
+}
+async function salvarHorario(dia) {
+  try {
+    await api('/api/horarios/' + dia, { method: 'PUT', body: JSON.stringify({
+      hora_inicio: $('h-inicio-' + dia).value, hora_fim: $('h-fim-' + dia).value,
+      intervalo_slot_min: parseInt($('h-slot-' + dia).value, 10), ativo: $('h-ativo-' + dia).checked,
+    })});
+    toast('Horário salvo!'); loadHorarios();
+  } catch (e) { toast(e.message, true); }
+}
+
+// ============================================================ WhatsApp
+async function checarStatus() {
+  try {
+    const s = await api('/api/whatsapp/status');
+    $('whatsapp-status').innerHTML = s.conectado
+      ? `<div class="inline-flex items-center gap-3 bg-sage-100 border border-sage-300 rounded-2xl px-4 py-3"><div class="w-2 h-2 rounded-full bg-sage-400 animate-pulse"></div><span class="font-semibold text-sage-700">Conectado</span><span class="text-xs text-sage-700/70">estado: ${escapeHtml(s.estado || '—')}</span></div>`
+      : `<div class="inline-flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3"><div class="w-2 h-2 rounded-full bg-red-500"></div><span class="font-semibold text-red-800">Desconectado</span><span class="text-xs text-red-700/70">estado: ${escapeHtml(s.estado || '—')}</span></div>`;
+    $('banner-whatsapp').classList.toggle('hidden', !!s.conectado);
+  } catch (e) { toast(e.message, true); }
+}
+async function conectarWhatsapp() {
+  try {
+    $('qrcode-area').innerHTML = '<div class="inline-flex items-center gap-3 text-ink-600 py-8"><div class="w-5 h-5 border-2 border-rose-300 border-t-transparent rounded-full animate-spin"></div>Gerando QR Code...</div>';
+    const r = await api('/api/whatsapp/conectar', { method: 'POST' });
+    if (r.qrcode_base64) {
+      const b64 = r.qrcode_base64.includes(',') ? r.qrcode_base64.split(',')[1] : r.qrcode_base64;
+      $('qrcode-area').innerHTML = `<p class="mb-5 text-sm text-ink-600">📱 Abra WhatsApp no celular → <b class="text-ink-900">Aparelhos conectados</b> → <b class="text-ink-900">Conectar aparelho</b> → escaneie:</p>
+        <div class="inline-block p-6 bg-white rounded-3xl shadow-2xl"><img src="data:image/png;base64,${encodeURIComponent(b64).replace(/'/g,'')}" alt="QR Code WhatsApp" class="block max-w-xs"></div>
+        ${r.pairing_code ? `<p class="mt-5 text-sm text-ink-600">Ou digite o código: <code class="bg-rose-100 px-3 py-1.5 rounded-lg font-mono text-ink-900 ml-2">${escapeHtml(r.pairing_code)}</code></p>` : ''}`;
+    } else {
+      $('qrcode-area').innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-amber-800 text-sm max-w-md mx-auto">⚠️ Evolution não devolveu o QR ainda. Aguarde 5s e clique de novo.</div>`;
+    }
+  } catch (e) { $('qrcode-area').innerHTML = `<div class="bg-red-50 border border-red-200 rounded-2xl p-5 text-red-700 text-sm max-w-md mx-auto">${escapeHtml(e.message)}</div>`; }
+}
+async function desconectarWhatsapp() {
+  const ok = await customConfirm('Desconectar WhatsApp?', 'A IA vai parar de responder até você reconectar.', 'Sim, desconectar', true);
+  if (!ok) return;
+  try { await api('/api/whatsapp/desconectar', { method: 'POST' }); toast('Desconectado'); checarStatus(); }
+  catch (e) { toast(e.message, true); }
+}
+
+// ============================================================ Profissionais (Equipe)
+async function loadProfissionais() {
+  $('profs-grid').innerHTML = `
+    <div class="glass rounded-3xl p-6"><div class="skel h-5 w-1/2 mb-3"></div><div class="skel h-3 w-2/3"></div></div>
+    <div class="glass rounded-3xl p-6"><div class="skel h-5 w-1/2 mb-3"></div><div class="skel h-3 w-2/3"></div></div>
+    <div class="glass rounded-3xl p-6"><div class="skel h-5 w-1/2 mb-3"></div><div class="skel h-3 w-2/3"></div></div>`;
+  try {
+    const [profs, uso] = await Promise.all([
+      api('/api/profissionais?incluir_inativos=true'),
+      api('/api/plano/me/uso').catch(() => null),
+    ]);
+    profissionaisCache = profs;
+    if (uso) {
+      const limite = uso.uso?.profissionais?.limite;
+      const atual = uso.uso?.profissionais?.atual ?? 0;
+      const txt = limite == null ? `${atual} profissionais (ilimitado)` : `${atual} / ${limite} profissionais`;
+      const cor = (limite != null && atual >= limite) ? 'text-rose-500 border-rose-200 bg-rose-50' : '';
+      $('prof-counter-text').textContent = txt;
+      $('prof-counter').className = `text-xs px-3 py-2 rounded-xl border ${cor || 'text-ink-600 border-ink-100/50 bg-white/50'}`;
+      $('prof-counter').classList.remove('hidden');
+    }
+    if (profs.length === 0) {
+      $('profs-grid').innerHTML = `
+        <div class="col-span-full glass rounded-3xl p-12 text-center">
+          <i data-lucide="user-cog" class="w-12 h-12 mx-auto mb-4 text-ink-300"></i>
+          <h3 class="font-serif text-xl text-ink-900 mb-2">Cadastre quem atende na clínica</h3>
+          <p class="text-ink-600 text-sm mb-5">A IA vai usar pra distribuir agendamentos certinho.</p>
+          <button onclick="openNovoProfissional()" class="btn btn-primary"><i data-lucide="user-plus"></i> Cadastrar primeiro</button>
+        </div>`;
+    } else {
+      $('profs-grid').innerHTML = profs.map(p => `
+        <div class="glass rounded-3xl p-6 card-hover ${p.ativo ? '' : 'opacity-60'}">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-serif text-lg text-ink-900 font-semibold flex-shrink-0" style="background:${escapeHtml(p.cor)}">
+              ${escapeHtml((p.nome[0]||'?').toUpperCase())}
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-ink-900 truncate">${escapeHtml(p.nome)}</h3>
+              <p class="text-xs text-ink-600 truncate">${escapeHtml(p.especialidade || 'sem especialidade')}</p>
+            </div>
+            ${p.ativo
+              ? '<span class="text-[10px] px-2 py-1 rounded-full bg-sage-100 text-sage-600 font-semibold uppercase tracking-wider">ativo</span>'
+              : '<span class="text-[10px] px-2 py-1 rounded-full bg-ink-100 text-ink-600 font-semibold uppercase tracking-wider">inativo</span>'}
+          </div>
+          ${p.email ? `<div class="text-xs text-ink-600 mb-2 flex items-center gap-1.5"><i data-lucide="mail" class="w-3.5 h-3.5"></i> ${escapeHtml(p.email)}</div>` : ''}
+          ${usuarioRole === 'admin' && p.comissao_percentual != null
+            ? `<div class="text-xs text-ink-600 mb-4 flex items-center gap-1.5"><i data-lucide="percent" class="w-3.5 h-3.5"></i> Comissão ${p.comissao_percentual}%</div>`
+            : '<div class="mb-4"></div>'}
+          <div class="flex gap-2">
+            <button onclick="openEditarProfissional('${escapeHtml(p.id)}')" class="btn btn-ghost text-xs flex-1" style="padding:8px 12px;"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> Editar</button>
+            ${p.ativo ? `<button onclick="desativarProfissional('${escapeHtml(p.id)}','${escapeHtml(p.nome)}')" class="btn btn-ghost text-xs" style="padding:8px 12px;" aria-label="Desativar"><i data-lucide="user-x" class="w-3.5 h-3.5 text-rose-500"></i></button>` : ''}
+          </div>
+        </div>`).join('');
+    }
+    refreshIcons();
+  } catch (e) {
+    $('profs-grid').innerHTML = `<div class="col-span-full text-center text-ink-600 py-8">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function openNovoProfissional() { openFormProfissional(null); }
+function openEditarProfissional(id) {
+  const p = profissionaisCache.find(x => x.id === id);
+  if (!p) return toast('Profissional não encontrado', true);
+  openFormProfissional(p);
+}
+
+function openFormProfissional(prof) {
+  const isEdit = !!prof;
+  const showComissao = usuarioRole === 'admin';
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4 fade-in overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  const cores = ['#E8B4B8', '#A8C4A2', '#F5C6A5', '#B8D4E8', '#D4B8E8', '#E8D8A8', '#E8B4D8', '#A8D8C4'];
+  overlay.innerHTML = `
+    <div class="glass rounded-3xl shadow-2xl max-w-lg w-full p-7 max-h-[90vh] overflow-y-auto">
+      <h3 class="font-serif text-2xl text-ink-900 mb-5">${isEdit ? 'Editar profissional' : 'Novo profissional'}</h3>
+      <div class="space-y-4">
+        <div><label class="lbl">Nome <span class="text-rose-500">*</span></label><input id="pf-nome" class="field" value="${escapeHtml(prof?.nome || '')}" required></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div><label class="lbl">Especialidade</label><input id="pf-esp" class="field" placeholder="Ex: dermato" value="${escapeHtml(prof?.especialidade || '')}"></div>
+          <div><label class="lbl">Email</label><input id="pf-email" type="email" class="field" value="${escapeHtml(prof?.email || '')}"></div>
+        </div>
+        ${showComissao ? `
+          <div>
+            <label class="lbl">Comissão (%)</label>
+            <input id="pf-comissao" type="number" min="0" max="100" class="field" value="${prof?.comissao_percentual ?? 0}">
+          </div>` : ''}
+        <div>
+          <label class="lbl">Cor identificadora</label>
+          <div class="flex gap-2 flex-wrap" id="pf-cores">
+            ${cores.map(c => `<button type="button" data-cor="${c}" class="w-9 h-9 rounded-xl border-2 ${(prof?.cor || '#E8B4B8') === c ? 'border-ink-900' : 'border-transparent'} hover:scale-110 transition" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}
+          </div>
+          <input type="hidden" id="pf-cor" value="${escapeHtml(prof?.cor || '#E8B4B8')}">
+        </div>
+        ${isEdit ? `
+          <label class="flex items-center gap-2 text-sm text-ink-600 cursor-pointer">
+            <input id="pf-ativo" type="checkbox" ${prof.ativo ? 'checked' : ''}> Profissional ativo
+          </label>` : ''}
+      </div>
+      <div class="flex gap-2 justify-end mt-6">
+        <button data-cancel class="btn btn-ghost text-sm" style="padding:10px 18px;">Cancelar</button>
+        <button data-save class="btn btn-primary text-sm" style="padding:10px 18px;"><i data-lucide="check"></i> ${isEdit ? 'Salvar' : 'Criar'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-cancel]').onclick = close;
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelectorAll('#pf-cores button').forEach(btn => {
+    btn.onclick = () => {
+      overlay.querySelectorAll('#pf-cores button').forEach(b => b.classList.replace('border-ink-900', 'border-transparent'));
+      btn.classList.replace('border-transparent', 'border-ink-900');
+      overlay.querySelector('#pf-cor').value = btn.dataset.cor;
+    };
+  });
+  overlay.querySelector('[data-save]').onclick = async () => {
+    const payload = {
+      nome: overlay.querySelector('#pf-nome').value.trim(),
+      especialidade: overlay.querySelector('#pf-esp').value.trim() || null,
+      email: overlay.querySelector('#pf-email').value.trim() || null,
+      comissao_percentual: showComissao ? parseInt(overlay.querySelector('#pf-comissao').value, 10) || 0 : (prof?.comissao_percentual ?? 0),
+      cor: overlay.querySelector('#pf-cor').value,
+      ativo: isEdit ? overlay.querySelector('#pf-ativo').checked : true,
+    };
+    if (payload.nome.length < 2) return toast('Nome muito curto', true);
+    try {
+      if (isEdit) await api('/api/profissionais/' + prof.id, { method: 'PUT', body: JSON.stringify(payload) });
+      else await api('/api/profissionais', { method: 'POST', body: JSON.stringify(payload) });
+      close();
+      toast(isEdit ? 'Profissional atualizado' : 'Profissional cadastrado');
+      loadProfissionais();
+    } catch (e) {
+      // 402 já abre modal de upgrade pelo interceptor; outros erros mostram toast
+      if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
+    }
+  };
+  refreshIcons();
+  overlay.querySelector('#pf-nome').focus();
+}
+
+async function desativarProfissional(id, nome) {
+  const ok = await customConfirm('Desativar ' + nome + '?', 'Histórico de agendamentos e comissões fica preservado. Você pode reativar depois.', 'Desativar', true);
+  if (!ok) return;
+  try {
+    await api('/api/profissionais/' + id, { method: 'DELETE' });
+    toast('Profissional desativado');
+    loadProfissionais();
+  } catch (e) { toast(e.message, true); }
+}
+
+// ============================================================ Prontuários
+let prontuarioPacienteAtual = null;
+
+async function loadProntuarios() {
+  // popula select de pacientes
+  try {
+    const pacs = await api('/api/pacientes');
+    pacientesCache = pacs;
+    const sel = $('pront-paciente-sel');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— escolhe uma paciente —</option>' +
+      pacs.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.nome)} (${escapeHtml(p.telefone)})</option>`).join('');
+    if (prev) sel.value = prev;
+    if (sel.value) loadProntuariosDoPaciente();
+    else $('pront-lista').innerHTML = `<div class="glass rounded-3xl p-10 text-center text-ink-600 text-sm"><i data-lucide="users" class="w-10 h-10 mx-auto mb-3 opacity-40"></i>Escolha uma paciente acima pra ver o histórico.</div>`;
+    refreshIcons();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function loadProntuariosDoPaciente() {
+  const pacId = $('pront-paciente-sel').value;
+  prontuarioPacienteAtual = pacId;
+  if (!pacId) {
+    $('btn-novo-prontuario').classList.add('hidden');
+    $('pront-lista').innerHTML = '';
+    return;
+  }
+  $('btn-novo-prontuario').classList.remove('hidden');
+  $('pront-lista').innerHTML = `<div class="glass rounded-3xl p-6"><div class="skel h-5 w-1/2 mb-3"></div><div class="skel h-3 w-2/3"></div></div>`;
+  try {
+    const lista = await api('/api/prontuarios?paciente_id=' + encodeURIComponent(pacId));
+    if (lista.length === 0) {
+      $('pront-lista').innerHTML = `
+        <div class="glass rounded-3xl p-10 text-center">
+          <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 text-ink-300"></i>
+          <h3 class="font-serif text-xl text-ink-900 mb-2">Nenhum atendimento registrado</h3>
+          <p class="text-ink-600 text-sm mb-4">Crie o primeiro prontuário desta paciente.</p>
+          <button onclick="openNovoProntuario()" class="btn btn-primary text-sm" style="padding:10px 18px;"><i data-lucide="plus"></i> Novo prontuário</button>
+        </div>`;
+    } else {
+      $('pront-lista').innerHTML = lista.map(p => {
+        const fotosBadge = (p.fotos || []).length > 0
+          ? `<span class="text-[10px] px-2 py-1 rounded-full bg-rose-100 text-rose-600 font-semibold uppercase tracking-wider"><i data-lucide="image" class="w-3 h-3 inline"></i> ${p.fotos.length}</span>`
+          : '';
+        const alergiasTxt = (p.alergias || []).length > 0
+          ? `<div class="text-xs text-amber-700 mb-2 flex items-center gap-1.5"><i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Alergias: ${p.alergias.map(escapeHtml).join(', ')}</div>`
+          : '';
+        const anotacao = p.anotacoes ? escapeHtml(p.anotacoes.slice(0, 200)) + (p.anotacoes.length > 200 ? '…' : '') : '<span class="text-ink-300">sem anotações</span>';
+        return `
+          <div class="glass rounded-3xl p-6 card-hover cursor-pointer" onclick="openEditarProntuario('${escapeHtml(p.id)}')">
+            <div class="flex justify-between items-start mb-3 gap-3">
+              <div>
+                <p class="text-xs text-rose-500 font-bold uppercase tracking-widest">${fmtData(p.criado_em)}</p>
+                <h3 class="font-serif text-xl text-ink-900 mt-1">${p.proxima_acao ? escapeHtml(p.proxima_acao) : 'Atendimento'}</h3>
+              </div>
+              ${fotosBadge}
+            </div>
+            ${alergiasTxt}
+            <div class="text-sm text-ink-600 leading-relaxed">${anotacao}</div>
+          </div>`;
+      }).join('');
+    }
+    refreshIcons();
+  } catch (e) {
+    $('pront-lista').innerHTML = `<div class="text-center text-ink-600 py-8">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function openNovoProntuario() { openFormProntuario(null); }
+
+async function openEditarProntuario(id) {
+  try {
+    const p = await api('/api/prontuarios/' + id);
+    openFormProntuario(p);
+  } catch (e) { toast(e.message, true); }
+}
+
+async function openFormProntuario(prontuario) {
+  const isEdit = !!prontuario;
+  const pacId = isEdit ? prontuario.paciente_id : prontuarioPacienteAtual;
+  if (!pacId) return toast('Escolha uma paciente primeiro', true);
+
+  let profs = [];
+  try { profs = await api('/api/profissionais'); } catch {}
+
+  const alergiasIniciais = isEdit ? (prontuario.alergias || []) : [];
+  // Sprint 2.5 — pré-preenche anamnese com template da especialidade no NOVO prontuário
+  if (!isEdit && especialidadeConfig?.anamnese_template) {
+    prontuario = { anotacoes: especialidadeConfig.anamnese_template };
+  }
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4 fade-in overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.innerHTML = `
+    <div class="glass rounded-3xl shadow-2xl max-w-2xl w-full p-7 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-start justify-between mb-5 gap-3">
+        <div>
+          <h3 class="font-serif text-2xl text-ink-900">${isEdit ? 'Editar prontuário' : 'Novo prontuário'}</h3>
+          <p class="text-xs text-rose-500 mt-1"><i data-lucide="shield-alert" class="w-3 h-3 inline"></i> Acesso registrado por LGPD</p>
+        </div>
+        <button data-cancel class="text-ink-600 hover:text-ink-900 p-2 rounded-xl hover:bg-white/40" aria-label="Fechar"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="lbl">Profissional</label>
+            <select id="pr-prof" class="field">
+              <option value="">— sem profissional —</option>
+              ${profs.map(p => `<option value="${escapeHtml(p.id)}" ${isEdit && prontuario.profissional_id === p.id ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="lbl">Próxima ação</label>
+            <input id="pr-prox" class="field" placeholder="Ex: retorno em 15 dias" value="${escapeHtml(prontuario?.proxima_acao || '')}">
+          </div>
+        </div>
+        <div>
+          <label class="lbl">Anotações da sessão</label>
+          <textarea id="pr-anot" class="field" rows="5" placeholder="Como foi o atendimento, observações clínicas...">${escapeHtml(prontuario?.anotacoes || '')}</textarea>
+        </div>
+        <div>
+          <label class="lbl">Procedimentos realizados</label>
+          <textarea id="pr-proc" class="field" rows="3" placeholder="Ex: limpeza de pele profunda, peeling...">${escapeHtml(prontuario?.procedimentos_realizados || '')}</textarea>
+          <div id="proc-chips" class="flex flex-wrap gap-2 mt-2"></div>
+        </div>
+        <div>
+          <label class="lbl">Alergias <span class="text-ink-600 font-normal">(Enter pra adicionar)</span></label>
+          <div id="pr-alergias-tags" class="flex flex-wrap gap-2 mb-2"></div>
+          <input id="pr-alergias-input" class="field" placeholder="lidocaína, ácido salicílico...">
+        </div>
+        ${isEdit ? `
+          <div>
+            <label class="lbl">Fotos e exames (${(prontuario.fotos || []).length}/50)</label>
+            <div id="pr-fotos-grid" class="grid grid-cols-3 md:grid-cols-4 gap-3 mb-3"></div>
+            <div class="flex flex-wrap items-center gap-2">
+              <select id="pr-upload-tipo" class="field" style="width:auto;padding:8px 14px;">
+                <option value="">— sem categoria —</option>
+                <option value="antes">Antes</option>
+                <option value="depois">Depois</option>
+                <option value="evolucao">Evolução</option>
+                <option value="raio_x">Raio-X / Panorâmica</option>
+                <option value="exame">Exame</option>
+                <option value="documento">Documento</option>
+              </select>
+              <label for="pr-upload" class="btn btn-ghost text-sm cursor-pointer inline-flex" style="padding:10px 18px;">
+                <i data-lucide="upload"></i> Enviar foto
+                <input id="pr-upload" type="file" accept="image/jpeg,image/png" class="hidden">
+              </label>
+            </div>
+            <p class="text-xs text-ink-600 mt-2"><i data-lucide="info" class="w-3 h-3 inline"></i> JPEG/PNG até 10MB. Pode enviar raio-X, panorâmica, exames trazidos pelo paciente. EXIF/GPS removidos automaticamente.</p>
+          </div>` : `<p class="text-xs text-ink-600"><i data-lucide="info" class="w-3 h-3 inline"></i> Salve o prontuário pra adicionar fotos/exames.</p>`}
+      </div>
+      <div class="flex gap-2 justify-between mt-6 flex-wrap">
+        <div>
+          ${isEdit && usuarioRole === 'admin'
+            ? `<button data-delete class="btn btn-danger text-sm" style="padding:10px 16px;"><i data-lucide="trash-2"></i> Deletar</button>`
+            : ''}
+        </div>
+        <div class="flex gap-2">
+          <button data-cancel2 class="btn btn-ghost text-sm" style="padding:10px 18px;">Cancelar</button>
+          <button data-save class="btn btn-primary text-sm" style="padding:10px 18px;"><i data-lucide="check"></i> ${isEdit ? 'Salvar' : 'Criar'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-cancel]').onclick = close;
+  overlay.querySelector('[data-cancel2]').onclick = close;
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  refreshIcons();
+
+  // ----- Alergias tags
+  const alergiasState = [...alergiasIniciais];
+  const renderTags = () => {
+    const c = overlay.querySelector('#pr-alergias-tags');
+    c.innerHTML = alergiasState.map((a, i) => `
+      <span class="px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-medium flex items-center gap-2">
+        ${escapeHtml(a)}
+        <button data-rm-tag="${i}" class="hover:text-amber-900" aria-label="Remover">×</button>
+      </span>`).join('');
+    c.querySelectorAll('[data-rm-tag]').forEach(b => b.onclick = (e) => { e.stopPropagation(); alergiasState.splice(+b.dataset.rmTag, 1); renderTags(); });
+  };
+  renderTags();
+  const inp = overlay.querySelector('#pr-alergias-input');
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const v = inp.value.trim().replace(/,$/, '');
+      if (v && v.length <= 80 && alergiasState.length < 50) { alergiasState.push(v); inp.value = ''; renderTags(); }
+    }
+  });
+
+  // ----- Fotos (só em edit)
+  if (isEdit) renderFotosGrid(overlay, prontuario);
+
+  // ----- Chips de procedimentos sugeridos
+  if (typeof window.renderProcedimentosChips === 'function') window.renderProcedimentosChips();
+
+  // ----- Save
+  overlay.querySelector('[data-save]').onclick = async () => {
+    const inpRest = overlay.querySelector('#pr-alergias-input').value.trim();
+    if (inpRest && alergiasState.length < 50 && inpRest.length <= 80) alergiasState.push(inpRest);
+    const payload = {
+      profissional_id: overlay.querySelector('#pr-prof').value || null,
+      anotacoes: overlay.querySelector('#pr-anot').value.trim() || null,
+      procedimentos_realizados: overlay.querySelector('#pr-proc').value.trim() || null,
+      alergias: alergiasState,
+      proxima_acao: overlay.querySelector('#pr-prox').value.trim() || null,
+    };
+    try {
+      if (isEdit) {
+        await api('/api/prontuarios/' + prontuario.id, { method: 'PUT', body: JSON.stringify(payload) });
+      } else {
+        await api('/api/prontuarios', { method: 'POST', body: JSON.stringify({ ...payload, paciente_id: pacId }) });
+      }
+      close();
+      toast(isEdit ? 'Prontuário salvo' : 'Prontuário criado');
+      loadProntuariosDoPaciente();
+    } catch (e) {
+      if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
+    }
+  };
+
+  // ----- Delete (admin)
+  const btnDel = overlay.querySelector('[data-delete]');
+  if (btnDel) {
+    btnDel.onclick = async () => {
+      const motivo = prompt('Motivo da exclusão (registrado no audit por LGPD):');
+      if (!motivo || motivo.trim().length < 5) return toast('Motivo precisa ter ao menos 5 caracteres', true);
+      try {
+        await api('/api/prontuarios/' + prontuario.id, { method: 'DELETE', body: JSON.stringify({ motivo: motivo.trim() }) });
+        close();
+        toast('Prontuário deletado');
+        loadProntuariosDoPaciente();
+      } catch (e) { toast(e.message, true); }
+    };
+  }
+
+  // ----- Upload de foto
+  if (isEdit) {
+    const upInput = overlay.querySelector('#pr-upload');
+    upInput.addEventListener('change', async () => {
+      const f = upInput.files?.[0];
+      if (!f) return;
+      if (f.size > 10 * 1024 * 1024) return toast('Arquivo maior que 10MB', true);
+      const fd = new FormData();
+      fd.append('arquivo', f);
+      try {
+        const r = await fetch('/api/prontuarios/' + prontuario.id + '/fotos', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: fd,
+        });
+        if (r.status === 402) {
+          const j = await r.json();
+          openUpgradeModal(j.detail || {});
+          return;
+        }
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          throw new Error(j.detail || ('HTTP ' + r.status));
+        }
+        const j = await r.json();
+        prontuario.fotos = [...(prontuario.fotos || []), j.foto];
+        renderFotosGrid(overlay, prontuario);
+        toast('Foto enviada');
+      } catch (e) { toast(e.message, true); }
+      upInput.value = '';
+    });
+  }
+}
+
+function renderFotosGrid(overlay, prontuario) {
+  const grid = overlay.querySelector('#pr-fotos-grid');
+  if (!grid) return;
+  const fotos = prontuario.fotos || [];
+  if (fotos.length === 0) {
+    grid.innerHTML = '<p class="col-span-full text-xs text-ink-600 text-center py-4">Nenhuma foto ainda.</p>';
+    return;
+  }
+  grid.innerHTML = fotos.map(f => {
+    const tipoBadge = f.tipo ? `<span class="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-ink-900/70 text-white text-[9px] uppercase tracking-wider">${escapeHtml(f.tipo)}</span>` : '';
+    return `
+      <div class="relative aspect-square rounded-xl overflow-hidden group bg-ink-100/40">
+        <img data-foto-key="${escapeHtml(f.key)}" alt="Foto" class="w-full h-full object-cover cursor-pointer opacity-0 transition-opacity" onclick="abrirFotoLightbox('${escapeHtml(prontuario.id)}','${escapeHtml(f.key)}')">
+        ${tipoBadge}
+        <button data-del-foto="${escapeHtml(f.key)}" class="absolute top-1 right-1 p-1.5 rounded-lg bg-ink-900/70 text-white opacity-0 group-hover:opacity-100 transition" aria-label="Remover">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>`;
+  }).join('');
+  // carrega cada thumb via fetch (Authorization header → blob URL)
+  grid.querySelectorAll('img[data-foto-key]').forEach(async (img) => {
+    try {
+      const r = await fetch('/api/prontuarios/' + prontuario.id + '/fotos/' + img.dataset.fotoKey, {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      if (!r.ok) return;
+      const url = URL.createObjectURL(await r.blob());
+      img.src = url;
+      img.classList.remove('opacity-0');
+      img.addEventListener('load', () => { /* revoke quando img sair do DOM */ }, { once: true });
+    } catch {}
+  });
+  grid.querySelectorAll('[data-del-foto]').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const key = btn.dataset.delFoto;
+      if (!await customConfirm('Remover foto?', 'Essa ação é registrada no audit.', 'Remover', true)) return;
+      try {
+        await api('/api/prontuarios/' + prontuario.id + '/fotos/' + key, { method: 'DELETE' });
+        prontuario.fotos = (prontuario.fotos || []).filter(x => x.key !== key);
+        renderFotosGrid(overlay, prontuario);
+        toast('Foto removida');
+      } catch (err) { toast(err.message, true); }
+    };
+  });
+  refreshIcons();
+}
+
+async function abrirFotoLightbox(prontuarioId, key) {
+  // imagens precisam de Authorization header — busca via fetch e cria object URL
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-ink-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 fade-in cursor-pointer';
+  overlay.innerHTML = `<div class="text-white"><i data-lucide="loader-2" class="w-8 h-8 animate-spin"></i></div>`;
+  overlay.onclick = () => { overlay.remove(); URL.revokeObjectURL(blobUrl); };
+  document.body.appendChild(overlay);
+  let blobUrl;
+  try {
+    const r = await fetch('/api/prontuarios/' + prontuarioId + '/fotos/' + key, { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    blobUrl = URL.createObjectURL(await r.blob());
+    overlay.innerHTML = `<img src="${blobUrl}" class="max-w-full max-h-full rounded-2xl shadow-2xl" alt="">`;
+  } catch (e) { toast(e.message, true); overlay.remove(); }
+}
+
+// ============================================================ Plano (uso + comparativo)
+async function loadPlano() {
+  $('plano-snapshot').innerHTML = `<div class="glass rounded-3xl p-7"><div class="skel h-6 w-1/3 mb-3"></div><div class="skel h-4 w-2/3"></div></div>`;
+  $('plano-comparativo').innerHTML = '';
+  try {
+    const [uso, comp] = await Promise.all([api('/api/plano/me/uso'), api('/api/plano/comparativo')]);
+    const fmtLimite = (l) => l == null ? '∞' : l;
+    const pct = (a, l) => l == null ? 0 : Math.min(100, Math.round((a / l) * 100));
+    const barColor = (p) => p >= 100 ? 'bg-rose-400' : p >= 80 ? 'bg-amber-400' : 'bg-sage-400';
+    const usos = Object.entries(uso.uso).map(([rec, info]) => {
+      const p = pct(info.atual, info.limite);
+      const labelRec = rec === 'profissionais' ? 'Profissionais' : rec === 'pacientes_ativos' ? 'Pacientes ativos' : rec;
+      return `
+        <div>
+          <div class="flex justify-between text-sm mb-1.5">
+            <span class="text-ink-900 font-medium">${labelRec}</span>
+            <span class="text-ink-600">${info.atual} / ${fmtLimite(info.limite)}</span>
+          </div>
+          <div class="h-2 bg-ink-100/60 rounded-full overflow-hidden">
+            <div class="h-full ${barColor(p)} rounded-full transition-all" style="width:${info.limite == null ? 10 : p}%"></div>
+          </div>
+        </div>`;
+    }).join('');
+    $('plano-snapshot').innerHTML = `
+      <div class="glass rounded-3xl p-7">
+        <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+          <div>
+            <p class="text-xs uppercase tracking-widest text-rose-500 font-bold mb-1">Plano atual</p>
+            <h3 class="font-serif text-3xl text-ink-900">${escapeHtml(uso.plano_nome)}</h3>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-ink-600 uppercase tracking-wider">Mensalidade</p>
+            <p class="font-serif text-2xl text-ink-900">R$ ${(uso.preco_mensal / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+        </div>
+        <div class="space-y-5">${usos}</div>
+        ${uso.upgrade_disponivel ? '<p class="text-xs text-ink-600 mt-6 text-center">Precisa de mais? Compare os planos abaixo.</p>' : ''}
+      </div>`;
+    $('plano-comparativo').innerHTML = comp.map(p => {
+      const atual = p.id === uso.plano;
+      return `
+        <div class="glass rounded-3xl p-7 relative ${atual ? 'ring-2 ring-rose-300' : ''}">
+          ${atual ? '<span class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-rose-400 text-white text-[10px] uppercase tracking-wider font-bold rounded-full">Seu plano</span>' : ''}
+          <h4 class="font-serif text-2xl text-ink-900 mb-1">${escapeHtml(p.nome)}</h4>
+          <p class="text-xs text-ink-600 mb-4 min-h-[2.5em]">${escapeHtml(p.descricao)}</p>
+          <p class="font-serif text-3xl text-ink-900 mb-1">R$ ${p.preco_mensal_reais.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}<span class="text-sm text-ink-600">/mês</span></p>
+          <ul class="text-sm text-ink-600 space-y-2 mt-5 mb-5">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-sage-500"></i> ${p.limites.profissionais ?? '∞'} profissionais</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-sage-500"></i> ${p.limites.pacientes_ativos ?? '∞'} pacientes ativos</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-sage-500"></i> ${p.limites.unidades ?? '∞'} unidade${(p.limites.unidades ?? 9) !== 1 ? 's' : ''}</li>
+            ${p.features.slice(0, 6).map(f => `<li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-sage-500"></i> ${escapeHtml(f.replace('_', ' '))}</li>`).join('')}
+          </ul>
+          ${atual
+            ? '<button disabled class="btn btn-ghost w-full text-sm" style="padding:10px;">Plano atual</button>'
+            : '<button onclick="toast(\'Upgrade via Asaas em breve — fale com a gente no WhatsApp\')" class="btn btn-primary w-full text-sm" style="padding:10px;">Quero esse</button>'}
+        </div>`;
+    }).join('');
+    refreshIcons();
+  } catch (e) {
+    $('plano-snapshot').innerHTML = `<div class="text-center text-ink-600 py-8">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+// ============================================================ Odontograma (Sprint Odonto)
+const ODO_ESTADOS = {
+  'hígido':            { cor: '#ffffff', label: 'Hígido',            text: '#1a1a1a' },
+  'cárie':             { cor: '#f97316', label: 'Cárie',             text: '#fff' },
+  'restauração':       { cor: '#3b82f6', label: 'Restauração',       text: '#fff' },
+  'ausente':           { cor: '#6b7280', label: 'Ausente',           text: '#fff' },
+  'coroa':             { cor: '#eab308', label: 'Coroa',             text: '#1a1a1a' },
+  'canal':             { cor: '#a855f7', label: 'Canal',             text: '#fff' },
+  'extração_indicada': { cor: '#ef4444', label: 'Extração indicada', text: '#fff' },
+  'prótese':           { cor: '#22c55e', label: 'Prótese',           text: '#fff' },
+  'implante':          { cor: '#06b6d4', label: 'Implante',          text: '#fff' },
+};
+const ODO_SUPERIOR = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
+const ODO_INFERIOR = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
+const ODO_DENTE_W = 36, ODO_DENTE_H = 56, ODO_GAP_X = 4;
+const ODO_OFFSET_X = (700 - (16 * ODO_DENTE_W + 15 * ODO_GAP_X)) / 2;
+let _odoEstado = {}, _odoDenteSelecionado = null, _odoPacienteIdAtual = null;
+
+async function renderOdontograma(pacienteId) {
+  if (!pacienteId) return;
+  _odoPacienteIdAtual = pacienteId;
+  _odoRenderLegenda();
+  document.getElementById('odo-dentes-group').innerHTML = '';
+  try {
+    const r = await fetch(`/api/pacientes/${encodeURIComponent(pacienteId)}/odontograma`, { headers: { Authorization: 'Bearer ' + token } });
+    if (r.status === 422) {
+      document.getElementById('odo-svg').innerHTML = `<text x="350" y="100" text-anchor="middle" fill="rgba(45,49,66,0.5)" font-size="14">Odontograma só pra clínicas odontológicas.</text>`;
+      return;
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    _odoEstado = data.odontograma || {};
+    _odoRenderSvg();
+    _odoRenderResumo();
+  } catch (e) { toast('Erro ao carregar odontograma: ' + e.message, true); }
+}
+function abrirMenuDente(fdi) {
+  _odoDenteSelecionado = fdi;
+  const atual = _odoEstado[fdi] || { estado: 'hígido', observacao: '' };
+  $('odo-popover-fdi').textContent = fdi;
+  $('odo-popover-estado').innerHTML = Object.keys(ODO_ESTADOS).map(k =>
+    `<option value="${escapeHtml(k)}" ${k === atual.estado ? 'selected' : ''}>${escapeHtml(ODO_ESTADOS[k].label)}</option>`
+  ).join('');
+  $('odo-popover-obs').value = atual.observacao || '';
+  $('odo-popover').classList.remove('hidden');
+  refreshIcons();
+}
+function fecharMenuDente() { $('odo-popover').classList.add('hidden'); _odoDenteSelecionado = null; }
+async function salvarDenteDoPopover() {
+  if (!_odoDenteSelecionado || !_odoPacienteIdAtual) return;
+  const estado = $('odo-popover-estado').value;
+  const obs = $('odo-popover-obs').value.trim();
+  try {
+    const r = await fetch(`/api/pacientes/${encodeURIComponent(_odoPacienteIdAtual)}/odontograma`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ dente: _odoDenteSelecionado, estado, observacao: obs || null }),
+    });
+    if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(t || 'HTTP ' + r.status); }
+    const data = await r.json();
+    _odoEstado = data.odontograma || {};
+    _odoRenderSvg(); _odoRenderResumo();
+    toast(`Dente ${_odoDenteSelecionado}: ${ODO_ESTADOS[estado]?.label || estado}`);
+    fecharMenuDente();
+  } catch (e) { toast('Erro: ' + e.message, true); }
+}
+function _odoRenderLegenda() {
+  $('odo-legenda').innerHTML = Object.entries(ODO_ESTADOS).map(([k, v]) => `
+    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white/60 border border-ink-100/60">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${v.cor};border:1px solid rgba(0,0,0,0.2);"></span>
+      <span class="text-ink-900">${escapeHtml(v.label)}</span>
+    </span>`).join('');
+}
+function _odoRenderSvg() {
+  const g = $('odo-dentes-group');
+  const partes = [];
+  ODO_SUPERIOR.forEach((fdi, i) => partes.push(_odoDenteSvg(fdi, ODO_OFFSET_X + i * (ODO_DENTE_W + ODO_GAP_X), 30)));
+  ODO_INFERIOR.forEach((fdi, i) => partes.push(_odoDenteSvg(fdi, ODO_OFFSET_X + i * (ODO_DENTE_W + ODO_GAP_X), 114)));
+  g.innerHTML = partes.join('');
+}
+function _odoDenteSvg(fdi, x, y) {
+  const entry = _odoEstado[String(fdi)];
+  const estado = entry?.estado || 'hígido';
+  const def = ODO_ESTADOS[estado] || ODO_ESTADOS['hígido'];
+  const temObs = !!entry?.observacao;
+  const tooltipObs = temObs ? `\n${entry.observacao}` : '';
+  return `
+    <g style="cursor:pointer;" onclick="abrirMenuDente('${fdi}')">
+      <title>Dente ${fdi} — ${def.label}${tooltipObs}</title>
+      <rect x="${x}" y="${y}" width="${ODO_DENTE_W}" height="${ODO_DENTE_H}" rx="6" ry="6" fill="${def.cor}" stroke="rgba(0,0,0,0.4)" stroke-width="1"/>
+      <text x="${x + ODO_DENTE_W / 2}" y="${y + ODO_DENTE_H / 2 + 4}" text-anchor="middle" font-size="11" font-weight="600" fill="${def.text}">${fdi}</text>
+      ${temObs ? `<circle cx="${x + ODO_DENTE_W - 5}" cy="${y + 5}" r="3" fill="#facc15" stroke="rgba(0,0,0,0.4)" stroke-width="0.5"/>` : ''}
+    </g>`;
+}
+function _odoRenderResumo() {
+  const total = Object.keys(_odoEstado).length;
+  if (!total) { $('odo-resumo').textContent = 'Nenhum dente registrado ainda.'; return; }
+  const contagem = {};
+  Object.values(_odoEstado).forEach(d => { const e = d.estado || 'hígido'; contagem[e] = (contagem[e] || 0) + 1; });
+  const partes = Object.entries(contagem).filter(([k]) => k !== 'hígido').sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `${n}× ${escapeHtml(ODO_ESTADOS[k]?.label || k)}`);
+  $('odo-resumo').textContent = partes.length
+    ? `${total} dente${total > 1 ? 's' : ''} registrado${total > 1 ? 's' : ''} — ${partes.join(', ')}`
+    : `${total} dente${total > 1 ? 's' : ''} registrado${total > 1 ? 's' : ''} — todos hígidos`;
+}
+
+// ============================================================ Planos de tratamento (drawer paciente / aba "Tratamentos")
+let planosCache = [];
+
+async function renderTabTratamentos() {
+  const b = $('drawer-paciente-body');
+  if (!b || !drawerPacienteId) return;
+
+  b.innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h3 class="font-serif text-xl text-ink-900">Planos de tratamento</h3>
+        <p class="text-xs text-ink-600 mt-0.5">Acompanhe sessões previstas vs realizadas.</p>
+      </div>
+      <button onclick="abrirModalNovoPlano()" class="btn btn-primary text-sm" style="padding:8px 14px;">
+        <i data-lucide="plus" class="w-4 h-4"></i> Novo plano
+      </button>
+    </div>
+    <div id="pt-lista" class="space-y-3">
+      ${[1,2].map(() => '<div class="skel h-24 rounded-2xl"></div>').join('')}
+    </div>`;
+  refreshIcons();
+
+  try {
+    const lista = await api('/api/planos-tratamento?paciente_id=' + encodeURIComponent(drawerPacienteId));
+    planosCache = Array.isArray(lista) ? lista : [];
+    pintarListaPlanos();
+  } catch (e) {
+    $('pt-lista').innerHTML = `<div class="text-center py-8 text-ink-600 text-sm">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function pintarListaPlanos() {
+  const cont = $('pt-lista');
+  if (!cont) return;
+  if (planosCache.length === 0) {
+    cont.innerHTML = `
+      <div class="glass rounded-3xl p-10 text-center">
+        <i data-lucide="list-checks" class="w-12 h-12 mx-auto mb-3 text-ink-300"></i>
+        <h3 class="font-serif text-xl text-ink-900 mb-2">Nenhum plano de tratamento</h3>
+        <p class="text-ink-600 text-sm mb-4">Crie o primeiro plano para acompanhar as sessões deste paciente.</p>
+        <button onclick="abrirModalNovoPlano()" class="btn btn-primary text-sm" style="padding:10px 18px;">
+          <i data-lucide="plus" class="w-4 h-4"></i> Novo plano
+        </button>
+      </div>`;
+    refreshIcons();
+    return;
+  }
+
+  cont.innerHTML = planosCache.map(renderCardPlano).join('');
+  refreshIcons();
+}
+
+function renderCardPlano(plano) {
+  const realizadas = plano.sessoes_realizadas ?? 0;
+  const previstas = Math.max(plano.sessoes_previstas || 1, 1);
+  const pct = Math.min(Math.round((realizadas / previstas) * 100), 100);
+  const profNome = (profissionaisCache.find(p => p.id === plano.profissional_id)?.nome) || '—';
+  const status = plano.status || 'ativo';
+  const isAtivo = status === 'ativo';
+
+  return `
+    <div class="glass rounded-2xl p-4">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <h4 class="font-serif text-lg text-ink-900 truncate">${escapeHtml(plano.nome)}</h4>
+            <span class="pt-badge ${escapeHtml(status)}">${escapeHtml(status)}</span>
+          </div>
+          ${plano.descricao
+            ? `<p class="text-xs text-ink-600 leading-relaxed">${escapeHtml(plano.descricao)}</p>`
+            : ''}
+          <div class="text-[11px] text-ink-600 mt-2 flex flex-wrap gap-x-3 gap-y-1">
+            <span><i data-lucide="user-cog" class="w-3 h-3 inline align-text-bottom"></i> ${escapeHtml(profNome)}</span>
+            <span><i data-lucide="calendar-plus" class="w-3 h-3 inline align-text-bottom"></i> criado ${escapeHtml(fmtData(plano.criado_em))}</span>
+            ${plano.concluido_em
+              ? `<span><i data-lucide="check-circle-2" class="w-3 h-3 inline align-text-bottom"></i> concluído ${escapeHtml(fmtData(plano.concluido_em))}</span>`
+              : ''}
+          </div>
+        </div>
+        <div class="flex gap-1 flex-shrink-0">
+          <button onclick="abrirModalEditarPlano('${escapeHtml(plano.id)}')"
+                  class="btn btn-ghost text-xs" style="padding:6px 10px;" title="Editar plano">
+            <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="mb-2 flex items-center justify-between text-[11px] text-ink-600 font-semibold">
+        <span>Progresso de sessões</span>
+        <span class="font-mono text-ink-900">${realizadas}/${previstas} (${pct}%)</span>
+      </div>
+      <div class="pt-progress"><span style="width:${pct}%"></span></div>
+
+      ${isAtivo ? `
+        <div class="flex gap-2 mt-4 justify-end">
+          <button onclick="cancelarPlano('${escapeHtml(plano.id)}')"
+                  class="btn btn-ghost text-xs text-red-600" style="padding:8px 14px;">
+            <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Cancelar
+          </button>
+          <button onclick="concluirPlano('${escapeHtml(plano.id)}')"
+                  class="btn btn-primary text-xs" style="padding:8px 14px;">
+            <i data-lucide="check" class="w-3.5 h-3.5"></i> Concluir
+          </button>
+        </div>` : ''}
+    </div>`;
+}
+
+function abrirModalNovoPlano() {
+  openFormPlano(null);
+}
+
+function abrirModalEditarPlano(planoId) {
+  const plano = planosCache.find(p => p.id === planoId);
+  if (!plano) return toast('Plano não encontrado', true);
+  openFormPlano(plano);
+}
+
+function openFormPlano(plano) {
+  const isEdit = !!plano;
+  const profOpts = ['<option value="">— sem profissional —</option>']
+    .concat((profissionaisCache || [])
+      .filter(p => p.ativo !== false)
+      .map(p => `<option value="${escapeHtml(p.id)}" ${plano?.profissional_id === p.id ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`))
+    .join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4 fade-in overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.innerHTML = `
+    <div class="glass rounded-3xl shadow-2xl max-w-lg w-full p-7 max-h-[90vh] overflow-y-auto">
+      <h3 class="font-serif text-2xl text-ink-900 mb-5">${isEdit ? 'Editar plano de tratamento' : 'Novo plano de tratamento'}</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="lbl">Nome do plano <span class="text-rose-500">*</span></label>
+          <input id="pt-nome" class="field" maxlength="120" placeholder="Ex: Tratamento de canal dente 36" value="${escapeHtml(plano?.nome || '')}" required>
+        </div>
+        <div>
+          <label class="lbl">Descrição</label>
+          <textarea id="pt-desc" class="field" rows="3" maxlength="5000" placeholder="Detalhe o que será feito (opcional)">${escapeHtml(plano?.descricao || '')}</textarea>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="lbl">Sessões previstas <span class="text-rose-500">*</span></label>
+            <input id="pt-sessoes" type="number" min="1" max="200" class="field" value="${plano?.sessoes_previstas ?? 1}" required>
+          </div>
+          <div>
+            <label class="lbl">Profissional</label>
+            <select id="pt-prof" class="field">${profOpts}</select>
+          </div>
+        </div>
+        ${isEdit ? `
+          <div>
+            <label class="lbl">Status</label>
+            <select id="pt-status" class="field">
+              <option value="ativo" ${plano.status === 'ativo' ? 'selected' : ''}>Ativo</option>
+              <option value="concluido" ${plano.status === 'concluido' ? 'selected' : ''}>Concluído</option>
+              <option value="cancelado" ${plano.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
+            </select>
+          </div>` : ''}
+      </div>
+      <div class="flex gap-2 justify-end mt-6">
+        <button data-cancel class="btn btn-ghost text-sm" style="padding:10px 18px;">Cancelar</button>
+        <button data-save class="btn btn-primary text-sm" style="padding:10px 18px;">
+          <i data-lucide="check" class="w-4 h-4"></i> ${isEdit ? 'Salvar' : 'Criar plano'}
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-cancel]').onclick = close;
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('[data-save]').onclick = async () => {
+    const nome = overlay.querySelector('#pt-nome').value.trim();
+    const descricao = overlay.querySelector('#pt-desc').value.trim() || null;
+    const sessoes = parseInt(overlay.querySelector('#pt-sessoes').value, 10) || 1;
+    const profissional_id = overlay.querySelector('#pt-prof').value || null;
+    const statusSel = overlay.querySelector('#pt-status');
+    const status = statusSel ? statusSel.value : null;
+
+    if (nome.length < 1) return toast('Informe o nome do plano', true);
+    if (sessoes < 1 || sessoes > 200) return toast('Sessões deve ser entre 1 e 200', true);
+
+    try {
+      if (isEdit) {
+        const body = { nome, descricao, sessoes_previstas: sessoes, profissional_id };
+        if (status) body.status = status;
+        await api('/api/planos-tratamento/' + plano.id, { method: 'PUT', body: JSON.stringify(body) });
+        toast('Plano atualizado');
+      } else {
+        const body = {
+          paciente_id: drawerPacienteId,
+          nome, descricao,
+          sessoes_previstas: sessoes,
+          profissional_id,
+        };
+        await api('/api/planos-tratamento', { method: 'POST', body: JSON.stringify(body) });
+        toast('Plano criado');
+      }
+      close();
+      renderTabTratamentos();
+    } catch (e) {
+      if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
+    }
+  };
+
+  refreshIcons();
+  overlay.querySelector('#pt-nome').focus();
+}
+
+async function concluirPlano(planoId) {
+  const plano = planosCache.find(p => p.id === planoId);
+  if (!plano) return;
+  const ok = await customConfirm(
+    'Concluir plano?',
+    `Marcar "${plano.nome}" como concluído? O paciente terminou todas as sessões previstas.`,
+    'Concluir', false
+  );
+  if (!ok) return;
+  try {
+    await api('/api/planos-tratamento/' + planoId + '/concluir', { method: 'POST' });
+    toast('Plano concluído');
+    renderTabTratamentos();
+  } catch (e) {
+    if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
+  }
+}
+
+async function cancelarPlano(planoId) {
+  const plano = planosCache.find(p => p.id === planoId);
+  if (!plano) return;
+  const motivo = await promptMotivoCancel(plano.nome);
+  if (motivo === null) return;
+  try {
+    await api('/api/planos-tratamento/' + planoId + '/cancelar', {
+      method: 'POST',
+      body: JSON.stringify({ motivo }),
+    });
+    toast('Plano cancelado');
+    renderTabTratamentos();
+  } catch (e) {
+    if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
+  }
+}
+
+function promptMotivoCancel(nomePlano) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[95] flex items-center justify-center p-4 fade-in overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.innerHTML = `
+      <div class="glass rounded-3xl shadow-2xl max-w-md w-full p-7">
+        <h3 class="font-serif text-2xl text-ink-900 mb-2">Cancelar plano</h3>
+        <p class="text-ink-600 text-sm mb-4">Informe o motivo do cancelamento de <strong>${escapeHtml(nomePlano)}</strong> (fica registrado no audit log LGPD).</p>
+        <textarea id="pt-motivo" class="field" rows="3" maxlength="500" placeholder="Ex: paciente desistiu, mudança de plano clínico..."></textarea>
+        <div class="flex gap-2 justify-end mt-5">
+          <button data-cancel class="btn btn-ghost text-sm" style="padding:10px 18px;">Voltar</button>
+          <button data-confirm class="btn btn-danger text-sm" style="padding:10px 18px;">
+            <i data-lucide="x-circle" class="w-4 h-4"></i> Cancelar plano
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = (val) => { overlay.remove(); resolve(val); };
+    overlay.querySelector('[data-cancel]').onclick = () => close(null);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(null); });
+    overlay.querySelector('[data-confirm]').onclick = () => {
+      const m = (overlay.querySelector('#pt-motivo').value || '').trim();
+      if (m.length < 3) { toast('Motivo precisa ter ao menos 3 caracteres', true); return; }
+      close(m);
+    };
+    refreshIcons();
+    overlay.querySelector('#pt-motivo').focus();
+  });
+}
+
+// ============================================================ Procedimentos chips (Sprint Odonto)
+(function () {
+  const SEP = ", ";
+  const parse = (ta) => !ta?.value ? [] : ta.value.split(",").map(s => s.trim()).filter(Boolean);
+  const chipCls = (sel) => "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors " +
+    (sel ? "bg-rose-500 text-white border-rose-500 hover:bg-rose-600"
+         : "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200");
+  function renderProcedimentosChips() {
+    const container = document.getElementById("proc-chips");
+    const ta = document.getElementById("pr-proc");
+    if (!container || !ta) return;
+    const sugestoes = (especialidadeConfig && Array.isArray(especialidadeConfig.procedimentos_sugeridos))
+      ? especialidadeConfig.procedimentos_sugeridos : [];
+    if (!sugestoes.length) { container.innerHTML = ""; container.classList.add("hidden"); return; }
+    container.classList.remove("hidden");
+    const selecionados = new Set(parse(ta));
+    container.innerHTML = sugestoes.map(p => {
+      const sel = selecionados.has(p);
+      return `<button type="button" class="${chipCls(sel)}" data-proc="${escapeHtml(p)}" aria-pressed="${sel}"><i data-lucide="${sel ? 'check' : 'plus'}" class="w-3.5 h-3.5"></i><span>${escapeHtml(p)}</span></button>`;
+    }).join("");
+    if (!container.dataset.bound) {
+      container.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-proc]");
+        if (!btn) return;
+        const proc = btn.getAttribute("data-proc");
+        const ta2 = document.getElementById("pr-proc");
+        const atuais = parse(ta2);
+        const i = atuais.indexOf(proc);
+        if (i >= 0) atuais.splice(i, 1); else atuais.push(proc);
+        ta2.value = atuais.join(SEP);
+        ta2.dispatchEvent(new Event("input", { bubbles: true }));
+        renderProcedimentosChips();
+      });
+      container.dataset.bound = "1";
+    }
+    refreshIcons();
+  }
+  window.renderProcedimentosChips = renderProcedimentosChips;
+})();
+
+// ============================================================ Drawer Paciente (Sprint 2)
+async function carregarAvatarPaciente(pacienteId) {
+  const el = document.querySelector(`[data-avatar-pac="${pacienteId}"]`);
+  if (!el) return;
+  try {
+    const r = await fetch(`/api/pacientes/${pacienteId}/foto`, { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) return;
+    const url = URL.createObjectURL(await r.blob());
+    el.innerHTML = `<img src="${url}" class="w-full h-full object-cover" alt="">`;
+  } catch {}
+}
+
+function aplicarLabelsEspecialidade() {
+  if (!especialidadeConfig) return;
+  const lbl = especialidadeConfig.label_paciente || 'Paciente';
+  const texto = lbl === 'Cliente' ? 'Clientes' : 'Pacientes';
+  // ajusta labels visíveis na sidebar (pacientes → cliente, etc)
+  // troca só o text node, preservando o <svg> que o lucide já injetou
+  document.querySelectorAll('[data-tab="pacientes"]').forEach(b => {
+    // pega o último node que é texto (depois do ícone) e atualiza
+    let trocou = false;
+    for (const n of b.childNodes) {
+      if (n.nodeType === Node.TEXT_NODE && n.textContent.trim()) {
+        n.textContent = ' ' + texto;
+        trocou = true;
+        break;
+      }
+    }
+    if (!trocou) b.appendChild(document.createTextNode(' ' + texto));
+  });
+}
+
+const CAMPOS_PACIENTE_LABELS = {
+  data_nascimento: 'Data de nascimento',
+  cpf: 'CPF',
+  rg: 'RG',
+  sexo: 'Sexo',
+  profissao: 'Profissão',
+  estado_civil: 'Estado civil',
+  endereco_rua: 'Rua',
+  endereco_numero: 'Número',
+  endereco_complemento: 'Complemento',
+  endereco_bairro: 'Bairro',
+  endereco_cidade: 'Cidade',
+  endereco_uf: 'UF',
+  endereco_cep: 'CEP',
+  telefone_fixo: 'Telefone fixo',
+  diagnostico_breve: 'Diagnóstico/observações',
+  observacoes_clinicas: 'Observações clínicas',
+};
+
+const SEXO_OPCOES = [['','—'],['M','Masculino'],['F','Feminino'],['O','Outro'],['N','Prefere não dizer']];
+const UF_OPCOES = ['','AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+
+let drawerPacienteId = null;
+let drawerPacienteData = null;
+
+async function abrirDrawerPaciente(pacienteId, aba = 'timeline') {
+  drawerPacienteId = pacienteId;
+  // overlay + container
+  let container = $('drawer-paciente');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'drawer-paciente';
+    document.body.appendChild(container);
+  }
+  container.innerHTML = `
+    <div class="fixed inset-0 bg-ink-900/30 backdrop-blur-sm z-[55] overlay" onclick="fecharDrawerPaciente()"></div>
+    <div class="drawer slide-right glass flex flex-col" style="width:min(720px,100%)">
+      <div class="p-6 flex items-center justify-center text-ink-600"><i data-lucide="loader-2" class="w-6 h-6 animate-spin"></i></div>
+    </div>`;
+  refreshIcons();
+  try {
+    drawerPacienteData = await api('/api/pacientes/' + pacienteId);
+    renderDrawerPaciente(aba);
+  } catch (e) { toast(e.message, true); fecharDrawerPaciente(); }
+}
+
+function fecharDrawerPaciente() {
+  const c = $('drawer-paciente');
+  if (c) c.remove();
+  drawerPacienteId = null;
+  drawerPacienteData = null;
+}
+
+function renderDrawerPaciente(aba) {
+  const p = drawerPacienteData;
+  const lbl = especialidadeConfig?.label_paciente || 'Paciente';
+  const ehOdonto = especialidadeConfig?.slug === 'odonto';
+  const tabs = ['timeline', 'dados', 'prontuario', 'tratamentos', ...(ehOdonto ? ['odontograma'] : []), 'documentos'];
+  const titulos = { timeline: 'Linha do tempo', dados: 'Dados', prontuario: 'Prontuário', tratamentos: 'Tratamentos', odontograma: 'Odontograma', documentos: 'Documentos' };
+
+  // se a especialidade não permite prontuário ou documentos, esconder
+  const docsDisp = especialidadeConfig?.documentos || [];
+  const tabsVisiveis = tabs.filter(t => {
+    if (t === 'documentos' && docsDisp.length === 0) return false;
+    return true;
+  });
+
+  const stats = p.stats || {};
+  const contadores = [
+    ['Agendamentos', stats.agendamentos_total, 'calendar-days'],
+    ['Atendidos', stats.atendidos, 'check-circle-2'],
+    ['Não atendidos', stats.nao_atendidos, 'x-circle'],
+    ['Cancelados', stats.cancelados, 'ban'],
+    ['Remarcados', stats.remarcados, 'repeat'],
+    ['Prontuários', stats.prontuarios_total, 'clipboard-list'],
+  ];
+
+  const c = $('drawer-paciente');
+  c.innerHTML = `
+    <div class="fixed inset-0 bg-ink-900/30 backdrop-blur-sm z-[55] overlay" onclick="fecharDrawerPaciente()"></div>
+    <div class="drawer slide-right glass flex flex-col" style="width:min(900px,100%)">
+      <header class="p-5 border-b border-ink-100/50 flex items-start justify-between gap-4">
+        <div class="flex items-center gap-4 min-w-0">
+          <label class="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-200 to-rose-400 flex items-center justify-center text-ink-900 font-serif text-2xl font-semibold flex-shrink-0 overflow-hidden cursor-pointer group" title="Clique pra trocar a foto">
+            <span id="dp-avatar" class="w-full h-full flex items-center justify-center">${escapeHtml((p.nome[0] || '?').toUpperCase())}</span>
+            <span class="absolute inset-0 bg-ink-900/50 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center text-white text-[10px] font-semibold">
+              <i data-lucide="camera" class="w-4 h-4 mb-0.5"></i>
+              ${p.foto_key ? 'trocar' : 'enviar'}
+            </span>
+            <input type="file" accept="image/jpeg,image/png" class="hidden" onchange="uploadFotoPaciente(this.files[0])">
+            ${p.foto_key ? `<button type="button" onclick="event.preventDefault(); event.stopPropagation(); removerFotoPaciente()" class="absolute -top-1 -right-1 w-5 h-5 bg-ink-900 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition" title="Remover foto" aria-label="Remover foto"><i data-lucide="x" class="w-3 h-3"></i></button>` : ''}
+          </label>
+          <div class="min-w-0">
+            <p class="text-[10px] uppercase tracking-widest text-rose-500 font-bold">${escapeHtml(lbl)}</p>
+            <h2 class="font-serif text-2xl text-ink-900 truncate">${escapeHtml(p.nome)}</h2>
+            <p class="text-xs text-ink-600 font-mono">${escapeHtml(p.telefone)}${p.data_nascimento ? ' · ' + calcIdade(p.data_nascimento) + ' anos' : ''}</p>
+          </div>
+        </div>
+        <button onclick="fecharDrawerPaciente()" class="p-2 rounded-xl hover:bg-white/40 text-ink-600 hover:text-ink-900 flex-shrink-0" aria-label="Fechar painel"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </header>
+      <div class="px-5 py-3 grid grid-cols-3 md:grid-cols-6 gap-2 border-b border-ink-100/50 bg-white/30">
+        ${contadores.map(([l, v, ic]) => `
+          <div class="text-center">
+            <div class="text-[9px] uppercase tracking-wider text-ink-600 font-semibold">${escapeHtml(l)}</div>
+            <div class="font-serif text-lg text-ink-900">${v ?? 0}</div>
+          </div>`).join('')}
+      </div>
+      <div class="px-5 py-2 border-b border-ink-100/50 flex gap-1 overflow-x-auto">
+        ${tabsVisiveis.map(t => `<button class="px-3 py-1.5 rounded-lg text-xs font-semibold ${t === aba ? 'bg-rose-100 text-rose-600' : 'text-ink-600 hover:bg-white/40'}" onclick="renderDrawerPaciente('${t}')">${titulos[t]}</button>`).join('')}
+      </div>
+      <div id="drawer-paciente-body" class="flex-1 overflow-y-auto p-5"></div>
+    </div>`;
+  refreshIcons();
+  if (p.foto_key) carregarAvatarDrawer();
+  if (aba === 'timeline') renderTabTimeline();
+  if (aba === 'dados') renderTabDados();
+  if (aba === 'prontuario') renderTabProntuarioDrawer();
+  if (aba === 'tratamentos') renderTabTratamentos();
+  if (aba === 'odontograma') renderTabOdontograma();
+  if (aba === 'documentos') renderTabDocumentos();
+}
+
+function renderTabOdontograma() {
+  const b = $('drawer-paciente-body');
+  // injeta container + svg do odontograma (esquema "dark" do snippet original ajustado pra tema claro do dashboard)
+  b.innerHTML = `
+    <div id="odontograma-container">
+      <div class="flex items-start justify-between mb-3">
+        <div>
+          <p class="text-xs text-ink-600">Clique num dente pra registrar estado. Mudanças vão pro audit_log.</p>
+        </div>
+        <button onclick="renderOdontograma(drawerPacienteId)" class="btn btn-ghost text-xs" style="padding:6px 10px;"><i data-lucide="refresh-cw" class="w-3 h-3"></i> Recarregar</button>
+      </div>
+      <div id="odo-legenda" class="flex flex-wrap gap-2 mb-4 text-[10px]"></div>
+      <div class="rounded-2xl bg-ink-100/40 border border-ink-100/60 p-4 overflow-x-auto">
+        <svg id="odo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 200" class="w-full h-auto" style="min-width:640px;">
+          <line x1="350" y1="10" x2="350" y2="190" stroke="rgba(45,49,66,0.15)" stroke-dasharray="3 4" stroke-width="1"/>
+          <line x1="10" y1="100" x2="690" y2="100" stroke="rgba(45,49,66,0.15)" stroke-dasharray="3 4" stroke-width="1"/>
+          <text x="20" y="20" font-size="9" fill="rgba(45,49,66,0.4)" font-family="ui-sans-serif">SUPERIOR</text>
+          <text x="20" y="195" font-size="9" fill="rgba(45,49,66,0.4)" font-family="ui-sans-serif">INFERIOR</text>
+          <g id="odo-dentes-group"></g>
+        </svg>
+      </div>
+      <div id="odo-resumo" class="mt-4 text-xs text-ink-600"></div>
+    </div>`;
+  refreshIcons();
+  if (typeof window.renderOdontograma === 'function') window.renderOdontograma(drawerPacienteId);
+}
+
+function calcIdade(dataISO) {
+  if (!dataISO) return '—';
+  const d = new Date(dataISO);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - d.getFullYear();
+  const m = hoje.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && hoje.getDate() < d.getDate())) idade--;
+  return idade;
+}
+
+async function carregarAvatarDrawer() {
+  const el = $('dp-avatar');
+  if (!el || !drawerPacienteId) return;
+  try {
+    const r = await fetch(`/api/pacientes/${drawerPacienteId}/foto`, { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) return;
+    const url = URL.createObjectURL(await r.blob());
+    el.innerHTML = `<img src="${url}" class="w-full h-full object-cover" alt="">`;
+  } catch {}
+}
+
+async function renderTabTimeline() {
+  const b = $('drawer-paciente-body');
+  b.innerHTML = `<div class="space-y-3">${[1,2,3].map(() => '<div class="skel h-16 rounded-2xl"></div>').join('')}</div>`;
+  try {
+    const resp = await api('/api/pacientes/' + drawerPacienteId + '/timeline?limit=50');
+    const items = Array.isArray(resp) ? resp : (resp.itens || []);
+    if (items.length === 0) {
+      b.innerHTML = `<div class="text-center py-12 text-ink-600"><i data-lucide="clock" class="w-12 h-12 mx-auto mb-3 opacity-30"></i><p class="text-sm">Nada registrado ainda.</p></div>`;
+    } else {
+      b.innerHTML = `<div class="space-y-3">${items.map(it => renderTimelineItem(it)).join('')}</div>`;
+    }
+    refreshIcons();
+  } catch (e) { b.innerHTML = `<p class="text-ink-600 text-center py-8">${escapeHtml(e.message)}</p>`; }
+}
+
+function renderTimelineItem(it) {
+  const icons = { agendamento: 'calendar-days', prontuario: 'clipboard-list', interacao: 'message-circle' };
+  const cores = { agendamento: 'bg-blue-50 text-blue-600', prontuario: 'bg-rose-50 text-rose-600', interacao: 'bg-sage-50 text-sage-600' };
+  const d = it.dados || {};
+  let titulo = '', corpo = '';
+  if (it.tipo === 'agendamento') {
+    titulo = (d.servico || 'Atendimento') + (d.profissional ? ' · ' + d.profissional : '');
+    corpo = `Status: <span class="badge badge-${d.status || 'pendente'}">${escapeHtml(d.status || '—')}</span>`;
+  } else if (it.tipo === 'prontuario') {
+    titulo = 'Prontuário';
+    corpo = (d.anotacoes ? escapeHtml(d.anotacoes.slice(0, 120)) + (d.anotacoes.length > 120 ? '…' : '') : '<i class="text-ink-300">sem anotações</i>')
+          + (d.fotos_count ? ` <span class="text-[10px] text-rose-500">📷 ${d.fotos_count} foto${d.fotos_count > 1 ? 's' : ''}</span>` : '');
+  } else if (it.tipo === 'interacao') {
+    titulo = `WhatsApp (${escapeHtml(d.tipo || '—')})`;
+    corpo = escapeHtml((d.mensagem_recebida || d.mensagem_enviada || '').slice(0, 120));
+  }
+  return `
+    <div class="glass rounded-2xl p-4 flex gap-3">
+      <div class="w-10 h-10 rounded-xl ${cores[it.tipo] || 'bg-ink-100'} flex items-center justify-center flex-shrink-0">
+        <i data-lucide="${icons[it.tipo] || 'circle'}" class="w-5 h-5"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex justify-between items-start gap-2">
+          <h4 class="font-semibold text-ink-900 text-sm truncate">${escapeHtml(titulo)}</h4>
+          <span class="text-[10px] text-ink-600 flex-shrink-0">${fmtData(it.quando)}</span>
+        </div>
+        <div class="text-xs text-ink-600 mt-1">${corpo}</div>
+      </div>
+    </div>`;
+}
+
+function renderTabDados() {
+  const b = $('drawer-paciente-body');
+  const p = drawerPacienteData;
+  const cfg = especialidadeConfig?.campos || {};
+  const isObrig = (k) => cfg[k]?.obrigatorio;
+  const isVisivel = (k) => cfg[k] ? cfg[k].visivel !== false : false;
+  const lbl = (k) => cfg[k]?.label || CAMPOS_PACIENTE_LABELS[k] || k;
+
+  // monta lista de campos a renderizar (só os visíveis pra especialidade)
+  const grupos = {
+    'Identificação': ['data_nascimento', 'cpf', 'rg', 'sexo', 'profissao', 'estado_civil'],
+    'Contato': ['telefone_fixo'],
+    'Endereço': ['endereco_rua', 'endereco_numero', 'endereco_complemento', 'endereco_bairro', 'endereco_cidade', 'endereco_uf', 'endereco_cep'],
+    'Clínico': ['diagnostico_breve', 'observacoes_clinicas'],
+  };
+
+  let html = `
+    <form id="dp-form" onsubmit="event.preventDefault(); salvarDadosPaciente();" class="space-y-5">
+      <div>
+        <label class="lbl">Nome <span class="text-rose-500">*</span></label>
+        <input id="dp-nome" class="field" value="${escapeHtml(p.nome)}" required>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="lbl">Telefone (WhatsApp) <span class="text-rose-500">*</span></label>
+          <input id="dp-telefone" class="field" value="${escapeHtml(p.telefone)}" required>
+        </div>
+        <div>
+          <label class="lbl">Email</label>
+          <input id="dp-email" type="email" class="field" value="${escapeHtml(p.email || '')}">
+        </div>
+      </div>`;
+
+  for (const [titulo, campos] of Object.entries(grupos)) {
+    const visiveis = campos.filter(isVisivel);
+    if (visiveis.length === 0) continue;
+    html += `<div class="border-t border-ink-100/60 pt-4"><h4 class="text-xs uppercase tracking-wider text-ink-600 font-bold mb-3">${escapeHtml(titulo)}</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
+    for (const k of visiveis) {
+      const v = p[k] ?? '';
+      const obrig = isObrig(k) ? ' <span class="text-rose-500">*</span>' : '';
+      let input;
+      if (k === 'data_nascimento') {
+        input = `<input id="dp-${k}" type="date" class="field" value="${escapeHtml(v || '')}">`;
+      } else if (k === 'sexo') {
+        input = `<select id="dp-${k}" class="field">${SEXO_OPCOES.map(([val, lab]) => `<option value="${val}" ${v === val ? 'selected' : ''}>${escapeHtml(lab)}</option>`).join('')}</select>`;
+      } else if (k === 'endereco_uf') {
+        input = `<select id="dp-${k}" class="field">${UF_OPCOES.map(u => `<option value="${u}" ${v === u ? 'selected' : ''}>${u || '—'}</option>`).join('')}</select>`;
+      } else if (k === 'diagnostico_breve' || k === 'observacoes_clinicas') {
+        input = `<textarea id="dp-${k}" class="field" rows="2">${escapeHtml(v)}</textarea>`;
+      } else if (k === 'cpf') {
+        input = `<input id="dp-${k}" class="field" placeholder="000.000.000-00" value="${escapeHtml(v)}">`;
+      } else {
+        input = `<input id="dp-${k}" class="field" value="${escapeHtml(v)}">`;
+      }
+      const grid = (k === 'diagnostico_breve' || k === 'observacoes_clinicas') ? 'md:col-span-2' : '';
+      html += `<div class="${grid}"><label class="lbl">${escapeHtml(lbl(k))}${obrig}</label>${input}</div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  html += `
+      <div class="flex justify-end gap-2 pt-4">
+        <button type="button" onclick="fecharDrawerPaciente()" class="btn btn-ghost text-sm" style="padding:10px 16px;">Cancelar</button>
+        <button type="submit" class="btn btn-primary text-sm" style="padding:10px 16px;"><i data-lucide="check"></i> Salvar</button>
+      </div>
+    </form>`;
+  b.innerHTML = html;
+  refreshIcons();
+}
+
+async function uploadFotoPaciente(file) {
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) return toast('Arquivo maior que 10MB', true);
+  const fd = new FormData(); fd.append('arquivo', file);
+  try {
+    const r = await fetch(`/api/pacientes/${drawerPacienteId}/foto`, { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: fd });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.detail || 'HTTP ' + r.status); }
+    const j = await r.json();
+    drawerPacienteData.foto_key = j.foto_key;
+    toast('Foto enviada');
+    // re-render do header pra mostrar a nova foto (e ícone "trocar" em vez de "enviar")
+    const aba = document.querySelector('#drawer-paciente .tab-link-active')?.dataset?.aba || 'dados';
+    renderDrawerPaciente(aba);
+    loadPacientes();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function removerFotoPaciente() {
+  if (!await customConfirm('Remover foto?', 'A foto será apagada do servidor.', 'Remover', true)) return;
+  try {
+    await api(`/api/pacientes/${drawerPacienteId}/foto`, { method: 'DELETE' });
+    drawerPacienteData.foto_key = null;
+    toast('Foto removida');
+    renderDrawerPaciente('dados');
+    loadPacientes();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function salvarDadosPaciente() {
+  const payload = {
+    nome: $('dp-nome').value.trim(),
+    telefone: $('dp-telefone').value.trim(),
+    email: $('dp-email').value.trim() || null,
+  };
+  ['data_nascimento','cpf','rg','sexo','profissao','estado_civil','telefone_fixo','diagnostico_breve','observacoes_clinicas','endereco_rua','endereco_numero','endereco_complemento','endereco_bairro','endereco_cidade','endereco_uf','endereco_cep'].forEach(k => {
+    const el = $('dp-' + k);
+    if (el) payload[k] = el.value.trim() || null;
+  });
+  try {
+    await api('/api/pacientes/' + drawerPacienteId, { method: 'PUT', body: JSON.stringify(payload) });
+    toast('Dados salvos');
+    drawerPacienteData = await api('/api/pacientes/' + drawerPacienteId);
+    renderDrawerPaciente('dados');
+    loadPacientes();
+  } catch (e) {
+    if (typeof e.message === 'string' && e.message.includes('faltantes')) {
+      // erro estruturado de especialidade
+      toast('Campos obrigatórios faltando — confira os marcados com *', true);
+    } else { toast(e.message, true); }
+  }
+}
+
+async function renderTabProntuarioDrawer() {
+  const b = $('drawer-paciente-body');
+  if (!especialidadeConfig?.documentos?.includes('prontuario')) {
+    b.innerHTML = `<p class="text-ink-600 text-center py-8">Prontuário não disponível pra essa especialidade.</p>`;
+    return;
+  }
+  b.innerHTML = `<div class="skel h-20 rounded-2xl mb-3"></div><div class="skel h-20 rounded-2xl"></div>`;
+  try {
+    const lista = await api('/api/prontuarios?paciente_id=' + drawerPacienteId);
+    if (lista.length === 0) {
+      b.innerHTML = `
+        <div class="text-center py-8">
+          <p class="text-ink-600 text-sm mb-4">Nenhum prontuário ainda.</p>
+          <button onclick="prontuarioPacienteAtual='${escapeHtml(drawerPacienteId)}'; openNovoProntuario();" class="btn btn-primary text-sm" style="padding:10px 16px;"><i data-lucide="plus"></i> Novo prontuário</button>
+        </div>`;
+    } else {
+      b.innerHTML = `
+        <div class="flex justify-end mb-3">
+          <button onclick="prontuarioPacienteAtual='${escapeHtml(drawerPacienteId)}'; openNovoProntuario();" class="btn btn-primary text-sm" style="padding:8px 14px;"><i data-lucide="plus"></i> Novo</button>
+        </div>
+        <div class="space-y-3">
+          ${lista.map(pr => `
+            <div class="glass rounded-2xl p-4 cursor-pointer card-hover" onclick="openEditarProntuario('${escapeHtml(pr.id)}')">
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-xs text-rose-500 font-bold uppercase tracking-widest">${fmtData(pr.criado_em)}</span>
+                ${(pr.fotos || []).length > 0 ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-600">📷 ${pr.fotos.length}</span>` : ''}
+              </div>
+              <p class="text-sm text-ink-900 line-clamp-2">${escapeHtml(pr.anotacoes || pr.proxima_acao || 'Sem anotações')}</p>
+            </div>`).join('')}
+        </div>`;
+    }
+    refreshIcons();
+  } catch (e) {
+    if (String(e.message || '').toLowerCase().includes('upgrade')) return; // já abriu modal
+    b.innerHTML = `<p class="text-ink-600 text-center py-8">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function renderTabDocumentos() {
+  const b = $('drawer-paciente-body');
+  const docs = especialidadeConfig?.documentos || [];
+  const labels = { prontuario: 'Prontuário em PDF', atestado: 'Atestado', declaracao_comparecimento: 'Declaração de comparecimento', receituario: 'Receituário' };
+  const icons = { prontuario: 'file-text', atestado: 'file-check', declaracao_comparecimento: 'file-badge', receituario: 'file-pen' };
+  b.innerHTML = `
+    <p class="text-xs text-rose-500 mb-4"><i data-lucide="shield-alert" class="w-3 h-3 inline"></i> Cada PDF gerado é registrado no audit por LGPD.</p>
+    <div class="space-y-3">
+      ${docs.map(d => `
+        <button onclick="abrirGerarDocumento('${d}')" class="w-full glass rounded-2xl p-4 flex items-center gap-4 card-hover text-left">
+          <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600"><i data-lucide="${icons[d] || 'file'}" class="w-5 h-5"></i></div>
+          <div class="flex-1"><h4 class="font-semibold text-ink-900 text-sm">${escapeHtml(labels[d] || d)}</h4></div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-ink-600"></i>
+        </button>`).join('')}
+    </div>`;
+  refreshIcons();
+}
+
+function abrirGerarDocumento(tipo) {
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4 fade-in overlay';
+  const hoje = new Date().toISOString().slice(0, 10);
+
+  let camposExtras = '';
+  if (tipo === 'atestado') {
+    camposExtras = `
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">Data</label><input id="gd-data" type="date" value="${hoje}" class="field"></div>
+        <div><label class="lbl">Dias de afastamento</label><input id="gd-dias" type="number" min="0" value="1" class="field"></div>
+        <div><label class="lbl">Hora início</label><input id="gd-hi" type="time" value="08:00" class="field"></div>
+        <div><label class="lbl">Hora fim</label><input id="gd-hf" type="time" value="09:00" class="field"></div>
+      </div>
+      <div><label class="lbl">CID-10 (opcional)</label><input id="gd-cid" placeholder="Ex: M54.5" class="field"></div>`;
+  } else if (tipo === 'declaracao_comparecimento') {
+    camposExtras = `
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">Data</label><input id="gd-data" type="date" value="${hoje}" class="field"></div>
+        <div><label class="lbl">Tipo de atendimento</label><input id="gd-tipoatd" value="consulta" class="field"></div>
+        <div><label class="lbl">Hora início</label><input id="gd-hi" type="time" value="08:00" class="field"></div>
+        <div><label class="lbl">Hora fim</label><input id="gd-hf" type="time" value="09:00" class="field"></div>
+      </div>`;
+  } else if (tipo === 'receituario') {
+    camposExtras = `<div><label class="lbl">Prescrição</label><textarea id="gd-prescricao" rows="6" class="field" placeholder="1 - Medicamento X — posologia..."></textarea></div>`;
+  } else if (tipo === 'prontuario') {
+    camposExtras = `<div><label class="lbl">Prontuário</label><select id="gd-pront-id" class="field"><option value="">— escolhe —</option></select></div>`;
+  } else if (tipo === 'termo_consentimento') {
+    camposExtras = `
+      <div><label class="lbl">Procedimento <span class="text-rose-500">*</span></label><input id="gd-proc" placeholder="Ex: extração do siso 48" class="field"></div>
+      <div><label class="lbl">Riscos (opcional)</label><textarea id="gd-riscos" rows="2" class="field" placeholder="Sangramento, edema, parestesia temporária..."></textarea></div>
+      <div><label class="lbl">Cuidados pós (opcional)</label><textarea id="gd-cuidados" rows="2" class="field" placeholder="Gelo nas primeiras 24h, antibiótico conforme receita..."></textarea></div>
+      <div><label class="lbl">Data</label><input id="gd-data" type="date" value="${hoje}" class="field"></div>`;
+  }
+
+  const titulos = { prontuario: 'Prontuário', atestado: 'Atestado', declaracao_comparecimento: 'Declaração de comparecimento', receituario: 'Receituário' };
+  overlay.innerHTML = `
+    <div class="glass rounded-3xl shadow-2xl max-w-lg w-full p-7 max-h-[90vh] overflow-y-auto">
+      <h3 class="font-serif text-2xl text-ink-900 mb-5">Gerar ${escapeHtml(titulos[tipo] || tipo)}</h3>
+      <div class="space-y-4">${camposExtras}</div>
+      <div class="flex gap-2 justify-end mt-6">
+        <button data-cancel class="btn btn-ghost text-sm" style="padding:10px 16px;">Cancelar</button>
+        <button data-gen class="btn btn-primary text-sm" style="padding:10px 16px;"><i data-lucide="download"></i> Gerar PDF</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-cancel]').onclick = close;
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  refreshIcons();
+
+  // popula select de prontuário se for o caso
+  if (tipo === 'prontuario') {
+    api('/api/prontuarios?paciente_id=' + drawerPacienteId).then(lista => {
+      const sel = overlay.querySelector('#gd-pront-id');
+      sel.innerHTML = '<option value="">— escolhe —</option>' + lista.map(pr => `<option value="${pr.id}">${fmtData(pr.criado_em)}</option>`).join('');
+    }).catch(() => {});
+  }
+
+  overlay.querySelector('[data-gen]').onclick = async () => {
+    const params = new URLSearchParams();
+    if (tipo === 'atestado') {
+      params.set('data', overlay.querySelector('#gd-data').value);
+      params.set('dias_afastamento', overlay.querySelector('#gd-dias').value);
+      params.set('hora_inicio', overlay.querySelector('#gd-hi').value);
+      params.set('hora_fim', overlay.querySelector('#gd-hf').value);
+      const cid = overlay.querySelector('#gd-cid').value.trim();
+      if (cid) params.set('cid_10', cid);
+    } else if (tipo === 'declaracao_comparecimento') {
+      params.set('data', overlay.querySelector('#gd-data').value);
+      params.set('tipo_atendimento', overlay.querySelector('#gd-tipoatd').value || 'consulta');
+      params.set('hora_inicio', overlay.querySelector('#gd-hi').value);
+      params.set('hora_fim', overlay.querySelector('#gd-hf').value);
+    } else if (tipo === 'receituario') {
+      const presc = overlay.querySelector('#gd-prescricao').value.trim();
+      if (!presc) return toast('Prescrição obrigatória', true);
+      params.set('prescricao', presc);
+    } else if (tipo === 'prontuario') {
+      const pid = overlay.querySelector('#gd-pront-id').value;
+      if (!pid) return toast('Escolha um prontuário', true);
+      params.set('prontuario_id', pid);
+    }
+    try {
+      const r = await fetch(`/api/pacientes/${drawerPacienteId}/documentos/${tipo}.pdf?${params}`, { headers: { Authorization: 'Bearer ' + token } });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.detail || 'HTTP ' + r.status); }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      close();
+      toast('PDF gerado');
+    } catch (e) { toast(typeof e.message === 'string' ? e.message : JSON.stringify(e.message), true); }
+  };
+}
+
+// ============================================================ Cmd+K
+const CMDK_ACTIONS = [
+  { label: 'Painel', icon: 'layout-dashboard', action: () => showTab('dashboard') },
+  { label: 'Agenda', icon: 'calendar-days', action: () => showTab('agendamentos') },
+  { label: 'Pacientes', icon: 'users', action: () => showTab('pacientes') },
+  { label: 'Equipe (profissionais)', icon: 'user-cog', action: () => showTab('profissionais') },
+  { label: 'Plano e uso', icon: 'sparkles', action: () => showTab('plano') },
+  { label: 'Mensagens da IA', icon: 'message-square', action: () => showTab('configuracoes') },
+  { label: 'Horários de funcionamento', icon: 'clock', action: () => showTab('horarios') },
+  { label: 'WhatsApp da clínica', icon: 'message-circle', action: () => showTab('whatsapp') },
+  { label: 'Novo agendamento', icon: 'plus', action: () => { showTab('agendamentos'); setTimeout(openNovoAgendamento, 100); } },
+  { label: 'Nova paciente', icon: 'user-plus', action: () => { showTab('pacientes'); setTimeout(openNovoPaciente, 100); } },
+  { label: 'Novo profissional', icon: 'user-plus', action: () => { showTab('profissionais'); setTimeout(openNovoProfissional, 100); } },
+  { label: 'Sair', icon: 'log-out', action: doLogout },
+];
+function cmdkOpen() {
+  $('cmdk').classList.remove('hidden');
+  $('cmdk-input').value = '';
+  $('cmdk-input').focus();
+  renderCmdk('');
+}
+function cmdkClose() { $('cmdk').classList.add('hidden'); }
+function renderCmdk(q) {
+  const ql = q.toLowerCase().trim();
+  const matchActions = CMDK_ACTIONS.filter(a => !ql || a.label.toLowerCase().includes(ql));
+  const matchPacientes = ql.length >= 2 ? pacientesCache.filter(p => p.nome.toLowerCase().includes(ql) || p.telefone.includes(ql)).slice(0, 5) : [];
+  let html = '';
+  if (matchActions.length) {
+    html += `<div class="px-5 py-2 text-[10px] uppercase tracking-wider text-ink-600 font-bold">Ações</div>`;
+    html += matchActions.map((a, i) => `<button onclick="window._cmdkAct[${i}](); cmdkClose();" class="w-full px-5 py-2.5 text-left flex items-center gap-3 hover:bg-rose-100/50 text-sm"><i data-lucide="${a.icon}" class="w-4 h-4 text-ink-600"></i> ${escapeHtml(a.label)}</button>`).join('');
+    window._cmdkAct = matchActions.map(a => a.action);
+  }
+  if (matchPacientes.length) {
+    html += `<div class="px-5 py-2 text-[10px] uppercase tracking-wider text-ink-600 font-bold mt-2">Pacientes</div>`;
+    html += matchPacientes.map(p => `<button onclick="showTab('pacientes'); cmdkClose();" class="w-full px-5 py-2.5 text-left flex items-center gap-3 hover:bg-rose-100/50 text-sm"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-rose-200 to-rose-400 flex items-center justify-center text-ink-900 font-bold text-xs">${escapeHtml((p.nome[0]||'?').toUpperCase())}</div><div><div class="font-medium text-ink-900">${escapeHtml(p.nome)}</div><div class="text-xs text-ink-600 font-mono">${escapeHtml(p.telefone)}</div></div></button>`).join('');
+  }
+  if (!html) html = `<div class="text-center py-12 text-ink-600 text-sm">Nada encontrado pra "${escapeHtml(q)}"</div>`;
+  $('cmdk-results').innerHTML = html;
+  refreshIcons();
+}
+function setupKeyboard() {
+  $('cmdk-input').addEventListener('input', e => renderCmdk(e.target.value));
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); cmdkOpen(); }
+    if (e.key === 'Escape') { cmdkClose(); fecharDrawer(); }
+  });
+  $('cmdk').addEventListener('click', e => { if (e.target.id === 'cmdk') cmdkClose(); });
+}
+
+init();
+</script>
+</body>
+</html>

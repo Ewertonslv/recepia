@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: recepia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-recepia_dev_pwd}
+      POSTGRES_DB: recepia
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    # Sprint 6 hotfix: porta NÃO exposta pra rede do host (só acessível via recepia_net interna).
+    # Pra debug local rode: docker exec -it codigo-postgres-1 psql -U recepia -d recepia
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recepia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - recepia_net
+
+  evolution:
+    image: atendai/evolution-api:latest
+    restart: unless-stopped
+    ports:
+      - "8081:8080"  # 8080 já usado pelo projeto prospectação — host 8081 → container 8080
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
+      - QRCODE_LIMIT=30
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://recepia:${POSTGRES_PASSWORD:-recepia_dev_pwd}@postgres:5432/evolution?schema=public
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution
+      - REDIS_ENABLED=false
+      - LOG_LEVEL=WARN
+      - WEBHOOK_GLOBAL_URL=http://api:8000/api/webhook/evolution
+      - WEBHOOK_GLOBAL_ENABLED=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - evolution_data:/evolution/instances
+    networks:
+      - recepia_net
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://recepia:${POSTGRES_PASSWORD:-recepia_dev_pwd}@postgres:5432/recepia
+      - EVOLUTION_API_URL=http://evolution:8080
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./dashboard:/app/dashboard:ro  # live reload do front (sem rebuild)
+      - ./landing:/app/landing:ro       # live reload da landing (Sprint 4)
+      - recepia_fotos:/data/fotos       # storage de fotos de prontuário (Sprint 1 D4)
+      - recepia_avatares:/data/fotos_paciente  # foto avatar do paciente (Sprint 2)
+      - recepia_logos:/data/logos       # logo da clínica p/ PDFs (Sprint 2)
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - recepia_net
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: python cron/jobs.py
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://recepia:${POSTGRES_PASSWORD:-recepia_dev_pwd}@postgres:5432/recepia
+      - EVOLUTION_API_URL=http://evolution:8080
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - recepia_net
+
+volumes:
+  postgres_data:
+  evolution_data:
+  recepia_fotos:
+  recepia_avatares:
+  recepia_logos:
+
+networks:
+  recepia_net:
+    driver: bridge

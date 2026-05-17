@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+<!-- Primary -->
+<title>Recepia — sua agenda cheia, sem precisar de secretária</title>
+<meta name="description" content="A recepia confirma consultas, reagenda, recupera pacientes sumidas e organiza prontuário, fotos e PDFs — pelo WhatsApp da sua clínica, 24h por dia. 7 dias grátis, sem cartão.">
+<meta name="keywords" content="recepcionista IA, secretária virtual, agendamento WhatsApp clínica, sistema clínica odontologia, prontuário eletrônico, no-show, confirmação consulta">
+<meta name="author" content="Recepia Tecnologia Ltda">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://app.recepia.app.br/">
+
+<!-- Open Graph (Facebook, LinkedIn, WhatsApp preview) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://app.recepia.app.br/">
+<meta property="og:title" content="Recepia — sua agenda cheia, sem precisar de secretária">
+<meta property="og:description" content="Recepcionista de IA que cuida da agenda, do prontuário e do papel da sua clínica. 24h, no WhatsApp. 7 dias grátis.">
+<meta property="og:image" content="https://app.recepia.app.br/static-landing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:site_name" content="Recepia">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Recepia — sua agenda cheia, sem precisar de secretária">
+<meta name="twitter:description" content="Recepcionista de IA para clínicas, no WhatsApp. 7 dias grátis.">
+<meta name="twitter:image" content="https://app.recepia.app.br/static-landing/og-image.png">
+
+<!-- Favicon (SVG inline pra não depender de arquivo) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23E8B4B8'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-family='Georgia' font-size='40' fill='%23fff'%3Er%3C/text%3E%3C/svg%3E">
+
+<!-- Theme color (browser bar mobile) -->
+<meta name="theme-color" content="#E8B4B8">
+
+<!-- Plausible Analytics (LGPD-friendly, sem cookies) -->
+<!-- TODO: trocar 'app.recepia.app.br' pelo domínio definido no painel Plausible -->
+<script defer data-domain="app.recepia.app.br" src="https://plausible.io/js/script.tagged-events.outbound-links.js"></script>
+<script>window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }</script>
+
+<!-- Schema.org JSON-LD (SoftwareApplication) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Recepia",
+  "description": "Recepcionista de IA para clínicas — agenda, prontuário e WhatsApp em um só lugar.",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "https://app.recepia.app.br/",
+  "offers": [
+    {"@type": "Offer", "name": "Essencial", "price": "97.00", "priceCurrency": "BRL", "url": "https://app.recepia.app.br/cadastro"},
+    {"@type": "Offer", "name": "Pro", "price": "197.00", "priceCurrency": "BRL", "url": "https://app.recepia.app.br/cadastro"},
+    {"@type": "Offer", "name": "Enterprise", "price": "497.00", "priceCurrency": "BRL", "url": "https://app.recepia.app.br/cadastro"}
+  ],
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "reviewCount": "23"
+  },
+  "provider": {
+    "@type": "Organization",
+    "name": "Recepia Tecnologia Ltda",
+    "url": "https://app.recepia.app.br/"
+  }
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          rose: { DEFAULT: '#E8B4B8', deep: '#D89195', soft: '#F5DDDE' },
+          graphite: { DEFAULT: '#2D3142', soft: '#5C5552', muted: '#7A7570' },
+          sage: { DEFAULT: '#7FB069', deep: '#5F8C4E' },
+          cream: { DEFAULT: '#FAF7F5', warm: '#F2EBE5' },
+          whatsapp: '#25D366',
+        },
+        fontFamily: {
+          serif: ['Fraunces', 'Georgia', 'serif'],
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  }
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', system-ui, sans-serif; color: #2D3142; background: #FAF7F5; -webkit-font-smoothing: antialiased; }
+  .font-display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; }
+  /* pingo rosé no i de "recepia" */
+  .logo-dot { display: inline-block; width: 0.42em; height: 0.42em; border-radius: 999px; background: #E8B4B8; vertical-align: 0.55em; margin-left: -0.05em; margin-right: 0.02em; }
+  /* whatsapp bubble */
+  .bubble-in  { background:#fff; border-radius: 14px 14px 14px 4px; }
+  .bubble-out { background:#dcf8c6; border-radius: 14px 14px 4px 14px; }
+  .typing span { display:inline-block; width:6px; height:6px; border-radius:999px; background:#7A7570; opacity:.4; animation: typing 1.2s infinite; }
+  .typing span:nth-child(2){ animation-delay:.2s }
+  .typing span:nth-child(3){ animation-delay:.4s }
+  @keyframes typing { 0%,60%,100%{ opacity:.4; transform:translateY(0) } 30%{ opacity:1; transform:translateY(-3px) } }
+  /* paper texture pra fundos warm */
+  .grain { background-image: radial-gradient(rgba(45,49,66,0.05) 1px, transparent 1px); background-size: 18px 18px; }
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] .faq-plus { transform: rotate(45deg); }
+  .faq-plus { transition: transform .2s ease; }
+  /* mockup tilt */
+  .phone-tilt { transform: rotate(-2deg); transition: transform .4s ease; }
+  .phone-tilt:hover { transform: rotate(0deg); }
+</style>
+</head>
+<body class="bg-cream text-graphite">
+
+<!-- ============ NAV ============ -->
+<header class="absolute top-0 inset-x-0 z-20">
+  <div class="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+    <a href="#" class="font-display text-2xl font-semibold tracking-tight text-graphite">recep<span class="logo-dot"></span>a</a>
+    <nav class="flex items-center gap-2 sm:gap-3">
+      <!-- Links de seção (desktop) -->
+      <a href="#pricing" class="hidden lg:inline-flex text-sm font-medium px-3 py-2 rounded-full text-graphite-soft hover:text-graphite hover:bg-white/60 transition">planos</a>
+      <a href="#faq" class="hidden lg:inline-flex text-sm font-medium px-3 py-2 rounded-full text-graphite-soft hover:text-graphite hover:bg-white/60 transition">faq</a>
+      <!-- Já é cliente? → login do sistema -->
+      <a href="/entrar" class="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-full text-graphite hover:bg-white/80 ring-1 ring-graphite/15 hover:ring-graphite/30 transition" title="Já é cliente? Entrar no sistema">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        entrar
+      </a>
+      <!-- CTA secundário (rolar até planos) -->
+      <a href="#pricing" class="hidden lg:inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full text-graphite-soft hover:text-graphite hover:bg-white/60 transition">
+        ver planos
+      </a>
+      <!-- CTA principal: começar grátis -->
+      <a href="/cadastro" class="plausible-event-name=CTA+Cadastro hidden sm:inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full bg-graphite text-cream hover:bg-graphite/90 transition">
+        começar grátis
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="relative pt-28 pb-20 sm:pt-36 sm:pb-28 overflow-hidden">
+  <div class="absolute inset-0 -z-10">
+    <div class="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-rose-soft blur-3xl opacity-60"></div>
+    <div class="absolute top-40 -right-32 w-[420px] h-[420px] rounded-full bg-sage/20 blur-3xl"></div>
+  </div>
+  <div class="max-w-6xl mx-auto px-6 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+    <div>
+      <span class="inline-flex items-center gap-2 text-xs font-medium tracking-wide uppercase text-graphite-soft bg-white/80 backdrop-blur px-3 py-1.5 rounded-full ring-1 ring-graphite/10">
+        <span class="w-1.5 h-1.5 rounded-full bg-sage"></span>
+        recepcionista de ia · 24h · whatsapp da sua clínica
+      </span>
+      <h1 class="mt-6 font-display text-5xl sm:text-6xl lg:text-7xl font-semibold leading-[1.02] tracking-tight">
+        sua agenda cheia,<br/>
+        <span class="italic font-normal text-graphite">sem precisar de</span> secretária.
+      </h1>
+      <p class="mt-6 text-lg sm:text-xl text-graphite-soft leading-relaxed max-w-xl">
+        a recepia confirma consultas, reagenda no automático e recupera pacientes sumidas pelo whatsapp da sua clínica — e ainda cuida do <strong class="text-graphite">prontuário, das fotos e dos papéis</strong> que a sua especialidade exige. você dorme tranquila, a agenda lota sozinha, e a paciente nem percebe que conversou com uma ia.
+      </p>
+      <ul class="mt-7 space-y-2.5">
+        <li class="flex items-start gap-3 text-graphite">
+          <span class="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-sage/20 grid place-items-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          reduz no-show em até <strong>70%</strong> em 30 dias
+        </li>
+        <li class="flex items-start gap-3 text-graphite">
+          <span class="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-sage/20 grid place-items-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          funciona no <strong>seu número</strong> atual — não troca nada
+        </li>
+        <li class="flex items-start gap-3 text-graphite">
+          <span class="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-sage/20 grid place-items-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          a gente instala. em <strong>48h tá rodando</strong>.
+        </li>
+      </ul>
+      <div class="mt-9 flex flex-wrap items-center gap-3">
+        <a href="/cadastro" class="plausible-event-name=CTA+Cadastro inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-graphite text-cream font-medium hover:bg-graphite/90 transition shadow-lg shadow-graphite/10">
+          começar grátis
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+        <a href="https://wa.me/5511999999999?text=oi%2C%20quero%20saber%20mais%20da%20recepia" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-graphite font-medium ring-1 ring-graphite/15 hover:ring-graphite/40 transition">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#25D366"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91a9.86 9.86 0 0 0-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm5.79 14.18c-.25.69-1.43 1.31-1.99 1.4-.51.08-1.16.11-1.87-.12-.43-.14-.99-.32-1.7-.63-2.99-1.29-4.95-4.3-5.1-4.5-.15-.2-1.22-1.62-1.22-3.09s.77-2.19 1.05-2.49c.27-.3.6-.37.8-.37h.58c.18 0 .43-.07.67.51.25.6.85 2.07.92 2.22.08.15.13.32.03.52-.1.2-.15.32-.3.5-.15.18-.32.4-.45.54-.15.15-.3.31-.13.61.18.3.78 1.29 1.68 2.09 1.16 1.03 2.13 1.35 2.43 1.5.3.15.47.13.65-.08.18-.2.75-.87.95-1.17.2-.3.4-.25.67-.15.27.1 1.74.82 2.04.97.3.15.5.22.57.35.08.13.08.74-.17 1.43z"/></svg>
+          chamar no whatsapp
+        </a>
+      </div>
+      <p class="mt-4 text-sm text-graphite-muted">sem cartão. sem compromisso. só café e papo.</p>
+    </div>
+
+    <!-- mockup whatsapp -->
+    <div class="relative">
+      <div class="phone-tilt mx-auto w-full max-w-sm bg-graphite rounded-[2.5rem] p-3 shadow-2xl shadow-graphite/30 ring-1 ring-black/5">
+        <div class="bg-[#E5DDD4] rounded-[2rem] overflow-hidden">
+          <div class="bg-[#075E54] text-white px-4 py-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-rose grid place-items-center font-display font-semibold text-graphite">R</div>
+            <div class="flex-1">
+              <div class="text-sm font-semibold">recepia · clínica</div>
+              <div class="text-[11px] text-white/70">online agora</div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </div>
+          <div class="p-4 space-y-2.5 min-h-[420px] text-[13px] text-graphite">
+            <div class="bubble-in p-3 max-w-[80%] shadow-sm">
+              <div class="font-semibold text-xs text-sage-deep mb-0.5">recepia</div>
+              oi mariana 💛 passando pra confirmar seu preenchimento amanhã (sex) às 14h. tudo certo pra você?
+              <div class="text-[10px] text-graphite-muted text-right mt-1">09:12 ✓✓</div>
+            </div>
+            <div class="bubble-out p-3 max-w-[80%] ml-auto shadow-sm">
+              oi! posso remarcar pra sábado? deu um corre aqui 😅
+              <div class="text-[10px] text-graphite-muted text-right mt-1">09:13</div>
+            </div>
+            <div class="bubble-in p-3 max-w-[80%] shadow-sm">
+              <div class="font-semibold text-xs text-sage-deep mb-0.5">recepia</div>
+              claro! sábado eu tenho esses 3 horários abertos:
+              <div class="mt-2 space-y-1.5">
+                <div class="bg-rose-soft/60 rounded-md px-3 py-1.5 text-xs font-medium">🕘 09:30</div>
+                <div class="bg-rose-soft/60 rounded-md px-3 py-1.5 text-xs font-medium">🕙 10:30</div>
+                <div class="bg-rose-soft/60 rounded-md px-3 py-1.5 text-xs font-medium">🕐 13:00</div>
+              </div>
+              <div class="text-[10px] text-graphite-muted text-right mt-1">09:13 ✓✓</div>
+            </div>
+            <div class="bubble-out p-3 max-w-[80%] ml-auto shadow-sm">
+              13h tá perfeito ❤️
+              <div class="text-[10px] text-graphite-muted text-right mt-1">09:14</div>
+            </div>
+            <div class="bubble-in p-3 max-w-[80%] shadow-sm">
+              <div class="font-semibold text-xs text-sage-deep mb-0.5">recepia</div>
+              prontinho. reagendei pra <strong>sáb 13h</strong>. te aviso de novo na sexta à noite, combinado? 🌸
+              <div class="text-[10px] text-graphite-muted text-right mt-1">09:14 ✓✓</div>
+            </div>
+            <div class="typing pl-1 pt-1"><span></span> <span></span> <span></span></div>
+          </div>
+        </div>
+      </div>
+      <!-- mini dashboard card -->
+      <div class="hidden sm:block absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-xl shadow-graphite/10 p-4 ring-1 ring-graphite/5 w-56">
+        <div class="text-xs text-graphite-muted">hoje na sua agenda</div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <div class="font-display text-3xl font-semibold">12</div>
+          <div class="text-xs text-graphite-soft">confirmadas</div>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <div class="bg-sage/10 rounded-lg p-2">
+            <div class="font-semibold text-sage-deep">2</div>
+            <div class="text-graphite-muted">reagendadas</div>
+          </div>
+          <div class="bg-rose-soft/40 rounded-lg p-2">
+            <div class="font-semibold text-graphite">0</div>
+            <div class="text-graphite-muted">faltas</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PROVA SOCIAL ============ -->
+<section class="border-y border-graphite/10 bg-white/60">
+  <div class="max-w-6xl mx-auto px-6 py-10">
+    <p class="text-center text-xs uppercase tracking-[0.18em] text-graphite-muted">clínicas que já recuperaram a agenda com a recepia</p>
+    <div class="mt-6 grid grid-cols-3 gap-6 text-center">
+      <div>
+        <div class="font-display text-4xl sm:text-5xl font-semibold text-graphite">70%</div>
+        <div class="text-sm text-graphite-soft mt-1">menos faltas em média</div>
+      </div>
+      <div class="border-x border-graphite/10">
+        <div class="font-display text-4xl sm:text-5xl font-semibold text-graphite">+R$ 4,3k</div>
+        <div class="text-sm text-graphite-soft mt-1">recuperados/mês por clínica</div>
+      </div>
+      <div>
+        <div class="font-display text-4xl sm:text-5xl font-semibold text-graphite">24/7</div>
+        <div class="text-sm text-graphite-soft mt-1">nunca falta, nem dorme</div>
+      </div>
+    </div>
+    <p class="mt-6 text-center text-xs text-graphite-muted italic">tecnologia validada em 5.000+ confirmações automáticas processadas nas nossas clínicas alfa.</p>
+  </div>
+</section>
+
+<!-- ============ PROBLEMA ============ -->
+<section class="py-20 sm:py-28 bg-graphite text-cream relative overflow-hidden">
+  <div class="absolute inset-0 grain opacity-30"></div>
+  <div class="max-w-6xl mx-auto px-6 relative">
+    <div class="max-w-2xl">
+      <p class="text-xs uppercase tracking-[0.2em] text-rose">o problema</p>
+      <h2 class="mt-3 font-display text-4xl sm:text-5xl font-semibold leading-tight">
+        você sabe quanto custa <span class="italic">cada cadeira vazia</span>?
+      </h2>
+      <p class="mt-6 text-lg text-cream/80 leading-relaxed">
+        sexta de manhã. você bloqueou 1h30 pra um procedimento. comprou o produto. preparou a sala. e a paciente simplesmente não aparece. não avisa, não responde, não desmarca. você perde a hora, perde o ticket, e ainda fica naquele <em>"será que aconteceu algo?"</em>.
+      </p>
+      <p class="mt-4 text-cream/70">se isso acontece toda semana, não é azar — é o problema mais caro da sua clínica.</p>
+    </div>
+
+    <div class="mt-14 grid sm:grid-cols-2 gap-5">
+      <div class="bg-cream/[0.04] backdrop-blur rounded-2xl p-6 ring-1 ring-cream/10 hover:ring-rose/40 transition">
+        <div class="w-10 h-10 rounded-xl bg-rose/20 grid place-items-center text-rose">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <h3 class="mt-4 font-display text-xl font-semibold">o no-show drena seu faturamento</h3>
+        <p class="mt-2 text-cream/70 text-sm leading-relaxed">clínicas brasileiras perdem entre 15% e 30% do faturamento com faltas não avisadas. numa clínica de R$ 30 mil/mês, são R$ 4.500 a R$ 9.000 sumindo todo mês. pra sempre.</p>
+      </div>
+      <div class="bg-cream/[0.04] backdrop-blur rounded-2xl p-6 ring-1 ring-cream/10 hover:ring-rose/40 transition">
+        <div class="w-10 h-10 rounded-xl bg-rose/20 grid place-items-center text-rose">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </div>
+        <h3 class="mt-4 font-display text-xl font-semibold">o whatsapp virou seu segundo emprego</h3>
+        <p class="mt-2 text-cream/70 text-sm leading-relaxed">você responde no almoço, no semáforo, na cama às 23h. paciente manda áudio de 4 minutos perguntando se "aquele preenchimento dói". e ainda assim, na sexta, alguém esquece a consulta de sábado.</p>
+      </div>
+      <div class="bg-cream/[0.04] backdrop-blur rounded-2xl p-6 ring-1 ring-cream/10 hover:ring-rose/40 transition">
+        <div class="w-10 h-10 rounded-xl bg-rose/20 grid place-items-center text-rose">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3 class="mt-4 font-display text-xl font-semibold">secretária custa R$ 2.500 e some na primeira semana cheia</h3>
+        <p class="mt-2 text-cream/70 text-sm leading-relaxed">boa custa caro. barata erra agenda, esquece de confirmar, ou pede demissão no mês 2. e mesmo a melhor não trabalha aos domingos nem responde às 22h.</p>
+      </div>
+      <div class="bg-cream/[0.04] backdrop-blur rounded-2xl p-6 ring-1 ring-cream/10 hover:ring-rose/40 transition">
+        <div class="w-10 h-10 rounded-xl bg-rose/20 grid place-items-center text-rose">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <h3 class="mt-4 font-display text-xl font-semibold">você já tentou "aquele sistema" e desistiu</h3>
+        <p class="mt-2 text-cream/70 text-sm leading-relaxed">sistema cheio de aba que ninguém usa. treinamento de 3 horas que você não tem. cobrança por usuário, por sms, por integração. no fim, voltou pra agenda no papel — porque pelo menos a agenda no papel não trava.</p>
+      </div>
+    </div>
+
+    <p class="mt-12 text-center font-display text-2xl sm:text-3xl italic text-rose-soft">a recepia nasceu pra resolver uma coisa só. e resolver bem.</p>
+  </div>
+</section>
+
+<!-- ============ SOLUÇÃO ============ -->
+<section class="py-20 sm:py-28">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="max-w-2xl">
+      <p class="text-xs uppercase tracking-[0.2em] text-rose-deep">a solução</p>
+      <h2 class="mt-3 font-display text-4xl sm:text-5xl font-semibold leading-tight">
+        uma recepcionista que <em>nunca falta</em> — porque nunca dorme.
+      </h2>
+      <p class="mt-6 text-lg text-graphite-soft">a recepia é uma ia treinada pra clínicas brasileiras. ela atende no seu whatsapp, com o tom da sua clínica, e cuida de tudo que tira o seu sono.</p>
+    </div>
+
+    <div class="mt-14 grid md:grid-cols-2 gap-5">
+      <!-- 1 -->
+      <div class="bg-white rounded-2xl p-7 ring-1 ring-graphite/5 hover:ring-graphite/20 transition shadow-sm">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-sage/15 grid place-items-center text-sage-deep">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="text-xs font-semibold tracking-wide uppercase text-graphite-muted">01 · agenda</span>
+        </div>
+        <h3 class="mt-4 font-display text-2xl font-semibold leading-snug">confirma 100% das consultas, 24h antes — sem você levantar um dedo</h3>
+        <p class="mt-3 text-graphite-soft">manda a confirmação no horário certo, lê a resposta (mesmo "tô indo siiim ❤️"), atualiza a agenda e te avisa só do que precisa de você.</p>
+      </div>
+      <!-- 2 -->
+      <div class="bg-white rounded-2xl p-7 ring-1 ring-graphite/5 hover:ring-graphite/20 transition shadow-sm">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-rose-soft grid place-items-center text-rose-deep">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </div>
+          <span class="text-xs font-semibold tracking-wide uppercase text-graphite-muted">02 · reagenda</span>
+        </div>
+        <h3 class="mt-4 font-display text-2xl font-semibold leading-snug">reagenda no automático quando dá conflito</h3>
+        <p class="mt-3 text-graphite-soft">paciente avisou que não pode? a recepia já oferece os 3 próximos horários abertos. paciente escolhe. pronto, reagendado — você nem soube que existiu.</p>
+      </div>
+      <!-- 3 -->
+      <div class="bg-white rounded-2xl p-7 ring-1 ring-graphite/5 hover:ring-graphite/20 transition shadow-sm">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-sage/15 grid place-items-center text-sage-deep">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </div>
+          <span class="text-xs font-semibold tracking-wide uppercase text-graphite-muted">03 · recuperação</span>
+        </div>
+        <h3 class="mt-4 font-display text-2xl font-semibold leading-snug">recupera quem sumiu — sem ser chata</h3>
+        <p class="mt-3 text-graphite-soft">paciente que fez 4 sessões e desapareceu há 60 dias? mensagem carinhosa, no tom certo, pra trazer ela de volta. sem aquele "tô com saudade :)" que parece spam.</p>
+      </div>
+      <!-- 4 -->
+      <div class="bg-white rounded-2xl p-7 ring-1 ring-graphite/5 hover:ring-graphite/20 transition shadow-sm">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-rose-soft grid place-items-center text-rose-deep">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          </div>
+          <span class="text-xs font-semibold tracking-wide uppercase text-graphite-muted">04 · tom</span>
+        </div>
+        <h3 class="mt-4 font-display text-2xl font-semibold leading-snug">fala como sua clínica falaria — não como robô</h3>
+        <p class="mt-3 text-graphite-soft">você define o tom (formal, próximo, divertido), os emojis, até as gírias da sua região. a paciente não percebe que é automático — só percebe que é educado, rápido e útil.</p>
+      </div>
+    </div>
+
+    <!-- ============ Diferencial: produto completo ============ -->
+    <div class="mt-16 bg-graphite text-cream rounded-3xl overflow-hidden">
+      <div class="grid lg:grid-cols-2">
+        <div class="p-8 sm:p-12">
+          <span class="text-xs uppercase tracking-[0.2em] text-rose">e ainda vem com</span>
+          <h3 class="mt-3 font-display text-3xl sm:text-4xl font-semibold leading-tight">um sistema de clínica completo. <span class="italic">incluso.</span></h3>
+          <p class="mt-4 text-cream/75">enquanto os outros te cobram à parte por prontuário, papel e armazenamento de foto — a recepia já vem com tudo. pra você não precisar pagar 3 boletos diferentes pra rodar sua clínica.</p>
+          <ul class="mt-8 space-y-4">
+            <li class="flex gap-4">
+              <div class="shrink-0 w-9 h-9 rounded-lg bg-rose/20 grid place-items-center text-rose"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+              <div>
+                <div class="font-semibold">prontuário eletrônico</div>
+                <p class="text-sm text-cream/70">linha do tempo da paciente, anamnese, evolução, anexos. tudo num lugar só, criptografado, com audit log (lgpd art. 11 atendido).</p>
+              </div>
+            </li>
+            <li class="flex gap-4">
+              <div class="shrink-0 w-9 h-9 rounded-lg bg-rose/20 grid place-items-center text-rose"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+              <div>
+                <div class="font-semibold">fotos antes/depois com privacidade</div>
+                <p class="text-sm text-cream/70">upload, organização e armazenamento seguro com remoção automática de metadados. exporta em pdf de relatório de evolução.</p>
+              </div>
+            </li>
+            <li class="flex gap-4">
+              <div class="shrink-0 w-9 h-9 rounded-lg bg-rose/20 grid place-items-center text-rose"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6M9 16h6M9 8h6"/><rect x="4" y="2" width="16" height="20" rx="2"/></svg></div>
+              <div>
+                <div class="font-semibold">atestado, receituário e declaração em pdf</div>
+                <p class="text-sm text-cream/70">um clique gera o documento com a marca da clínica, marca d'água anti-vazamento e disponibilidade controlada por especialidade.</p>
+              </div>
+            </li>
+            <li class="flex gap-4">
+              <div class="shrink-0 w-9 h-9 rounded-lg bg-rose/20 grid place-items-center text-rose"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+              <div>
+                <div class="font-semibold">lgpd na engenharia, não no marketing</div>
+                <p class="text-sm text-cream/70">criptografia em repouso e em trânsito, audit log, exportação completa por paciente, contrato de operador assinado. a gente cumpre — não só fala que cumpre.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="bg-graphite/60 p-8 sm:p-12 border-t lg:border-t-0 lg:border-l border-cream/10 flex flex-col justify-center">
+          <span class="text-xs uppercase tracking-[0.2em] text-rose">funciona pra</span>
+          <h4 class="mt-3 font-display text-2xl font-semibold">5 especialidades, configurada pra cada uma</h4>
+          <p class="mt-3 text-cream/70 text-sm">cada vertical tem o formulário, o prontuário e o pdf certos. nada de campos de odonto na ficha de fisio.</p>
+          <div class="mt-6 grid grid-cols-2 gap-3">
+            <div class="bg-cream/[0.06] rounded-xl p-4 ring-1 ring-cream/10">
+              <div class="font-display text-lg">odonto</div>
+              <div class="text-xs text-cream/60 mt-0.5">odontograma · receituário</div>
+            </div>
+            <div class="bg-cream/[0.06] rounded-xl p-4 ring-1 ring-cream/10">
+              <div class="font-display text-lg">estética</div>
+              <div class="text-xs text-cream/60 mt-0.5">antes/depois · evolução</div>
+            </div>
+            <div class="bg-cream/[0.06] rounded-xl p-4 ring-1 ring-cream/10">
+              <div class="font-display text-lg">fisio</div>
+              <div class="text-xs text-cream/60 mt-0.5">avaliação · sessões</div>
+            </div>
+            <div class="bg-cream/[0.06] rounded-xl p-4 ring-1 ring-cream/10">
+              <div class="font-display text-lg">médico</div>
+              <div class="text-xs text-cream/60 mt-0.5">atestado · receita</div>
+            </div>
+            <div class="bg-cream/[0.06] rounded-xl p-4 ring-1 ring-cream/10 col-span-2">
+              <div class="font-display text-lg">psico</div>
+              <div class="text-xs text-cream/60 mt-0.5">declaração de comparecimento · evolução narrativa</div>
+            </div>
+          </div>
+          <p class="mt-6 text-xs text-cream/50 italic">vet em breve.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COMO FUNCIONA ============ -->
+<section class="py-20 sm:py-28 bg-cream-warm">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center max-w-2xl mx-auto">
+      <p class="text-xs uppercase tracking-[0.2em] text-rose-deep">como funciona</p>
+      <h2 class="mt-3 font-display text-4xl sm:text-5xl font-semibold leading-tight">em <em>48 horas</em> a recepia está rodando.<br/>sem você mexer em nada.</h2>
+    </div>
+
+    <div class="mt-14 grid md:grid-cols-3 gap-6">
+      <div class="bg-white rounded-2xl p-7 ring-1 ring-graphite/5">
+        <div class="font-display text-5xl font-semibold text-rose-deep">01</div>
+        <h3 class="mt-3 font-display text-xl font-semibold">você marca uma conversa de 15 min</h3>
+        <p class="mt-2 text-graphite-soft text-sm">a gente entende como sua clínica funciona, quais procedimentos vocês fazem, qual o tom da casa.</p>
+      </div>
+      <div class="bg-white rounded-2xl p-7 ring-1 ring-graphite/5 md:translate-y-4">
+        <div class="font-display text-5xl font-semibold text-rose-deep">02</div>
+        <h3 class="mt-3 font-display text-xl font-semibold">a gente instala. você não faz nada.</h3>
+        <p class="mt-2 text-graphite-soft text-sm">conectamos o whatsapp (criptografado, você desconecta a qualquer hora), configuramos templates, cadastramos seus serviços. tudo em até 2 dias úteis.</p>
+      </div>
+      <div class="bg-white rounded-2xl p-7 ring-1 ring-graphite/5">
+        <div class="font-display text-5xl font-semibold text-rose-deep">03</div>
+        <h3 class="mt-3 font-display text-xl font-semibold">você acompanha pelo celular</h3>
+        <p class="mt-2 text-graphite-soft text-sm">relatório toda segunda no seu whatsapp pessoal: confirmações da semana, faltas evitadas, dinheiro recuperado. sem login, sem complicação.</p>
+      </div>
+    </div>
+
+    <div class="mt-10 text-center text-sm text-graphite-soft flex flex-wrap justify-center gap-x-6 gap-y-2">
+      <span class="inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> setup feito pela nossa equipe</span>
+      <span class="inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> sem precisar baixar nada</span>
+      <span class="inline-flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> suporte humano por whatsapp</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COMPARATIVO ============ -->
+<section class="py-20 sm:py-28">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="max-w-2xl">
+      <p class="text-xs uppercase tracking-[0.2em] text-rose-deep">comparativo</p>
+      <h2 class="mt-3 font-display text-4xl sm:text-5xl font-semibold leading-tight">por que a recepia, e não <em>as outras opções</em>?</h2>
+    </div>
+
+    <div class="mt-12 overflow-x-auto -mx-6 px-6">
+      <table class="w-full min-w-[720px] text-sm border-separate border-spacing-0">
+        <thead>
+          <tr class="text-left text-xs uppercase tracking-wide text-graphite-muted">
+            <th class="py-4 pr-4 font-medium">critério</th>
+            <th class="py-4 px-4 font-medium bg-rose-soft/40 rounded-t-xl">
+              <span class="font-display text-base text-graphite normal-case tracking-normal">recepia</span>
+            </th>
+            <th class="py-4 px-4 font-medium">software de gestão</th>
+            <th class="py-4 px-4 font-medium">whatsapp manual</th>
+          </tr>
+        </thead>
+        <tbody class="text-graphite">
+          <tr class="border-t border-graphite/10">
+            <td class="py-4 pr-4 font-medium">foco</td>
+            <td class="py-4 px-4 bg-rose-soft/20">só recepção+agenda+clínica. faz bem.</td>
+            <td class="py-4 px-4 text-graphite-soft">faz de tudo. faz nada bem.</td>
+            <td class="py-4 px-4 text-graphite-soft">depende do humor do dia</td>
+          </tr>
+          <tr class="border-t border-graphite/10">
+            <td class="py-4 pr-4 font-medium">preço mensal</td>
+            <td class="py-4 px-4 bg-rose-soft/20 font-semibold">R$ 197</td>
+            <td class="py-4 px-4 text-graphite-soft">R$ 400–900+</td>
+            <td class="py-4 px-4 text-graphite-soft">R$ 0 (paga em horas de vida)</td>
+          </tr>
+          <tr class="border-t border-graphite/10">
+            <td class="py-4 pr-4 font-medium">setup</td>
+            <td class="py-4 px-4 bg-rose-soft/20 font-semibold">grátis (a gente faz)</td>
+            <td class="py-4 px-4 text-graphite-soft">R$ 1.500–5.000 + treino de 8h</td>
+            <td class="py-4 px-4 text-graphite-soft">grátis (e improvisado)</td>
+          </tr>
+          <tr class="border-t border-graphite/10">
+            <td class="py-4 pr-4 font-medium">confirma sozinho</td>
+            <td class="py-4 px-4 bg-rose-soft/20">✅ ia real, conversa de verdade</td>
+            <td class="py-4 px-4 text-graphite-soft">⚠️ sms que ninguém lê</td>
+            <td class="py-4 px-4 text-graphite-soft">❌ manual</td>
+          </tr>
+          <tr class="border-t border-graphite/10">
+            <td class="py-4 pr-4 font-medium">reagenda sozinho</td>
+            <td class="py-4 px-4 bg-rose-soft/20">✅ sim</td>
+            <td class="py-4 px-4 text-graphite-soft">❌ não</td>
+            <td class="py-4 px-4 text-graphite-soft">❌ não</td>
+          </tr>
+          <tr class="border-t border-graphite/10">
+            <td class="py-4 pr-4 font-medium">prontuário + pdf inclusos</td>
+            <td class="py-4 px-4 bg-rose-soft/20">✅ tudo no mesmo preço</td>
+            <td class="py-4 px-4 text-graphite-soft">⚠️ módulo à parte</td>
+            <td class="py-4 px-4 text-graphite-soft">❌ caderno na gaveta</td>
+          </tr>
+          <tr class="border-t border-graphite/10">
+            <td class="py-4 pr-4 font-medium">tempo até rodar</td>
+            <td class="py-4 px-4 bg-rose-soft/20 font-semibold">48 horas</td>
+            <td class="py-4 px-4 text-graphite-soft">2 a 4 semanas</td>
+            <td class="py-4 px-4 text-graphite-soft">"quando der"</td>
+          </tr>
+          <tr class="border-t border-graphite/10">
+            <td class="py-4 pr-4 font-medium">complexidade pra dona</td>
+            <td class="py-4 px-4 bg-rose-soft/20 rounded-b-xl">zero. a gente cuida.</td>
+            <td class="py-4 px-4 text-graphite-soft">alta. treino+login+abas.</td>
+            <td class="py-4 px-4 text-graphite-soft">zero — porque ela faz tudo</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-8 text-graphite-soft max-w-2xl">nada contra os outros. mas se você só quer <strong>agenda cheia e dormir tranquila</strong>, a recepia foi feita exatamente pra isso.</p>
+  </div>
+</section>
+
+<!-- ============ PLANOS / PRICING ============ -->
+<section id="pricing" class="py-24 sm:py-32 bg-cream relative overflow-hidden">
+  <div class="absolute inset-0 -z-10">
+    <div class="absolute top-20 -left-40 w-[560px] h-[560px] rounded-full bg-rose-soft/50 blur-3xl"></div>
+    <div class="absolute bottom-20 -right-40 w-[480px] h-[480px] rounded-full bg-sage/15 blur-3xl"></div>
+    <div class="absolute inset-0 grain opacity-30"></div>
+  </div>
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="max-w-2xl mx-auto text-center">
+      <span class="inline-flex items-center gap-2 text-[11px] font-medium tracking-wide uppercase text-rose-deep bg-rose-soft/40 px-3 py-1.5 rounded-full ring-1 ring-rose/20">
+        <span class="w-1.5 h-1.5 rounded-full bg-rose-deep"></span>
+        planos · sem letra miúda
+      </span>
+      <h2 class="mt-5 font-display text-4xl sm:text-6xl font-semibold leading-[1.05] tracking-tight">escolha o que cabe<br/><em class="italic font-normal text-graphite-soft">na sua clínica hoje</em>.</h2>
+      <p class="mt-6 text-graphite-soft text-lg leading-relaxed">a gente instala, importa pacientes, conecta o whatsapp e treina a ia. <strong class="text-graphite">7 dias grátis</strong> em qualquer plano. sem cartão, sem fidelidade, cancela na hora.</p>
+
+      <!-- Toggle mensal/anual -->
+      <div class="mt-8 inline-flex items-center gap-1 p-1 rounded-full bg-white ring-1 ring-graphite/10 shadow-sm">
+        <button id="bill-mensal" data-billing="mensal" class="bill-toggle px-5 py-2 rounded-full text-sm font-semibold transition bg-graphite text-cream">mensal</button>
+        <button id="bill-anual" data-billing="anual" class="bill-toggle px-5 py-2 rounded-full text-sm font-semibold transition text-graphite-soft hover:text-graphite flex items-center gap-2">
+          anual
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-sage/20 text-sage-deep text-[10px] font-bold uppercase tracking-wider">−17%</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="mt-16 grid lg:grid-cols-3 gap-6 lg:gap-6 items-stretch">
+      <!-- ESSENCIAL -->
+      <div class="relative bg-white rounded-3xl p-8 ring-1 ring-graphite/10 flex flex-col">
+        <div>
+          <h3 class="font-display text-2xl font-semibold text-graphite">Essencial</h3>
+          <p class="mt-2 text-sm text-graphite-soft">pra clínica solo ou dupla que quer parar de perder paciente.</p>
+        </div>
+        <div class="mt-6 pb-6 border-b border-graphite/10">
+          <div class="flex items-baseline gap-1">
+            <span class="font-display text-5xl font-semibold text-graphite">R$ 97</span>
+            <span class="text-graphite-muted text-sm">/mês</span>
+          </div>
+          <p class="mt-1 text-xs text-sage-deep font-medium">✨ 7 dias grátis · sem cartão</p>
+        </div>
+        <ul class="mt-6 space-y-3 text-sm text-graphite flex-1">
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>2 profissionais</strong> cadastrados</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>até <strong>100 pacientes ativos</strong></span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>agenda + ia 24h no whatsapp</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>confirmação + reagendamento automáticos</span></li>
+          <li class="flex gap-2 text-graphite-muted"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-graphite/5 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></span><span class="line-through">prontuário com fotos</span></li>
+          <li class="flex gap-2 text-graphite-muted"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-graphite/5 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></span><span class="line-through">atestado / receituário em PDF</span></li>
+        </ul>
+        <a href="#assinar-essencial" data-plano="essencial" class="cta-checkout mt-8 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-white text-graphite font-semibold ring-1 ring-graphite/15 hover:ring-graphite/40 transition">
+          começar essencial
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <!-- PRO (destaque) -->
+      <div class="relative bg-graphite text-cream rounded-3xl p-8 ring-1 ring-rose/40 flex flex-col shadow-2xl shadow-graphite/20 lg:-mt-4 lg:mb-0 lg:scale-[1.03]">
+        <span class="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose text-graphite text-[11px] font-bold uppercase tracking-wider">⭐ mais escolhido</span>
+        <div>
+          <h3 class="font-display text-2xl font-semibold text-cream">Pro</h3>
+          <p class="mt-2 text-sm text-cream/70">pra quem leva clínica a sério. tudo do essencial + prontuário + pdf.</p>
+        </div>
+        <div class="mt-6 pb-6 border-b border-cream/15">
+          <div class="flex items-baseline gap-1">
+            <span class="font-display text-5xl font-semibold text-cream">R$ 197</span>
+            <span class="text-cream/60 text-sm">/mês</span>
+          </div>
+          <p class="mt-1 text-xs text-sage font-medium">✨ 7 dias grátis · sem cartão</p>
+        </div>
+        <ul class="mt-6 space-y-3 text-sm text-cream/90 flex-1">
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/30 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#A8E29A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong class="text-cream">5 profissionais</strong> cadastrados</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/30 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#A8E29A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong class="text-cream">pacientes ilimitados</strong></span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/30 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#A8E29A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>tudo do essencial</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/30 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#A8E29A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong class="text-cream">prontuário</strong> com fotos antes/depois</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/30 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#A8E29A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>pacotes / sessões</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/30 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#A8E29A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>atestado, receituário, declaração em PDF</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/30 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#A8E29A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>relatórios + recall automático de pacientes</span></li>
+        </ul>
+        <a href="#assinar-pro" data-plano="pro" class="cta-checkout mt-8 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-rose text-graphite font-semibold hover:bg-rose-deep transition shadow-xl shadow-rose/30">
+          assinar pro agora
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <!-- ENTERPRISE -->
+      <div class="relative bg-white rounded-3xl p-8 ring-1 ring-graphite/10 flex flex-col">
+        <div>
+          <h3 class="font-display text-2xl font-semibold text-graphite">Enterprise</h3>
+          <p class="mt-2 text-sm text-graphite-soft">pra rede de clínicas / multi-unidade / volume alto.</p>
+        </div>
+        <div class="mt-6 pb-6 border-b border-graphite/10">
+          <div class="flex items-baseline gap-1">
+            <span class="font-display text-5xl font-semibold text-graphite">R$ 497</span>
+            <span class="text-graphite-muted text-sm">/mês</span>
+          </div>
+          <p class="mt-1 text-xs text-sage-deep font-medium">✨ 7 dias grátis · sem cartão</p>
+        </div>
+        <ul class="mt-6 space-y-3 text-sm text-graphite flex-1">
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>profissionais ilimitados</strong></span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>pacientes ilimitados</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>tudo do pro</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>multi-unidade</strong> (várias sedes)</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>api pra integração própria</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>white-label (seu logo no PDF e WhatsApp)</span></li>
+          <li class="flex gap-2"><span class="mt-1 shrink-0 w-4 h-4 rounded-full bg-sage/20 grid place-items-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5F8C4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>gerente de conta dedicado</span></li>
+        </ul>
+        <a href="#assinar-enterprise" data-plano="enterprise" class="cta-checkout mt-8 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-white text-graphite font-semibold ring-1 ring-graphite/15 hover:ring-graphite/40 transition">
+          assinar enterprise
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-12 text-center">
+      <p class="text-sm text-graphite-soft">não tem certeza ainda? <a href="https://wa.me/5511999999999?text=oi%2C%20quero%20tirar%20d%C3%BAvida%20sobre%20os%20planos%20da%20recepia" target="_blank" rel="noopener" class="text-rose-deep font-medium underline underline-offset-4">manda mensagem no whatsapp</a> que a gente conversa.</p>
+      <p class="mt-3 text-xs text-graphite-muted">⚡ 7 dias grátis em qualquer plano · cancela quando quiser · sem multa, sem letra miúda</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ DEPOIMENTOS ============ -->
+<section class="py-20 sm:py-28 bg-cream-warm relative overflow-hidden">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="max-w-2xl">
+      <p class="text-xs uppercase tracking-[0.2em] text-rose-deep">depoimentos</p>
+      <h2 class="mt-3 font-display text-4xl sm:text-5xl font-semibold leading-tight">quem já trocou o caos pela <em>recepia</em>:</h2>
+    </div>
+
+    <div class="mt-12 grid md:grid-cols-3 gap-6">
+      <figure class="bg-white rounded-2xl p-7 ring-1 ring-graphite/5 flex flex-col">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="#E8B4B8" class="opacity-70"><path d="M9.13 8H5.1c.16-3.06 1.36-4.46 3.79-5.05.39-.1.79.13.91.51.13.39-.06.81-.44.97-1.43.59-2.04 1.47-2.18 3.07h1.95c.55 0 1 .45 1 1V11c0 .55-.45 1-1 1H5.1c-.55 0-1-.45-1-1V9c0-.55.45-1 1-1z M18.13 8h-4.03c.16-3.06 1.36-4.46 3.79-5.05.39-.1.79.13.91.51.13.39-.06.81-.44.97-1.43.59-2.04 1.47-2.18 3.07h1.95c.55 0 1 .45 1 1V11c0 .55-.45 1-1 1h-4.03c-.55 0-1-.45-1-1V9c0-.55.45-1 1-1z"/></svg>
+        <blockquote class="mt-4 text-graphite leading-relaxed flex-1">"eu não acreditava que uma ia conseguiria responder do jeito que minhas clientes gostam. já tinha tentado um robô antes e foi um desastre. a recepia é diferente — chegou paciente me perguntando 'quem é essa carol, ela é nova?'. em 2 meses, minhas faltas caíram de 8 por semana pra 2."</blockquote>
+        <figcaption class="mt-5 pt-5 border-t border-graphite/10">
+          <div class="font-semibold">mariana costa</div>
+          <div class="text-sm text-graphite-muted">espaço mariana costa estética · belo horizonte/mg</div>
+        </figcaption>
+      </figure>
+      <figure class="bg-white rounded-2xl p-7 ring-1 ring-graphite/5 flex flex-col md:translate-y-6">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="#E8B4B8" class="opacity-70"><path d="M9.13 8H5.1c.16-3.06 1.36-4.46 3.79-5.05.39-.1.79.13.91.51.13.39-.06.81-.44.97-1.43.59-2.04 1.47-2.18 3.07h1.95c.55 0 1 .45 1 1V11c0 .55-.45 1-1 1H5.1c-.55 0-1-.45-1-1V9c0-.55.45-1 1-1z M18.13 8h-4.03c.16-3.06 1.36-4.46 3.79-5.05.39-.1.79.13.91.51.13.39-.06.81-.44.97-1.43.59-2.04 1.47-2.18 3.07h1.95c.55 0 1 .45 1 1V11c0 .55-.45 1-1 1h-4.03c-.55 0-1-.45-1-1V9c0-.55.45-1 1-1z"/></svg>
+        <blockquote class="mt-4 text-graphite leading-relaxed flex-1">"sabe o que mudou? eu volto a almoçar em paz. antes era whatsapp aberto o tempo todo, atendendo cliente no semáforo. agora chego em casa às 19h e o celular não toca mais. a agenda lota sozinha."</blockquote>
+        <figcaption class="mt-5 pt-5 border-t border-graphite/10">
+          <div class="font-semibold">juliana rezende</div>
+          <div class="text-sm text-graphite-muted">clínica renovo · curitiba/pr</div>
+        </figcaption>
+      </figure>
+      <figure class="bg-white rounded-2xl p-7 ring-1 ring-graphite/5 flex flex-col">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="#E8B4B8" class="opacity-70"><path d="M9.13 8H5.1c.16-3.06 1.36-4.46 3.79-5.05.39-.1.79.13.91.51.13.39-.06.81-.44.97-1.43.59-2.04 1.47-2.18 3.07h1.95c.55 0 1 .45 1 1V11c0 .55-.45 1-1 1H5.1c-.55 0-1-.45-1-1V9c0-.55.45-1 1-1z M18.13 8h-4.03c.16-3.06 1.36-4.46 3.79-5.05.39-.1.79.13.91.51.13.39-.06.81-.44.97-1.43.59-2.04 1.47-2.18 3.07h1.95c.55 0 1 .45 1 1V11c0 .55-.45 1-1 1h-4.03c-.55 0-1-.45-1-1V9c0-.55.45-1 1-1z"/></svg>
+        <blockquote class="mt-4 text-graphite leading-relaxed flex-1">"fiz a conta. em 3 meses recuperei R$ 11 mil em consultas que teriam virado falta. pago R$ 197 e ganho de volta uns 15x isso, todo mês. devia ter feito antes."</blockquote>
+        <figcaption class="mt-5 pt-5 border-t border-graphite/10">
+          <div class="font-semibold">patrícia almeida</div>
+          <div class="text-sm text-graphite-muted">clínica bella pelle · ribeirão preto/sp</div>
+        </figcaption>
+      </figure>
+    </div>
+    <p class="mt-10 text-center text-sm text-graphite-muted italic">depoimentos das primeiras clínicas alfa. quer ser a próxima? cadastra e ganha 7 dias grátis na hora.</p>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="py-20 sm:py-28 bg-cream-warm">
+  <div class="max-w-3xl mx-auto px-6">
+    <div class="max-w-2xl">
+      <p class="text-xs uppercase tracking-[0.2em] text-rose-deep">faq</p>
+      <h2 class="mt-3 font-display text-4xl sm:text-5xl font-semibold leading-tight">perguntas que toda dona faz <em>antes de fechar</em>:</h2>
+    </div>
+
+    <div class="mt-10 divide-y divide-graphite/10 bg-white rounded-2xl ring-1 ring-graphite/5">
+      <details class="group p-6">
+        <summary class="flex justify-between items-center gap-4">
+          <span class="font-display text-lg font-semibold">o whatsapp pode banir minha conta por usar isso?</span>
+          <span class="faq-plus text-2xl text-rose-deep leading-none">+</span>
+        </summary>
+        <p class="mt-3 text-graphite-soft leading-relaxed">pergunta séria. a recepia opera dentro das diretrizes do whatsapp: só fala com pacientes que já são suas clientes (opt-in implícito), respeita limites de envio, nunca faz spam ou prospecção fria. em 5.000+ confirmações processadas, nenhuma cliente teve a conta banida. quando você ultrapassa 500 atendimentos/mês, migramos pro whatsapp business api oficial sem custo adicional.</p>
+      </details>
+      <details class="group p-6">
+        <summary class="flex justify-between items-center gap-4">
+          <span class="font-display text-lg font-semibold">funciona pra outras especialidades além da estética?</span>
+          <span class="faq-plus text-2xl text-rose-deep leading-none">+</span>
+        </summary>
+        <p class="mt-3 text-graphite-soft leading-relaxed">sim — funciona pra odonto, fisio, médica, estética e psico. cada vertical vem com o formulário de paciente, o prontuário e os pdfs (atestado, receituário, declaração) certos pra ela. vet ainda não — vem em breve.</p>
+      </details>
+      <details class="group p-6">
+        <summary class="flex justify-between items-center gap-4">
+          <span class="font-display text-lg font-semibold">e se eu quiser cancelar?</span>
+          <span class="faq-plus text-2xl text-rose-deep leading-none">+</span>
+        </summary>
+        <p class="mt-3 text-graphite-soft leading-relaxed">cancela quando quiser, sem multa. é só mandar um whatsapp dizendo "quero pausar". a próxima mensalidade não é cobrada, devolvemos os dados das suas pacientes em csv e desconectamos tudo.</p>
+      </details>
+      <details class="group p-6">
+        <summary class="flex justify-between items-center gap-4">
+          <span class="font-display text-lg font-semibold">vocês têm contato com minhas pacientes? isso é seguro?</span>
+          <span class="faq-plus text-2xl text-rose-deep leading-none">+</span>
+        </summary>
+        <p class="mt-3 text-graphite-soft leading-relaxed">não. a recepia conversa com suas pacientes, mas a equipe humana nunca acessa as conversas, dados pessoais, prontuários ou histórico. sistema isolado por clínica. assinamos contrato de operador de dados (lgpd) com você no início, formalizando exatamente isso.</p>
+      </details>
+      <details class="group p-6">
+        <summary class="flex justify-between items-center gap-4">
+          <span class="font-display text-lg font-semibold">e a lgpd? vocês estão regularizados?</span>
+          <span class="faq-plus text-2xl text-rose-deep leading-none">+</span>
+        </summary>
+        <p class="mt-3 text-graphite-soft leading-relaxed">sim. somos enquadrados como operador de dados (você é controladora, suas pacientes são titulares). temos: contrato operador assinado, política de privacidade pública, registro de tratamento, criptografia em repouso e em trânsito, audit log de todos os acessos, canal pra atender direitos do titular. se uma paciente pedir pra ser esquecida, apagamos em até 15 dias úteis.</p>
+      </details>
+      <details class="group p-6">
+        <summary class="flex justify-between items-center gap-4">
+          <span class="font-display text-lg font-semibold">a ia realmente entende as pacientes? e se ela errar?</span>
+          <span class="faq-plus text-2xl text-rose-deep leading-none">+</span>
+        </summary>
+        <p class="mt-3 text-graphite-soft leading-relaxed">a recepia usa um modelo de linguagem afinado pra português brasileiro coloquial — entende áudio, emoji, gíria e abreviação. em casos de dúvida, escala automaticamente pra você no whatsapp pessoal: "mariana perguntou X, você quer responder?". você decide se assume ou deixa a ia continuar.</p>
+      </details>
+      <details class="group p-6">
+        <summary class="flex justify-between items-center gap-4">
+          <span class="font-display text-lg font-semibold">quanto tempo até eu ver resultado?</span>
+          <span class="faq-plus text-2xl text-rose-deep leading-none">+</span>
+        </summary>
+        <p class="mt-3 text-graphite-soft leading-relaxed">confirmações automáticas começam no dia 1. redução real de no-show você vê na semana 2-3 (precisa rodar um ciclo completo). recuperação financeira mensurável geralmente na semana 4-6. se em 30 dias você não viu diferença, devolvemos seu dinheiro.</p>
+      </details>
+      <details class="group p-6">
+        <summary class="flex justify-between items-center gap-4">
+          <span class="font-display text-lg font-semibold">posso testar antes de pagar?</span>
+          <span class="faq-plus text-2xl text-rose-deep leading-none">+</span>
+        </summary>
+        <p class="mt-3 text-graphite-soft leading-relaxed">sim! quando você cadastra a clínica, libera <strong>7 dias grátis</strong> automaticamente — sem cartão de crédito, sem ligação de vendedor. você usa o sistema completo (agenda, prontuário, PDF, IA no WhatsApp). depois dos 7 dias, escolhe um plano pra continuar. se não escolher, a conta fica em standby — seus dados ficam guardados, mas sem novos acessos.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAMADA DE LOGIN (já é cliente?) ============ -->
+<section id="entrar" class="py-14 bg-cream-warm border-y border-graphite/10">
+  <div class="max-w-5xl mx-auto px-6">
+    <div class="bg-white rounded-3xl ring-1 ring-graphite/10 shadow-xl shadow-graphite/5 overflow-hidden">
+      <div class="grid md:grid-cols-[1.2fr_1fr] items-stretch">
+        <!-- Lado esquerdo: mensagem -->
+        <div class="p-8 sm:p-10">
+          <span class="inline-flex items-center gap-2 text-[11px] font-medium tracking-wide uppercase text-sage-deep bg-sage/15 px-3 py-1.5 rounded-full">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+            área restrita pra clientes
+          </span>
+          <h3 class="mt-4 font-display text-3xl sm:text-4xl font-semibold leading-tight text-graphite">já é cliente da <span class="font-display italic">recepia</span>?</h3>
+          <p class="mt-3 text-graphite-soft">acesse o painel da sua clínica pra ver a agenda do dia, conferir prontuários, gerar atestados e acompanhar o que a IA conversou com suas pacientes.</p>
+        </div>
+        <!-- Lado direito: CTA -->
+        <div class="p-8 sm:p-10 bg-gradient-to-br from-graphite to-[#1F2335] text-cream flex flex-col justify-center">
+          <a href="/dashboard/" class="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-rose text-graphite font-bold hover:bg-rose-deep transition shadow-xl shadow-rose/20 text-base">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            entrar no meu painel
+          </a>
+          <a href="https://wa.me/5511999999999?text=oi%2C%20esqueci%20minha%20senha%20da%20recepia" target="_blank" rel="noopener" class="mt-3 text-center text-xs text-cream/70 hover:text-cream underline underline-offset-2">esqueci minha senha</a>
+          <p class="mt-4 text-[11px] text-cream/50 text-center">login com o email e senha que a equipe da recepia te enviou no setup.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA FINAL ============ -->
+<section id="cta-final" class="py-20 sm:py-28 bg-graphite text-cream relative overflow-hidden">
+  <div class="absolute inset-0 -z-10">
+    <div class="absolute -top-32 left-1/3 w-[420px] h-[420px] rounded-full bg-rose/20 blur-3xl"></div>
+    <div class="absolute -bottom-32 right-10 w-[320px] h-[320px] rounded-full bg-sage/15 blur-3xl"></div>
+  </div>
+  <div class="max-w-3xl mx-auto px-6 text-center">
+    <h2 class="font-display text-4xl sm:text-6xl font-semibold leading-[1.05]">sua próxima paciente vai faltar amanhã.<br/><span class="italic text-rose-soft">ou não.</span></h2>
+    <p class="mt-6 text-cream/80 text-lg max-w-2xl mx-auto">toda semana que você adia, é mais R$ 1.000+ que vai pro ralo. a recepia leva 48h pra começar a operar. a primeira confirmação automática sai amanhã. a primeira no-show evitada, ainda essa semana.</p>
+
+    <div class="mt-10 bg-cream/[0.06] backdrop-blur rounded-3xl p-6 sm:p-8 ring-1 ring-cream/10">
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <a href="#pricing" class="plausible-event-name=CTA+Cadastro inline-flex items-center gap-2 px-7 py-4 rounded-full bg-rose text-graphite font-semibold hover:bg-rose-deep transition shadow-xl shadow-rose/20">
+          escolher meu plano
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+        <a href="https://wa.me/5511999999999?text=oi%2C%20quero%20tirar%20uma%20d%C3%BAvida%20sobre%20a%20recepia" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-whatsapp text-white font-medium hover:opacity-90 transition">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91a9.86 9.86 0 0 0-2.9-7.01A9.82 9.82 0 0 0 12.04 2z"/></svg>
+          tirar dúvida
+        </a>
+      </div>
+      <p class="mt-4 text-sm text-cream/60">7 dias grátis · sem cartão · cancela quando quiser · sem letra miúda</p>
+      <div class="mt-6 pt-6 border-t border-cream/10 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-cream/70">
+        <span class="inline-flex items-center gap-2">⚡ resposta em até 2h em horário comercial</span>
+        <span class="inline-flex items-center gap-2">🤝 atendido por gente, não por bot (ironicamente)</span>
+      </div>
+    </div>
+
+    <p class="mt-8 text-sm text-cream/60 italic">🎁 cadastra agora e ganha 7 dias grátis na hora, sem cartão. se gostar, escolhe um plano. se não, paga zero.</p>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="bg-cream py-14 border-t border-graphite/10">
+  <div class="max-w-6xl mx-auto px-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+    <div>
+      <a href="#" class="font-display text-2xl font-semibold tracking-tight text-graphite">recep<span class="logo-dot"></span>a</a>
+      <p class="mt-3 text-sm text-graphite-soft italic">sua recepcionista que nunca dorme.</p>
+      <div class="mt-4 text-sm text-graphite-soft space-y-1">
+        <div>recepia.app.br</div>
+        <div>contato@recepia.app.br</div>
+      </div>
+    </div>
+    <div>
+      <div class="text-xs uppercase tracking-wider text-graphite-muted">produto</div>
+      <ul class="mt-3 space-y-2 text-sm">
+        <li><a href="#" class="hover:text-rose-deep">como funciona</a></li>
+        <li><a href="#pricing" class="hover:text-rose-deep">preços</a></li>
+        <li><a href="#faq" class="hover:text-rose-deep">faq</a></li>
+        <li><a href="/entrar" class="hover:text-rose-deep font-semibold inline-flex items-center gap-1">já é cliente? entrar →</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="text-xs uppercase tracking-wider text-graphite-muted">empresa</div>
+      <ul class="mt-3 space-y-2 text-sm">
+        <li><a href="#" class="hover:text-rose-deep">sobre a recepia</a></li>
+        <li><a href="#" class="hover:text-rose-deep">blog <span class="text-graphite-muted">(em breve)</span></a></li>
+        <li><a href="#" class="hover:text-rose-deep">indique e ganhe 15%</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="text-xs uppercase tracking-wider text-graphite-muted">legal & confiança</div>
+      <ul class="mt-3 space-y-2 text-sm">
+        <li><a href="/privacidade" class="hover:text-rose-deep">política de privacidade</a></li>
+        <li><a href="/termos" class="hover:text-rose-deep">termos de uso</a></li>
+        <li><a href="#" class="hover:text-rose-deep">contrato de operador (lgpd)</a></li>
+        <li><a href="#" class="hover:text-rose-deep">canal lgpd / dpo</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="max-w-6xl mx-auto px-6 mt-12 pt-6 border-t border-graphite/10 text-center text-xs text-graphite-muted">
+    © 2026 recepia tecnologia ltda · cnpj XX.XXX.XXX/0001-XX<br/>
+    feito no brasil 🇧🇷 com café e muito carinho por donas de clínica.<br/>
+    <span class="italic">recepia não é afiliada à meta platforms inc. whatsapp é marca registrada da meta.</span>
+  </div>
+</footer>
+
+<!-- ============================================================
+     CHECKOUT LINKS — TROCAR QUANDO TIVER PROVEDOR DEFINIDO
+     ============================================================
+     Hoje os 3 botões de "assinar" usam placeholders #assinar-X.
+     Pra apontar pro checkout real (Asaas hosted, Hotmart, Kirvano,
+     Stripe Payment Link, etc), troque os hrefs OU deixe o script
+     abaixo redirecionar dinâmicamente. Basta preencher os 3 URLs.
+============================================================ -->
+<script>
+  // TROCAR PRO LINK HOTMART quando definido
+  const CHECKOUT_URLS = {
+    essencial:  '',  // ex: 'https://pay.hotmart.com/XXXXXXX'
+    pro:        '',  // TROCAR PRO LINK HOTMART quando definido
+    enterprise: '',  // TROCAR PRO LINK HOTMART quando definido
+  };
+  document.querySelectorAll('.cta-checkout').forEach(a => {
+    const plano = a.dataset.plano;
+    const url = CHECKOUT_URLS[plano];
+    if (url) {
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+    } else {
+      // sem URL definido → manda pro WhatsApp dizendo qual plano quer
+      a.href = `https://wa.me/5511999999999?text=${encodeURIComponent('oi, quero assinar o plano ' + plano + ' da recepia')}`;
+      a.target = '_blank';
+      a.rel = 'noopener';
+    }
+  });
+</script>
+
+</body>
+</html>

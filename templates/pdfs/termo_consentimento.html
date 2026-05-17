@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block titulo_html %}Termo de Consentimento · {{ paciente.nome | e }}{% endblock %}
+
+{% block titulo %}
+<h1 class="titulo" style="text-align:center; font-size: 22pt; letter-spacing: 2px;">TERMO DE CONSENTIMENTO INFORMADO</h1>
+{% endblock %}
+
+{% block conteudo %}
+<p class="formal" style="text-indent:0; margin-top:8px;">
+  Eu, <strong>{{ paciente.nome | e }}</strong>,
+  portador(a) do CPF <strong>{% if paciente.cpf %}{{ paciente.cpf | cpf }}{% else %}—{% endif %}</strong>,
+  RG <strong>{% if paciente.rg %}{{ paciente.rg | e }}{% else %}—{% endif %}</strong>,
+  residente em
+  <strong>{% if paciente.endereco_rua and paciente.endereco_rua != '—' %}{{ paciente.endereco_rua | e }}{% if paciente.endereco_numero and paciente.endereco_numero != '—' %}, {{ paciente.endereco_numero | e }}{% endif %}{% if paciente.endereco_cidade and paciente.endereco_cidade != '—' %} — {{ paciente.endereco_cidade | e }}{% if paciente.endereco_uf and paciente.endereco_uf != '—' %}/{{ paciente.endereco_uf | e }}{% endif %}{% endif %}{% else %}—{% endif %}</strong>,
+  DECLARO ter sido devidamente informado(a) pelo(a) profissional
+  <strong>{% if clinica.responsavel_tecnico %}{{ clinica.responsavel_tecnico | e }}{% else %}—{% endif %}</strong>,
+  registro profissional
+  <strong>{% if clinica.registro_conselho %}{{ clinica.registro_conselho | e }}{% else %}—{% endif %}</strong>,
+  sobre o procedimento abaixo descrito:
+</p>
+
+<div class="box" style="margin-top:10px;">
+  <strong>Procedimento:</strong> {{ procedimento | e }}
+</div>
+
+<h2 class="secao" style="font-size:12pt; margin:14px 0 6px 0;">Possíveis riscos e complicações</h2>
+<p style="text-align:justify; margin:0 0 8px 0; font-size:10.5pt; line-height:1.5;">
+  {% if riscos %}{{ riscos | e }}{% else %}Conforme orientação verbal do profissional, os riscos inerentes ao procedimento, suas limitações e eventuais complicações foram explicados de forma clara, em linguagem acessível, sendo todas as dúvidas sanadas previamente.{% endif %}
+</p>
+
+<h2 class="secao" style="font-size:12pt; margin:12px 0 6px 0;">Cuidados pós-procedimento</h2>
+<p style="text-align:justify; margin:0 0 8px 0; font-size:10.5pt; line-height:1.5;">
+  {% if cuidados_pos %}{{ cuidados_pos | e }}{% else %}Comprometo-me a seguir rigorosamente as orientações pós-procedimento repassadas pelo(a) profissional, incluindo higiene, medicação prescrita, restrições alimentares e de esforço, bem como comparecer aos retornos agendados para acompanhamento.{% endif %}
+</p>
+
+<p class="formal" style="text-indent:0; margin:14px 0 0 0; font-size:11pt;">
+  Diante das informações prestadas, <strong>AUTORIZO</strong> a realização do procedimento mencionado, ciente dos benefícios esperados, dos riscos inerentes e das alternativas disponíveis. Comprometo-me a seguir as orientações pós-operatórias e a comparecer aos retornos agendados.
+</p>
+
+<div class="local-data" style="margin-top:20px;">
+  {% if clinica.endereco_cidade and clinica.endereco_cidade != '—' %}{{ clinica.endereco_cidade | e }}, {% endif %}{{ data | br_data }}.
+</div>
+
+<table style="width:100%; margin-top:48px; border-collapse:collapse;">
+  <tr>
+    <td style="width:48%; text-align:center; vertical-align:top; padding:0 8px;">
+      <div style="border-top:1px solid #1a1a1a; padding-top:4px; font-size:10pt;">
+        <div style="font-weight:600;">Paciente / Responsável legal</div>
+      </div>
+    </td>
+    <td style="width:4%;"></td>
+    <td style="width:48%; text-align:center; vertical-align:top; padding:0 8px;">
+      <div style="border-top:1px solid #1a1a1a; padding-top:4px; font-size:10pt;">
+        <div style="font-weight:600;">{% if clinica.responsavel_tecnico %}{{ clinica.responsavel_tecnico | e }}{% else %}—{% endif %}</div>
+        <div style="color:#555; font-size:9.5pt;">{% if clinica.registro_conselho %}{{ clinica.registro_conselho | e }}{% endif %}</div>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<p style="margin-top:24px; font-size:8.5pt; color:#666; text-align:center;">
+  Este termo segue o disposto no Art. 22 do Código de Ética Odontológica / Médica e na Resolução CFM 1.890/2009 quando aplicável.
+</p>
+{% endblock %}

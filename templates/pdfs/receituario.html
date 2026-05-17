@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titulo_html %}Receituário · {{ paciente.nome | e }}{% endblock %}
+
+{% block titulo %}
+<h1 class="titulo" style="text-align:center; font-size: 30pt; letter-spacing: 3px;">RECEITUÁRIO</h1>
+{% endblock %}
+
+{% block conteudo %}
+<div class="box">
+  <div class="field">
+    <span class="lbl">Paciente</span>
+    <span class="val">{{ paciente.nome | e }}</span>
+  </div>
+  {% if paciente.data_nascimento %}
+  <div class="field">
+    <span class="lbl">Nascimento</span>
+    <span class="val">{{ paciente.data_nascimento | br_data }}{% if paciente.data_nascimento | idade %} ({{ paciente.data_nascimento | idade }} anos){% endif %}</span>
+  </div>
+  {% endif %}
+  {% if paciente.cpf %}
+  <div class="field">
+    <span class="lbl">CPF</span>
+    <span class="val">{{ paciente.cpf | cpf }}</span>
+  </div>
+  {% endif %}
+</div>
+
+<h2 class="secao">Prescrição</h2>
+<pre class="prescricao">{{ prescricao | e }}</pre>
+
+<div class="local-data">
+  {% if clinica.endereco_cidade %}{{ clinica.endereco_cidade | e }}, {% endif %}{{ data_emissao | br_data }}.
+</div>
+
+<div class="assinatura">
+  <div class="linha">
+    <div class="nome">{% if clinica.responsavel_tecnico %}{{ clinica.responsavel_tecnico | e }}{% else %}—{% endif %}</div>
+    <div class="registro">{% if clinica.registro_conselho %}{{ clinica.registro_conselho | e }}{% endif %}</div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+# API
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic[email]==2.10.0
+pydantic-settings==2.6.1
+
+# Database
+sqlalchemy==2.0.35
+psycopg2-binary==2.9.10
+alembic==1.13.3
+
+# Auth
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1  # passlib 1.7.4 incompatível com bcrypt 4.1+ (truncamento mudou)
+
+# WhatsApp + LLM
+httpx==0.28.0
+groq==0.13.0
+
+# Scheduler
+apscheduler==3.10.4
+setuptools>=70
+
+# Rate limiting
+slowapi==0.1.9
+
+# Util
+python-dotenv==1.0.0
+python-multipart==0.0.12
+
+# Image processing (Sprint 1 D4 — fotos de prontuário)
+Pillow==10.4.0
+
+# PDF generation (Sprint 2 — atestado, prontuário, declaração de comparecimento)
+weasyprint==62.3
+pydyf==0.10.0  # WeasyPrint 62.3 quebra com pydyf>=0.11 (AttributeError no Stream.transform)
+Jinja2==3.1.4

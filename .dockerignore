@@ -1,0 +1,42 @@
+# Env / secrets — NUNCA copiar pra imagem
+.env
+.env.*
+!.env.example
+
+# Banco local
+*.db
+*.sqlite
+*.sqlite3
+clinic_scheduler.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtualenv
+venv/
+.venv/
+env/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Docs internos
+PLANO_ADAPTACAO.md
+AUDIT_*.md
+tests/
+README.md
