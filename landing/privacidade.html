@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Política de Privacidade — recepia</title>
+<meta name="description" content="Política de privacidade da recepia: como a gente coleta, usa e protege os dados das clínicas e das pacientes." />
+<meta name="robots" content="index,follow" />
+<link rel="canonical" href="https://app.recepia.app.br/privacidade">
+
+<!-- Plausible Analytics (LGPD-friendly, sem cookies) -->
+<!-- TODO: trocar 'app.recepia.app.br' pelo domínio definido no painel Plausible -->
+<script defer data-domain="app.recepia.app.br" src="https://plausible.io/js/script.tagged-events.outbound-links.js"></script>
+<script>window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          rose: { DEFAULT: '#E8B4B8', deep: '#D89195', soft: '#F5DDDE' },
+          graphite: { DEFAULT: '#2D3142', soft: '#5C5552', muted: '#7A7570' },
+          sage: { DEFAULT: '#7FB069', deep: '#5F8C4E' },
+          cream: { DEFAULT: '#FAF7F5', warm: '#F2EBE5' },
+          whatsapp: '#25D366',
+        },
+        fontFamily: {
+          serif: ['Fraunces', 'Georgia', 'serif'],
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  }
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', system-ui, sans-serif; color: #2D3142; background: #FAF7F5; -webkit-font-smoothing: antialiased; }
+  .font-display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; }
+  .logo-dot { display: inline-block; width: 0.42em; height: 0.42em; border-radius: 999px; background: #E8B4B8; vertical-align: 0.55em; margin-left: -0.05em; margin-right: 0.02em; }
+  .prose-recepia h2 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 1.5rem; line-height: 1.2; margin-top: 2.25rem; margin-bottom: 0.75rem; color: #2D3142; }
+  .prose-recepia p { color: #5C5552; line-height: 1.7; margin-bottom: 1rem; }
+  .prose-recepia ul { list-style: disc; padding-left: 1.25rem; color: #5C5552; margin-bottom: 1rem; }
+  .prose-recepia ul li { margin-bottom: 0.35rem; line-height: 1.6; }
+  .prose-recepia a { color: #D89195; text-decoration: underline; text-underline-offset: 3px; }
+  .prose-recepia strong { color: #2D3142; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; background: #F5DDDE; color: #2D3142; padding: 0.25rem 0.65rem; border-radius: 999px; }
+</style>
+</head>
+<body class="bg-cream text-graphite">
+
+<!-- Header -->
+<header class="border-b border-graphite/10 bg-cream">
+  <div class="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+    <a href="/" class="font-display text-2xl font-semibold tracking-tight text-graphite">recep<span class="logo-dot"></span>a</a>
+    <a href="/" class="inline-flex items-center gap-1.5 text-sm font-medium text-graphite-soft hover:text-graphite transition">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      voltar pra home
+    </a>
+  </div>
+</header>
+
+<!-- Conteúdo -->
+<main class="max-w-3xl mx-auto px-6 py-12">
+  <p class="text-xs uppercase tracking-wider text-graphite-muted">documentos legais</p>
+  <h1 class="mt-2 font-display text-4xl sm:text-5xl font-semibold leading-tight">Política de Privacidade</h1>
+  <p class="mt-3 text-sm text-graphite-muted">Última atualização: 17 de maio de 2026</p>
+
+  <div class="prose-recepia mt-8">
+    <p>Essa política descreve como a <strong>Recepia Tecnologia Ltda.</strong> coleta, usa, armazena e compartilha dados pessoais. A gente leva privacidade a sério porque a maior parte do que a recepia processa é informação sensível: nome, telefone, histórico de consulta e, em muitos casos, dados de saúde de pacientes. Tudo isso é tratado conforme a <strong>LGPD (Lei nº 13.709/2018)</strong>.</p>
+
+    <h2>1. Quais dados a gente coleta</h2>
+    <p>A gente coleta dois grupos de dados:</p>
+    <ul>
+      <li><strong>Dados da clínica contratante (Cliente):</strong> nome do responsável, CNPJ ou CPF, email, telefone, endereço e dados de pagamento (esses últimos só na Hotmart, a gente nem vê).</li>
+      <li><strong>Dados das pacientes da clínica:</strong> nome, telefone, mensagens trocadas no WhatsApp, agendamentos, prontuários, fotos clínicas e PDFs enviados pelo Cliente.</li>
+    </ul>
+    <p>A coleta acontece quando: o Cliente cria conta, configura a plataforma, importa pacientes ou quando uma paciente conversa com a recepia pelo WhatsApp.</p>
+
+    <h2>2. Pra que a gente usa esses dados</h2>
+    <ul>
+      <li><strong>Operacional:</strong> executar as funções do serviço (confirmar consulta, agendar, gerar atestado, etc).</li>
+      <li><strong>Marketing transacional:</strong> mandar emails sobre cobranças, mudanças de plano, novidades de produto e avisos de segurança. Esses emails não dá pra descadastrar — fazem parte da relação contratual.</li>
+      <li><strong>Remarketing e ofertas:</strong> caso o Cliente concorde no momento do cadastro, a gente pode mandar conteúdos educativos e promoções. Esse consentimento pode ser revogado a qualquer momento pelo painel ou por email.</li>
+      <li><strong>Melhoria do produto:</strong> métricas agregadas e anonimizadas pra entender uso e priorizar funcionalidades.</li>
+    </ul>
+
+    <h2>3. Com quem a gente compartilha</h2>
+    <p>A Recepia não vende dados pessoais — nunca. O compartilhamento acontece só com prestadores de serviço estritamente necessários pra entrega do produto:</p>
+    <ul>
+      <li><strong>Hotmart:</strong> processamento de pagamentos (dados de cobrança).</li>
+      <li><strong>OpenAI e Groq:</strong> provedores de modelos de linguagem (LLM) que processam as mensagens em tempo real. Os dados não são usados pra treinar modelos (configuração contratual).</li>
+      <li><strong>Evolution API e Meta (WhatsApp):</strong> envio e recebimento de mensagens.</li>
+      <li><strong>Provedores de infraestrutura:</strong> hospedagem em servidores nacionais e backups.</li>
+    </ul>
+    <p>Todos os parceiros operam sob acordos de confidencialidade e cláusulas de proteção de dados.</p>
+
+    <h2>4. Direitos do Titular (LGPD Art. 18)</h2>
+    <p>Qualquer pessoa cujos dados estão na plataforma — Cliente ou paciente — tem direito a:</p>
+    <ul>
+      <li>confirmar se a gente trata seus dados;</li>
+      <li>acessar os dados que a gente guarda;</li>
+      <li>corrigir dados incompletos, inexatos ou desatualizados;</li>
+      <li>solicitar anonimização, bloqueio ou eliminação;</li>
+      <li>pedir portabilidade pra outro fornecedor;</li>
+      <li>revogar consentimento.</li>
+    </ul>
+    <p>Pra exercer esses direitos, é só mandar email pro DPO no endereço informado no fim dessa página. A gente responde em até 15 dias.</p>
+    <p><strong>Importante:</strong> a Recepia atua como <strong>operadora dos dados</strong> das pacientes (LGPD Art. 5º, VIII). A <strong>controladora</strong> é a clínica contratante. Por isso, solicitações de pacientes sobre seus próprios dados clínicos devem ser direcionadas à clínica onde foram atendidas — a gente apoia, mas não decide sozinha sobre esses dados.</p>
+
+    <h2>5. Cookies e Analytics</h2>
+    <p>O site institucional usa cookies essenciais (pra manter sessão) e cookies de análise (Google Analytics ou equivalente) pra entender quais páginas são mais visitadas. Esses dados são agregados e não identificam pessoas individualmente. Dá pra desativar cookies não-essenciais pelo navegador.</p>
+
+    <h2>6. Segurança</h2>
+    <ul>
+      <li>todas as conexões usam <strong>HTTPS/TLS</strong>;</li>
+      <li>senhas são armazenadas com hash (bcrypt);</li>
+      <li>dados sensíveis em repouso são cifrados;</li>
+      <li>a gente mantém <strong>audit log</strong> de operações sensíveis (quem acessou o quê, quando);</li>
+      <li>acesso à infraestrutura é restrito por princípio do menor privilégio.</li>
+    </ul>
+    <p>Em caso de incidente de segurança com risco a titulares, a gente comunica os Clientes afetados e a ANPD em até 72h, conforme exigido pela LGPD.</p>
+
+    <h2>7. Contato do DPO</h2>
+    <p>Encarregado pelo Tratamento de Dados (DPO): <strong>contato@recepia.app.br</strong></p>
+    <p>Pra solicitações relativas à LGPD, use o assunto "LGPD — [seu pedido]" pra acelerar o atendimento.</p>
+
+    <p class="mt-10 text-sm text-graphite-muted italic">Essa política pode ser atualizada. Mudanças relevantes serão comunicadas por email com pelo menos 15 dias de antecedência.</p>
+  </div>
+</main>
+
+<!-- Footer compacto -->
+<footer class="border-t border-graphite/10 bg-cream-warm py-8 mt-12">
+  <div class="max-w-3xl mx-auto px-6 flex flex-wrap items-center justify-between gap-3 text-sm text-graphite-soft">
+    <div>© 2026 recepia tecnologia ltda</div>
+    <div class="flex items-center gap-4">
+      <a href="/termos" class="hover:text-rose-deep underline underline-offset-4">termos de uso</a>
+      <a href="/" class="hover:text-rose-deep">home</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block titulo_html %}Prontuário · {{ paciente.nome | e }}{% endblock %}
+
+{% block titulo %}
+<h1 class="titulo">Prontuário · {{ paciente.nome | e }}</h1>
+{% endblock %}
+
+{% block conteudo %}
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <td style="vertical-align: top;">
+      <div class="box">
+        <div class="field">
+          <span class="lbl">Nome</span>
+          <span class="val">{{ paciente.nome | e }}</span>
+        </div>
+        {% if paciente.data_nascimento %}
+        <div class="field">
+          <span class="lbl">Nascimento</span>
+          <span class="val">{{ paciente.data_nascimento | br_data }}{% if paciente.data_nascimento | idade %} ({{ paciente.data_nascimento | idade }} anos){% endif %}</span>
+        </div>
+        {% endif %}
+        {% if paciente.cpf %}
+        <div class="field">
+          <span class="lbl">CPF</span>
+          <span class="val">{{ paciente.cpf | cpf }}</span>
+        </div>
+        {% endif %}
+        {% if paciente.telefone %}
+        <div class="field">
+          <span class="lbl">Telefone</span>
+          <span class="val">{{ paciente.telefone | e }}</span>
+        </div>
+        {% endif %}
+        {% if paciente.email %}
+        <div class="field">
+          <span class="lbl">E-mail</span>
+          <span class="val">{{ paciente.email | e }}</span>
+        </div>
+        {% endif %}
+        {% if paciente.endereco %}
+        <div class="field" style="display:block;">
+          <span class="lbl">Endereço</span>
+          <span class="val">{{ paciente.endereco | e }}{% if paciente.cep %} — CEP {{ paciente.cep | cep }}{% endif %}</span>
+        </div>
+        {% endif %}
+      </div>
+    </td>
+    {% if paciente.foto_dataurl %}
+    <td style="width: 170px; vertical-align: top; padding-left: 14px;">
+      <img src="{{ paciente.foto_dataurl }}" alt="foto" style="width:160px; height:160px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e5e5;" />
+    </td>
+    {% endif %}
+  </tr>
+</table>
+
+{% if prontuario.anamnese %}
+<h2 class="secao">Anamnese</h2>
+<div style="white-space: pre-wrap;">{{ prontuario.anamnese | e }}</div>
+{% endif %}
+
+{% if prontuario.procedimentos %}
+<h2 class="secao">Procedimentos realizados</h2>
+<div style="white-space: pre-wrap;">{{ prontuario.procedimentos | e }}</div>
+{% endif %}
+
+{% if prontuario.alergias %}
+<h2 class="secao">Alergias</h2>
+<div>
+  {% for a in prontuario.alergias %}
+    <span class="tag">{{ a | e }}</span>
+  {% else %}
+    <span>—</span>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if prontuario.proxima_acao %}
+<h2 class="secao">Próxima ação</h2>
+<div>{{ prontuario.proxima_acao | e }}</div>
+{% endif %}
+
+{% if agendamento %}
+<h2 class="secao">Atendimento</h2>
+<table class="dados">
+  <tr>
+    <th>Profissional</th>
+    <th>Data</th>
+    <th>Duração</th>
+  </tr>
+  <tr>
+    <td>{% if agendamento.profissional %}{{ agendamento.profissional | e }}{% else %}—{% endif %}</td>
+    <td>{% if agendamento.data %}{{ agendamento.data | br_data_hora }}{% else %}—{% endif %}</td>
+    <td>{% if agendamento.duracao %}{{ agendamento.duracao | e }}{% else %}—{% endif %}</td>
+  </tr>
+</table>
+{% endif %}
+
+{% if fotos_dataurls %}
+<h2 class="secao">Registro fotográfico</h2>
+<table style="width:100%; border-collapse: separate; border-spacing: 6px;">
+  {% for linha in fotos_dataurls | batch(4) %}
+  <tr>
+    {% for foto in linha %}
+    <td style="width:25%; text-align:center;">
+      <img src="{{ foto }}" alt="foto" style="width:100%; max-width:120px; height:120px; object-fit: cover; border: 1px solid #e5e5e5; border-radius: 3px;" />
+    </td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

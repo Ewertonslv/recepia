@@ -1,0 +1,41 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Banco local
+*.db
+*.sqlite
+*.sqlite3
+clinic_scheduler.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtualenv
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/

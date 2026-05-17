@@ -1,0 +1,137 @@
+<!--
+  Snippet: chips de procedimentos sugeridos para o modal de prontuário.
+
+  Como integrar (futuro — NÃO aplicar agora):
+  1) Colar o HTML extra IMEDIATAMENTE ABAIXO do <textarea id="pr-proc"> dentro
+     do modal renderizado por openFormProntuario():
+
+         <div id="proc-chips" class="flex flex-wrap gap-2 mt-2"></div>
+
+  2) Colar o bloco <script> no escopo global do dashboard (uma única vez)
+     e chamar renderProcedimentosChips() dentro do openFormProntuario,
+     DEPOIS que o modal já foi inserido no DOM e o pr-proc existe:
+
+         openFormProntuario(...) {
+           // ... cria modal, insere no DOM ...
+           renderProcedimentosChips();
+           refreshIcons();
+         }
+
+  Depende de:
+    - window.especialidadeConfig (já cacheado no init)
+    - textarea#pr-proc dentro do modal
+    - lucide UMD carregado (window.lucide.createIcons)
+    - Tailwind (utility classes)
+-->
+
+<!-- HTML extra logo ABAIXO do textarea <textarea id="pr-proc">: -->
+<div id="proc-chips" class="flex flex-wrap gap-2 mt-2"></div>
+
+
+<!-- JS (definir uma única vez no escopo global; chamar dentro do openFormProntuario
+     depois do modal renderizar). -->
+<script>
+(function () {
+  // separador único pra parse/serialize do textarea
+  const SEP = ", ";
+
+  function parseSelecionados(textarea) {
+    if (!textarea || !textarea.value) return [];
+    return textarea.value
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  function serializarSelecionados(itens) {
+    return itens.join(SEP);
+  }
+
+  function chipClasses(selecionado) {
+    // base: arredondado, cream/rose-100, padding pequeno
+    const base = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors";
+    if (selecionado) {
+      return base + " bg-rose-500 text-white border-rose-500 hover:bg-rose-600";
+    }
+    return base + " bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200";
+  }
+
+  function escapeAttr(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function escapeText(s) {
+    return String(s).replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function renderProcedimentosChips() {
+    const container = document.getElementById("proc-chips");
+    const textarea = document.getElementById("pr-proc");
+    if (!container || !textarea) return;
+
+    const cfg = (typeof especialidadeConfig !== "undefined" && especialidadeConfig) || null;
+    const sugestoes = (cfg && Array.isArray(cfg.procedimentos_sugeridos))
+      ? cfg.procedimentos_sugeridos
+      : [];
+
+    // sem sugestões → esconde container
+    if (!sugestoes.length) {
+      container.innerHTML = "";
+      container.classList.add("hidden");
+      return;
+    }
+    container.classList.remove("hidden");
+
+    const selecionados = new Set(parseSelecionados(textarea));
+
+    container.innerHTML = sugestoes.map(proc => {
+      const sel = selecionados.has(proc);
+      const icon = sel ? "check" : "plus";
+      return (
+        '<button type="button"'
+        + ' class="' + chipClasses(sel) + '"'
+        + ' data-proc="' + escapeAttr(proc) + '"'
+        + ' aria-pressed="' + (sel ? "true" : "false") + '">'
+        + '<i data-lucide="' + icon + '" class="w-3.5 h-3.5"></i>'
+        + '<span>' + escapeText(proc) + '</span>'
+        + '</button>'
+      );
+    }).join("");
+
+    // delegação: um único listener no container
+    if (!container.dataset.bound) {
+      container.addEventListener("click", function (ev) {
+        const btn = ev.target.closest("button[data-proc]");
+        if (!btn) return;
+        const proc = btn.getAttribute("data-proc");
+        const ta = document.getElementById("pr-proc");
+        if (!ta) return;
+
+        const atuais = parseSelecionados(ta);
+        const idx = atuais.indexOf(proc);
+        if (idx >= 0) {
+          atuais.splice(idx, 1); // toggle off
+        } else {
+          atuais.push(proc);     // toggle on
+        }
+        ta.value = serializarSelecionados(atuais);
+        // dispara input pra qualquer listener externo (auto-save, validação)
+        ta.dispatchEvent(new Event("input", { bubbles: true }));
+
+        renderProcedimentosChips(); // re-render mantém estado visual sincronizado
+      });
+      container.dataset.bound = "1";
+    }
+
+    // re-render ícones do lucide pros chips novos
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+  }
+
+  // expõe global pra ser chamado de openFormProntuario
+  window.renderProcedimentosChips = renderProcedimentosChips;
+})();
+</script>

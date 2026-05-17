@@ -1,0 +1,297 @@
+<!-- ============================================================================
+     ODONTOGRAMA — snippet pra colar dentro do drawer de paciente (index.html)
+     ----------------------------------------------------------------------------
+     Este arquivo NÃO é HTML válido sozinho — é só pra copy/paste.
+     Depende de helpers globais já existentes em index.html:
+       - token (Bearer JWT)
+       - escapeHtml(s)
+       - toast(msg, tipo='ok'|'erro')
+       - customConfirm(titulo, msg, btnText, danger)
+       - lucide.createIcons()
+     ============================================================================ -->
+
+
+<!-- ====================================================================
+     TAB CONTENT — vai dentro do drawer paciente, aba "Odontograma".
+     Mostre/esconda essa div quando o usuário trocar de aba.
+     ==================================================================== -->
+<div id="odontograma-container" class="hidden">
+  <!-- Cabeçalho + legenda -->
+  <div class="flex items-start justify-between mb-4">
+    <div>
+      <h3 class="font-serif text-lg text-white">Odontograma</h3>
+      <p class="text-xs text-white/50 mt-1">Clique em um dente pra registrar estado</p>
+    </div>
+    <button id="odo-btn-recarregar"
+            onclick="renderOdontograma(drawerPacienteId)"
+            class="btn btn-ghost text-xs" style="padding:6px 10px;">
+      <i data-lucide="refresh-cw" class="w-3 h-3"></i> Recarregar
+    </button>
+  </div>
+
+  <!-- Legenda de cores -->
+  <div id="odo-legenda" class="flex flex-wrap gap-2 mb-4 text-[11px]"></div>
+
+  <!-- SVG dos dentes -->
+  <div class="rounded-xl bg-white/5 border border-white/10 p-4 overflow-x-auto">
+    <svg id="odo-svg" xmlns="http://www.w3.org/2000/svg"
+         viewBox="0 0 700 200" class="w-full h-auto" style="min-width:640px;">
+      <!-- linha mediana (separa lado direito/esquerdo do paciente) -->
+      <line x1="350" y1="10" x2="350" y2="190" stroke="rgba(255,255,255,0.15)"
+            stroke-dasharray="3 4" stroke-width="1"/>
+      <!-- linha de oclusão (separa arcada superior/inferior) -->
+      <line x1="10" y1="100" x2="690" y2="100" stroke="rgba(255,255,255,0.15)"
+            stroke-dasharray="3 4" stroke-width="1"/>
+      <!-- labels arcada -->
+      <text x="20" y="20" font-size="9" fill="rgba(255,255,255,0.4)" font-family="ui-sans-serif">
+        SUPERIOR
+      </text>
+      <text x="20" y="195" font-size="9" fill="rgba(255,255,255,0.4)" font-family="ui-sans-serif">
+        INFERIOR
+      </text>
+      <!-- dentes são injetados via JS em #odo-dentes-group -->
+      <g id="odo-dentes-group"></g>
+    </svg>
+  </div>
+
+  <!-- Resumo textual abaixo (acessibilidade + rápida leitura) -->
+  <div id="odo-resumo" class="mt-4 text-xs text-white/60"></div>
+</div>
+
+
+<!-- Popover de edição de dente (overlay; injetado uma vez no body) -->
+<div id="odo-popover" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+     onclick="if(event.target===this)fecharMenuDente()">
+  <div class="absolute bg-[#1a1a1f] border border-white/10 rounded-xl p-5 shadow-2xl"
+       style="left:50%; top:50%; transform:translate(-50%,-50%); width:340px;">
+    <div class="flex items-center justify-between mb-3">
+      <h4 class="font-serif text-base text-white">Dente <span id="odo-popover-fdi">—</span></h4>
+      <button onclick="fecharMenuDente()" class="text-white/40 hover:text-white">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <label class="block text-[11px] text-white/60 mb-1 uppercase tracking-wide">Estado</label>
+    <select id="odo-popover-estado"
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white mb-3">
+      <!-- opções injetadas via JS -->
+    </select>
+    <label class="block text-[11px] text-white/60 mb-1 uppercase tracking-wide">Observação</label>
+    <textarea id="odo-popover-obs" rows="3" maxlength="500"
+              placeholder="Opcional — anotação clínica do dente"
+              class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white mb-3"></textarea>
+    <div class="flex gap-2">
+      <button onclick="fecharMenuDente()" class="btn btn-ghost flex-1">Cancelar</button>
+      <button id="odo-popover-salvar" onclick="salvarDenteDoPopover()" class="btn btn-primary flex-1">
+        <i data-lucide="save" class="w-4 h-4"></i> Salvar
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ====================================================================
+     JS DO MÓDULO ODONTOGRAMA
+     ==================================================================== -->
+<script>
+/* eslint-disable */
+
+// Estados válidos (espelha api/odontograma.py — manter em sync).
+const ODO_ESTADOS = {
+  'hígido':             { cor: '#ffffff', label: 'Hígido',             text: '#111' },
+  'cárie':              { cor: '#f97316', label: 'Cárie',              text: '#fff' },
+  'restauração':        { cor: '#3b82f6', label: 'Restauração',        text: '#fff' },
+  'ausente':            { cor: '#6b7280', label: 'Ausente',            text: '#fff' },
+  'coroa':              { cor: '#eab308', label: 'Coroa',              text: '#111' },
+  'canal':              { cor: '#a855f7', label: 'Canal',              text: '#fff' },
+  'extração_indicada':  { cor: '#ef4444', label: 'Extração indicada',  text: '#fff' },
+  'prótese':            { cor: '#22c55e', label: 'Prótese',            text: '#fff' },
+  'implante':           { cor: '#06b6d4', label: 'Implante',           text: '#fff' },
+};
+
+// Numeração FDI das arcadas permanentes:
+//   Superior: 18-11 (direita do paciente → linha mediana) + 21-28 (linha → esquerda)
+//   Inferior: 48-41 + 31-38
+const ODO_SUPERIOR = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
+const ODO_INFERIOR = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
+
+// Layout do SVG
+const ODO_DENTE_W = 36;
+const ODO_DENTE_H = 56;
+const ODO_GAP_X   = 4;
+// 16 dentes * (36+4) = 640px → cabe em viewBox de 700. Centralizamos com offset.
+const ODO_TOTAL_W = 16 * ODO_DENTE_W + 15 * ODO_GAP_X;  // 591
+const ODO_OFFSET_X = (700 - ODO_TOTAL_W) / 2;            // ~54
+
+// Estado em memória do odontograma carregado (paciente_id → dict)
+let _odoEstado = {};
+let _odoDenteSelecionado = null;
+let _odoPacienteIdAtual = null;
+
+
+/* ----------------------------------------------------------------------------
+   Render principal — chame ao abrir a aba Odontograma do drawer.
+   ---------------------------------------------------------------------------- */
+async function renderOdontograma(pacienteId) {
+  if (!pacienteId) return;
+  _odoPacienteIdAtual = pacienteId;
+  document.getElementById('odontograma-container').classList.remove('hidden');
+  _odoRenderLegenda();
+  _odoRenderSvgVazio();
+  try {
+    const r = await fetch(`/api/pacientes/${encodeURIComponent(pacienteId)}/odontograma`, {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    if (r.status === 422) {
+      document.getElementById('odo-svg').innerHTML =
+        `<text x="350" y="100" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="14">
+           Odontograma só disponível para clínicas de odontologia.
+         </text>`;
+      return;
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    _odoEstado = data.odontograma || {};
+    _odoRenderSvg();
+    _odoRenderResumo();
+  } catch (e) {
+    console.error(e);
+    toast('Erro ao carregar odontograma', 'erro');
+  }
+}
+
+
+/* ----------------------------------------------------------------------------
+   Abrir popover de edição de UM dente.
+   ---------------------------------------------------------------------------- */
+function abrirMenuDente(fdi) {
+  _odoDenteSelecionado = fdi;
+  const atual = _odoEstado[fdi] || { estado: 'hígido', observacao: '' };
+  document.getElementById('odo-popover-fdi').textContent = fdi;
+  // Popula select
+  const sel = document.getElementById('odo-popover-estado');
+  sel.innerHTML = Object.keys(ODO_ESTADOS).map(k =>
+    `<option value="${escapeHtml(k)}" ${k === atual.estado ? 'selected' : ''}>${escapeHtml(ODO_ESTADOS[k].label)}</option>`
+  ).join('');
+  document.getElementById('odo-popover-obs').value = atual.observacao || '';
+  document.getElementById('odo-popover').classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+function fecharMenuDente() {
+  document.getElementById('odo-popover').classList.add('hidden');
+  _odoDenteSelecionado = null;
+}
+
+
+/* ----------------------------------------------------------------------------
+   Salvar — chamado pelo botão do popover.
+   ---------------------------------------------------------------------------- */
+async function salvarDenteDoPopover() {
+  if (!_odoDenteSelecionado || !_odoPacienteIdAtual) return;
+  const estado = document.getElementById('odo-popover-estado').value;
+  const obs = document.getElementById('odo-popover-obs').value.trim();
+  await salvarDente(_odoDenteSelecionado, estado, obs || null);
+  fecharMenuDente();
+}
+
+async function salvarDente(fdi, estado, observacao) {
+  const btn = document.getElementById('odo-popover-salvar');
+  const labelOrig = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Salvando…'; }
+  try {
+    const r = await fetch(`/api/pacientes/${encodeURIComponent(_odoPacienteIdAtual)}/odontograma`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + token,
+      },
+      body: JSON.stringify({ dente: fdi, estado, observacao }),
+    });
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      throw new Error(txt || ('HTTP ' + r.status));
+    }
+    const data = await r.json();
+    _odoEstado = data.odontograma || {};
+    _odoRenderSvg();
+    _odoRenderResumo();
+    toast(`Dente ${fdi}: ${ODO_ESTADOS[estado]?.label || estado}`, 'ok');
+  } catch (e) {
+    console.error(e);
+    toast('Erro ao salvar dente ' + fdi, 'erro');
+  } finally {
+    if (btn && labelOrig) { btn.disabled = false; btn.innerHTML = labelOrig; }
+  }
+}
+
+
+/* ----------------------------------------------------------------------------
+   Renderers internos
+   ---------------------------------------------------------------------------- */
+function _odoRenderLegenda() {
+  const c = document.getElementById('odo-legenda');
+  c.innerHTML = Object.entries(ODO_ESTADOS).map(([k, v]) => `
+    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/10">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${v.cor};border:1px solid rgba(0,0,0,0.2);"></span>
+      <span class="text-white/80">${escapeHtml(v.label)}</span>
+    </span>
+  `).join('');
+}
+
+function _odoRenderSvgVazio() {
+  document.getElementById('odo-dentes-group').innerHTML = '';
+}
+
+function _odoRenderSvg() {
+  const g = document.getElementById('odo-dentes-group');
+  const yTop = 30;
+  const yBottom = 114;
+  const partes = [];
+  ODO_SUPERIOR.forEach((fdi, i) => partes.push(_odoDenteSvg(fdi, ODO_OFFSET_X + i * (ODO_DENTE_W + ODO_GAP_X), yTop)));
+  ODO_INFERIOR.forEach((fdi, i) => partes.push(_odoDenteSvg(fdi, ODO_OFFSET_X + i * (ODO_DENTE_W + ODO_GAP_X), yBottom)));
+  g.innerHTML = partes.join('');
+}
+
+function _odoDenteSvg(fdi, x, y) {
+  const entry = _odoEstado[String(fdi)];
+  const estado = entry?.estado || 'hígido';
+  const def = ODO_ESTADOS[estado] || ODO_ESTADOS['hígido'];
+  const temObs = entry?.observacao ? true : false;
+  const tooltipObs = temObs ? `\n${entry.observacao}` : '';
+  return `
+    <g class="odo-dente" style="cursor:pointer;" onclick="abrirMenuDente('${fdi}')"
+       onmouseover="this.querySelector('rect').setAttribute('stroke-width','2.5')"
+       onmouseout="this.querySelector('rect').setAttribute('stroke-width','1')">
+      <title>Dente ${fdi} — ${def.label}${tooltipObs}</title>
+      <rect x="${x}" y="${y}" width="${ODO_DENTE_W}" height="${ODO_DENTE_H}"
+            rx="6" ry="6"
+            fill="${def.cor}" stroke="rgba(0,0,0,0.4)" stroke-width="1"/>
+      <text x="${x + ODO_DENTE_W / 2}" y="${y + ODO_DENTE_H / 2 + 4}"
+            text-anchor="middle" font-size="11" font-weight="600"
+            font-family="ui-sans-serif" fill="${def.text}">${fdi}</text>
+      ${temObs ? `<circle cx="${x + ODO_DENTE_W - 5}" cy="${y + 5}" r="3" fill="#facc15" stroke="rgba(0,0,0,0.4)" stroke-width="0.5"/>` : ''}
+    </g>
+  `;
+}
+
+function _odoRenderResumo() {
+  const total = Object.keys(_odoEstado).length;
+  if (!total) {
+    document.getElementById('odo-resumo').textContent = 'Nenhum dente registrado ainda.';
+    return;
+  }
+  const contagem = {};
+  Object.values(_odoEstado).forEach(d => {
+    const e = d.estado || 'hígido';
+    contagem[e] = (contagem[e] || 0) + 1;
+  });
+  const partes = Object.entries(contagem)
+    .filter(([k]) => k !== 'hígido')
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `${n}× ${escapeHtml(ODO_ESTADOS[k]?.label || k)}`);
+  const txt = partes.length
+    ? `${total} dente${total > 1 ? 's' : ''} registrado${total > 1 ? 's' : ''} — ${partes.join(', ')}`
+    : `${total} dente${total > 1 ? 's' : ''} registrado${total > 1 ? 's' : ''} — todos hígidos`;
+  document.getElementById('odo-resumo').textContent = txt;
+}
+</script>

@@ -1,0 +1,326 @@
+<!-- ============================================================================
+     PLANOS DE TRATAMENTO — snippet pra colar dentro do drawer de paciente
+     (index.html). Este arquivo NÃO é HTML válido sozinho — é só pra copy/paste.
+
+     Depende de helpers globais já existentes em index.html:
+       - token (Bearer JWT)
+       - $(id), api(path, opts), escapeHtml(s)
+       - toast(msg, isError), customConfirm(titulo, msg, btnText, danger)
+       - refreshIcons() (alias de lucide.createIcons)
+       - drawerPacienteId / drawerPacienteData (estado do drawer)
+       - profissionaisCache (lista de profissionais já carregada)
+       - fmtData(iso) (helper de formatação)
+
+     Como integrar (vou aplicar depois):
+       1. Adicionar a chave 'tratamentos' no array tabsVisiveis e no objeto titulos
+          do drawer paciente (em index.html).
+       2. No render do drawer chamar `if (aba === 'tratamentos') renderTabTratamentos();`.
+     ============================================================================ -->
+
+<!-- ====================================================================
+     TAB CONTENT — vai dentro do drawer paciente, aba "Tratamentos".
+     Mostra cards dos planos do paciente + botão "Novo plano".
+     ==================================================================== -->
+<style>
+  /* Reaproveita estilos do tema. Só estilos específicos da progress bar. */
+  .pt-progress { height: 6px; border-radius: 999px; background: rgba(45,49,66,.08); overflow: hidden; }
+  .pt-progress > span { display: block; height: 100%; background: linear-gradient(90deg, #E8B4B8, #D49AA0); transition: width .35s ease; }
+  .pt-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .pt-badge.ativo { background: #FCE7EB; color: #9B5560; }
+  .pt-badge.concluido { background: #DDF0E0; color: #4A7A50; }
+  .pt-badge.cancelado { background: #ECECEC; color: #6E6E6E; }
+</style>
+
+<script>
+// ============================================================================
+// Estado local (lifecycle do drawer)
+// ============================================================================
+let planosCache = [];
+
+// ============================================================================
+// Render da tab
+// ============================================================================
+async function renderTabTratamentos() {
+  const b = $('drawer-paciente-body');
+  if (!b || !drawerPacienteId) return;
+
+  b.innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h3 class="font-serif text-xl text-ink-900">Planos de tratamento</h3>
+        <p class="text-xs text-ink-600 mt-0.5">Acompanhe sessões previstas vs realizadas.</p>
+      </div>
+      <button onclick="abrirModalNovoPlano()" class="btn btn-primary text-sm" style="padding:8px 14px;">
+        <i data-lucide="plus" class="w-4 h-4"></i> Novo plano
+      </button>
+    </div>
+    <div id="pt-lista" class="space-y-3">
+      ${[1,2].map(() => '<div class="skel h-24 rounded-2xl"></div>').join('')}
+    </div>`;
+  refreshIcons();
+
+  try {
+    const lista = await api('/api/planos-tratamento?paciente_id=' + encodeURIComponent(drawerPacienteId));
+    planosCache = Array.isArray(lista) ? lista : [];
+    pintarListaPlanos();
+  } catch (e) {
+    $('pt-lista').innerHTML = `<div class="text-center py-8 text-ink-600 text-sm">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function pintarListaPlanos() {
+  const cont = $('pt-lista');
+  if (!cont) return;
+  if (planosCache.length === 0) {
+    cont.innerHTML = `
+      <div class="glass rounded-3xl p-10 text-center">
+        <i data-lucide="list-checks" class="w-12 h-12 mx-auto mb-3 text-ink-300"></i>
+        <h3 class="font-serif text-xl text-ink-900 mb-2">Nenhum plano de tratamento</h3>
+        <p class="text-ink-600 text-sm mb-4">Crie o primeiro plano para acompanhar as sessões deste paciente.</p>
+        <button onclick="abrirModalNovoPlano()" class="btn btn-primary text-sm" style="padding:10px 18px;">
+          <i data-lucide="plus" class="w-4 h-4"></i> Novo plano
+        </button>
+      </div>`;
+    refreshIcons();
+    return;
+  }
+
+  cont.innerHTML = planosCache.map(renderCardPlano).join('');
+  refreshIcons();
+}
+
+function renderCardPlano(plano) {
+  const realizadas = plano.sessoes_realizadas ?? 0;
+  const previstas = Math.max(plano.sessoes_previstas || 1, 1);
+  const pct = Math.min(Math.round((realizadas / previstas) * 100), 100);
+  const profNome = (profissionaisCache.find(p => p.id === plano.profissional_id)?.nome) || '—';
+  const status = plano.status || 'ativo';
+  const isAtivo = status === 'ativo';
+
+  return `
+    <div class="glass rounded-2xl p-4">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <h4 class="font-serif text-lg text-ink-900 truncate">${escapeHtml(plano.nome)}</h4>
+            <span class="pt-badge ${escapeHtml(status)}">${escapeHtml(status)}</span>
+          </div>
+          ${plano.descricao
+            ? `<p class="text-xs text-ink-600 leading-relaxed">${escapeHtml(plano.descricao)}</p>`
+            : ''}
+          <div class="text-[11px] text-ink-600 mt-2 flex flex-wrap gap-x-3 gap-y-1">
+            <span><i data-lucide="user-cog" class="w-3 h-3 inline align-text-bottom"></i> ${escapeHtml(profNome)}</span>
+            <span><i data-lucide="calendar-plus" class="w-3 h-3 inline align-text-bottom"></i> criado ${escapeHtml(fmtData(plano.criado_em))}</span>
+            ${plano.concluido_em
+              ? `<span><i data-lucide="check-circle-2" class="w-3 h-3 inline align-text-bottom"></i> concluído ${escapeHtml(fmtData(plano.concluido_em))}</span>`
+              : ''}
+          </div>
+        </div>
+        <div class="flex gap-1 flex-shrink-0">
+          <button onclick="abrirModalEditarPlano('${escapeHtml(plano.id)}')"
+                  class="btn btn-ghost text-xs" style="padding:6px 10px;" title="Editar plano">
+            <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="mb-2 flex items-center justify-between text-[11px] text-ink-600 font-semibold">
+        <span>Progresso de sessões</span>
+        <span class="font-mono text-ink-900">${realizadas}/${previstas} (${pct}%)</span>
+      </div>
+      <div class="pt-progress"><span style="width:${pct}%"></span></div>
+
+      ${isAtivo ? `
+        <div class="flex gap-2 mt-4 justify-end">
+          <button onclick="cancelarPlano('${escapeHtml(plano.id)}')"
+                  class="btn btn-ghost text-xs text-red-600" style="padding:8px 14px;">
+            <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Cancelar
+          </button>
+          <button onclick="concluirPlano('${escapeHtml(plano.id)}')"
+                  class="btn btn-primary text-xs" style="padding:8px 14px;">
+            <i data-lucide="check" class="w-3.5 h-3.5"></i> Concluir
+          </button>
+        </div>` : ''}
+    </div>`;
+}
+
+// ============================================================================
+// Modais — Novo / Editar
+// ============================================================================
+
+function abrirModalNovoPlano() {
+  openFormPlano(null);
+}
+
+function abrirModalEditarPlano(planoId) {
+  const plano = planosCache.find(p => p.id === planoId);
+  if (!plano) return toast('Plano não encontrado', true);
+  openFormPlano(plano);
+}
+
+function openFormPlano(plano) {
+  const isEdit = !!plano;
+  const profOpts = ['<option value="">— sem profissional —</option>']
+    .concat((profissionaisCache || [])
+      .filter(p => p.ativo !== false)
+      .map(p => `<option value="${escapeHtml(p.id)}" ${plano?.profissional_id === p.id ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`))
+    .join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4 fade-in overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.innerHTML = `
+    <div class="glass rounded-3xl shadow-2xl max-w-lg w-full p-7 max-h-[90vh] overflow-y-auto">
+      <h3 class="font-serif text-2xl text-ink-900 mb-5">${isEdit ? 'Editar plano de tratamento' : 'Novo plano de tratamento'}</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="lbl">Nome do plano <span class="text-rose-500">*</span></label>
+          <input id="pt-nome" class="field" maxlength="120" placeholder="Ex: Tratamento de canal dente 36" value="${escapeHtml(plano?.nome || '')}" required>
+        </div>
+        <div>
+          <label class="lbl">Descrição</label>
+          <textarea id="pt-desc" class="field" rows="3" maxlength="5000" placeholder="Detalhe o que será feito (opcional)">${escapeHtml(plano?.descricao || '')}</textarea>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="lbl">Sessões previstas <span class="text-rose-500">*</span></label>
+            <input id="pt-sessoes" type="number" min="1" max="200" class="field" value="${plano?.sessoes_previstas ?? 1}" required>
+          </div>
+          <div>
+            <label class="lbl">Profissional</label>
+            <select id="pt-prof" class="field">${profOpts}</select>
+          </div>
+        </div>
+        ${isEdit ? `
+          <div>
+            <label class="lbl">Status</label>
+            <select id="pt-status" class="field">
+              <option value="ativo" ${plano.status === 'ativo' ? 'selected' : ''}>Ativo</option>
+              <option value="concluido" ${plano.status === 'concluido' ? 'selected' : ''}>Concluído</option>
+              <option value="cancelado" ${plano.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
+            </select>
+          </div>` : ''}
+      </div>
+      <div class="flex gap-2 justify-end mt-6">
+        <button data-cancel class="btn btn-ghost text-sm" style="padding:10px 18px;">Cancelar</button>
+        <button data-save class="btn btn-primary text-sm" style="padding:10px 18px;">
+          <i data-lucide="check" class="w-4 h-4"></i> ${isEdit ? 'Salvar' : 'Criar plano'}
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-cancel]').onclick = close;
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('[data-save]').onclick = async () => {
+    const nome = overlay.querySelector('#pt-nome').value.trim();
+    const descricao = overlay.querySelector('#pt-desc').value.trim() || null;
+    const sessoes = parseInt(overlay.querySelector('#pt-sessoes').value, 10) || 1;
+    const profissional_id = overlay.querySelector('#pt-prof').value || null;
+    const statusSel = overlay.querySelector('#pt-status');
+    const status = statusSel ? statusSel.value : null;
+
+    if (nome.length < 1) return toast('Informe o nome do plano', true);
+    if (sessoes < 1 || sessoes > 200) return toast('Sessões deve ser entre 1 e 200', true);
+
+    try {
+      if (isEdit) {
+        const body = { nome, descricao, sessoes_previstas: sessoes, profissional_id };
+        if (status) body.status = status;
+        await api('/api/planos-tratamento/' + plano.id, { method: 'PUT', body: JSON.stringify(body) });
+        toast('Plano atualizado');
+      } else {
+        const body = {
+          paciente_id: drawerPacienteId,
+          nome, descricao,
+          sessoes_previstas: sessoes,
+          profissional_id,
+        };
+        await api('/api/planos-tratamento', { method: 'POST', body: JSON.stringify(body) });
+        toast('Plano criado');
+      }
+      close();
+      renderTabTratamentos();
+    } catch (e) {
+      if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
+    }
+  };
+
+  refreshIcons();
+  overlay.querySelector('#pt-nome').focus();
+}
+
+// ============================================================================
+// Ações rápidas — concluir / cancelar
+// ============================================================================
+
+async function concluirPlano(planoId) {
+  const plano = planosCache.find(p => p.id === planoId);
+  if (!plano) return;
+  const ok = await customConfirm(
+    'Concluir plano?',
+    `Marcar "${plano.nome}" como concluído? O paciente terminou todas as sessões previstas.`,
+    'Concluir', false
+  );
+  if (!ok) return;
+  try {
+    await api('/api/planos-tratamento/' + planoId + '/concluir', { method: 'POST' });
+    toast('Plano concluído');
+    renderTabTratamentos();
+  } catch (e) {
+    if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
+  }
+}
+
+async function cancelarPlano(planoId) {
+  const plano = planosCache.find(p => p.id === planoId);
+  if (!plano) return;
+  const motivo = await promptMotivoCancel(plano.nome);
+  if (motivo === null) return;
+  try {
+    await api('/api/planos-tratamento/' + planoId + '/cancelar', {
+      method: 'POST',
+      body: JSON.stringify({ motivo }),
+    });
+    toast('Plano cancelado');
+    renderTabTratamentos();
+  } catch (e) {
+    if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
+  }
+}
+
+// Modal simples para capturar motivo do cancelamento (3-500 chars).
+function promptMotivoCancel(nomePlano) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[95] flex items-center justify-center p-4 fade-in overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.innerHTML = `
+      <div class="glass rounded-3xl shadow-2xl max-w-md w-full p-7">
+        <h3 class="font-serif text-2xl text-ink-900 mb-2">Cancelar plano</h3>
+        <p class="text-ink-600 text-sm mb-4">Informe o motivo do cancelamento de <strong>${escapeHtml(nomePlano)}</strong> (fica registrado no audit log LGPD).</p>
+        <textarea id="pt-motivo" class="field" rows="3" maxlength="500" placeholder="Ex: paciente desistiu, mudança de plano clínico..."></textarea>
+        <div class="flex gap-2 justify-end mt-5">
+          <button data-cancel class="btn btn-ghost text-sm" style="padding:10px 18px;">Voltar</button>
+          <button data-confirm class="btn btn-danger text-sm" style="padding:10px 18px;">
+            <i data-lucide="x-circle" class="w-4 h-4"></i> Cancelar plano
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = (val) => { overlay.remove(); resolve(val); };
+    overlay.querySelector('[data-cancel]').onclick = () => close(null);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(null); });
+    overlay.querySelector('[data-confirm]').onclick = () => {
+      const m = (overlay.querySelector('#pt-motivo').value || '').trim();
+      if (m.length < 3) { toast('Motivo precisa ter ao menos 3 caracteres', true); return; }
+      close(m);
+    };
+    refreshIcons();
+    overlay.querySelector('#pt-motivo').focus();
+  });
+}
+</script>
