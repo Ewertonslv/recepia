@@ -168,3 +168,19 @@ def _aplicar_migracoes_idempotentes() -> None:
         """))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_admin_tokens_jti ON admin_tokens_revogados(jti)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_admin_tokens_expira ON admin_tokens_revogados(expira_em)"))
+
+        # Sprint 8 — anamnese estruturada (1 por paciente)
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS anamneses (
+                id VARCHAR PRIMARY KEY,
+                clinica_id VARCHAR NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+                paciente_id VARCHAR NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+                respostas JSON NOT NULL DEFAULT '{}',
+                preenchida_por VARCHAR REFERENCES usuarios(id) ON DELETE SET NULL,
+                criado_em TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
+                atualizado_em TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
+                CONSTRAINT uq_anamnese_paciente UNIQUE (clinica_id, paciente_id)
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_anamneses_clinica_id ON anamneses(clinica_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_anamneses_paciente_id ON anamneses(paciente_id)"))

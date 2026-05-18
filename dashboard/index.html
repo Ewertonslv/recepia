@@ -2648,6 +2648,229 @@ function _odoRenderResumo() {
   $('odo-resumo').textContent = partes.length
     ? `${total} dente${total > 1 ? 's' : ''} registrado${total > 1 ? 's' : ''} — ${partes.join(', ')}`
     : `${total} dente${total > 1 ? 's' : ''} registrado${total > 1 ? 's' : ''} — todos hígidos`;
+  _odoRenderPainelProc();
+}
+
+function _odoRenderPainelProc() {
+  const c = $('odo-painel-proc');
+  if (!c) return;
+  // Filtra só dentes não-hígidos (estado registrado relevante) e ordena por mais recente
+  const linhas = Object.entries(_odoEstado)
+    .filter(([_, v]) => v && v.estado && v.estado !== 'hígido')
+    .map(([fdi, v]) => ({ fdi, ...v }))
+    .sort((a, b) => (b.atualizado_em || '').localeCompare(a.atualizado_em || ''));
+
+  if (linhas.length === 0) {
+    c.innerHTML = `<div class="p-5 text-center text-xs text-ink-600 bg-ink-100/20">Nenhum procedimento registrado.</div>`;
+    return;
+  }
+
+  const fmt = (iso) => {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    } catch { return '—'; }
+  };
+
+  c.innerHTML = `
+    <table class="w-full text-xs">
+      <thead class="bg-white/40 text-ink-600 text-left text-[10px] uppercase tracking-wider">
+        <tr>
+          <th class="px-3 py-2 font-semibold">Dente</th>
+          <th class="px-3 py-2 font-semibold">Estado</th>
+          <th class="px-3 py-2 font-semibold">Observação</th>
+          <th class="px-3 py-2 font-semibold whitespace-nowrap">Atualizado</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-ink-100/50">
+        ${linhas.map(l => {
+          const cor = ODO_ESTADOS[l.estado]?.cor || '#aaa';
+          const label = ODO_ESTADOS[l.estado]?.label || l.estado;
+          return `<tr class="hover:bg-white/40 cursor-pointer transition" onclick="abrirMenuDente(${parseInt(l.fdi,10)})">
+            <td class="px-3 py-2 font-mono font-semibold text-ink-900">${escapeHtml(String(l.fdi))}</td>
+            <td class="px-3 py-2"><span class="inline-flex items-center gap-1.5"><span style="width:10px;height:10px;border-radius:2px;background:${cor};border:1px solid rgba(0,0,0,0.15);"></span>${escapeHtml(label)}</span></td>
+            <td class="px-3 py-2 text-ink-600">${escapeHtml(l.observacao || '—')}</td>
+            <td class="px-3 py-2 text-ink-600 whitespace-nowrap">${fmt(l.atualizado_em)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ============================================================ Anamnese (drawer paciente / aba "Anamnese")
+let _anamneseData = null;
+
+async function renderTabAnamnese() {
+  const b = $('drawer-paciente-body');
+  if (!b || !drawerPacienteId) return;
+
+  b.innerHTML = `<div class="space-y-3">${[1,2,3].map(() => '<div class="skel h-16 rounded-2xl"></div>').join('')}</div>`;
+
+  try {
+    _anamneseData = await api(`/api/pacientes/${drawerPacienteId}/anamnese`);
+  } catch (e) {
+    b.innerHTML = `<p class="text-ink-600 text-center py-8">${escapeHtml(e.message)}</p>`;
+    return;
+  }
+
+  _renderAnamneseForm();
+}
+
+function _renderAnamneseForm() {
+  const b = $('drawer-paciente-body');
+  if (!b || !_anamneseData) return;
+
+  const { template, respostas, preenchida, atualizado_em } = _anamneseData;
+
+  const fmtData = (iso) => {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    } catch { return ''; }
+  };
+
+  const statusBadge = preenchida
+    ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">PREENCHIDA · ${escapeHtml(fmtData(atualizado_em))}</span>`
+    : `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">NÃO PREENCHIDA</span>`;
+
+  let html = `
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h3 class="font-serif text-xl text-ink-900 flex items-center gap-2">
+          <i data-lucide="clipboard-list" class="w-5 h-5 text-rose-500"></i>
+          Anamnese
+        </h3>
+        <p class="text-xs text-ink-600 mt-0.5">Questionário clínico padrão. Edite e clique em salvar.</p>
+      </div>
+      ${statusBadge}
+    </div>
+    <form id="anamnese-form" onsubmit="event.preventDefault(); salvarAnamnese();" class="space-y-5">`;
+
+  for (const secao of template) {
+    html += `<div class="rounded-2xl border border-ink-100/60 bg-white/40 overflow-hidden">
+      <div class="px-4 py-3 bg-rose-50/50 border-b border-ink-100/40">
+        <h4 class="text-sm font-semibold text-ink-900">${escapeHtml(secao.secao)}</h4>
+      </div>
+      <div class="p-4 space-y-4">`;
+    for (const p of secao.perguntas) {
+      const r = respostas[p.key] || {};
+      const respostaVal = r.resposta;
+      const obsVal = r.observacao || '';
+      const fieldId = `am-${p.key}`;
+
+      if (p.tipo === 'texto') {
+        html += `<div>
+          <label class="lbl">${escapeHtml(p.label)}</label>
+          <textarea id="${fieldId}-resp" data-am-key="${escapeHtml(p.key)}" data-am-tipo="texto"
+                    class="field" rows="2">${escapeHtml(typeof respostaVal === 'string' ? respostaVal : '')}</textarea>
+        </div>`;
+      } else {
+        // sim_nao ou sim_nao_obs
+        const checkedSim = respostaVal === true;
+        const checkedNao = respostaVal === false;
+        const tipoAttr = p.tipo === 'sim_nao_obs' ? 'sim_nao_obs' : 'sim_nao';
+        html += `<div data-am-pergunta="${escapeHtml(p.key)}">
+          <div class="flex items-start gap-3">
+            <label class="lbl flex-1 mb-0 mt-1">${escapeHtml(p.label)}</label>
+            <div class="flex gap-1 flex-shrink-0">
+              <label class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-ink-100/60 cursor-pointer hover:bg-white/60 text-xs ${checkedSim ? 'bg-emerald-100 border-emerald-300 text-emerald-700 font-semibold' : ''}">
+                <input type="radio" name="${fieldId}" value="sim" class="hidden" ${checkedSim ? 'checked' : ''}
+                       onchange="_amOnRadio('${escapeHtml(p.key)}', true, '${tipoAttr}')"
+                       data-am-key="${escapeHtml(p.key)}" data-am-tipo="${tipoAttr}">
+                Sim
+              </label>
+              <label class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-ink-100/60 cursor-pointer hover:bg-white/60 text-xs ${checkedNao ? 'bg-rose-100 border-rose-300 text-rose-700 font-semibold' : ''}">
+                <input type="radio" name="${fieldId}" value="nao" class="hidden" ${checkedNao ? 'checked' : ''}
+                       onchange="_amOnRadio('${escapeHtml(p.key)}', false, '${tipoAttr}')"
+                       data-am-key="${escapeHtml(p.key)}" data-am-tipo="${tipoAttr}">
+                Não
+              </label>
+            </div>
+          </div>
+          ${p.tipo === 'sim_nao_obs' ? `
+            <div id="${fieldId}-obs-wrap" class="${checkedSim ? '' : 'hidden'} mt-2">
+              <input id="${fieldId}-obs" data-am-obs="${escapeHtml(p.key)}"
+                     class="field text-sm" placeholder="Detalhes (qual? quanto?)" value="${escapeHtml(obsVal)}">
+            </div>` : ''}
+        </div>`;
+      }
+    }
+    html += `</div></div>`;
+  }
+
+  html += `
+    <div class="flex justify-end gap-2 pt-4 border-t border-ink-100/60 sticky bottom-0 bg-white/80 backdrop-blur -mx-5 px-5 py-3">
+      <button type="submit" class="btn btn-primary text-sm" style="padding:10px 20px;">
+        <i data-lucide="check"></i> Salvar anamnese
+      </button>
+    </div>
+  </form>`;
+
+  b.innerHTML = html;
+  refreshIcons();
+}
+
+function _amOnRadio(key, valor, tipo) {
+  // Re-render só o card visual (sim/não) e mostra/esconde campo de observação
+  if (tipo === 'sim_nao_obs') {
+    const wrap = $(`am-${key}-obs-wrap`);
+    if (wrap) wrap.classList.toggle('hidden', !valor);
+  }
+  // Atualiza visual dos botões manualmente (sem re-render todo form, preserva outros campos)
+  document.querySelectorAll(`[name="am-${key}"]`).forEach(input => {
+    const label = input.closest('label');
+    if (!label) return;
+    const isThis = (input.value === 'sim') === valor;
+    label.classList.toggle('bg-emerald-100', isThis && valor);
+    label.classList.toggle('border-emerald-300', isThis && valor);
+    label.classList.toggle('text-emerald-700', isThis && valor);
+    label.classList.toggle('bg-rose-100', isThis && !valor);
+    label.classList.toggle('border-rose-300', isThis && !valor);
+    label.classList.toggle('text-rose-700', isThis && !valor);
+    label.classList.toggle('font-semibold', isThis);
+  });
+}
+
+async function salvarAnamnese() {
+  if (!_anamneseData) return;
+  const respostas = {};
+
+  for (const secao of _anamneseData.template) {
+    for (const p of secao.perguntas) {
+      const key = p.key;
+      if (p.tipo === 'texto') {
+        const el = $(`am-${key}-resp`);
+        if (el && el.value.trim()) {
+          respostas[key] = { resposta: el.value.trim() };
+        }
+      } else {
+        // radio sim/não
+        const checked = document.querySelector(`input[name="am-${key}"]:checked`);
+        if (!checked) continue;
+        const r = { resposta: checked.value === 'sim' };
+        if (p.tipo === 'sim_nao_obs' && r.resposta) {
+          const obs = $(`am-${key}-obs`);
+          if (obs && obs.value.trim()) r.observacao = obs.value.trim();
+        }
+        respostas[key] = r;
+      }
+    }
+  }
+
+  try {
+    const resp = await api(`/api/pacientes/${drawerPacienteId}/anamnese`, {
+      method: 'PUT', body: JSON.stringify({ respostas }),
+    });
+    toast('Anamnese salva');
+    _anamneseData.respostas = resp.respostas;
+    _anamneseData.preenchida = true;
+    _anamneseData.atualizado_em = resp.atualizado_em;
+    _renderAnamneseForm();
+  } catch (e) {
+    toast('Erro ao salvar: ' + e.message, true);
+  }
 }
 
 // ============================================================ Planos de tratamento (drawer paciente / aba "Tratamentos")
@@ -3057,8 +3280,8 @@ function renderDrawerPaciente(aba) {
   const p = drawerPacienteData;
   const lbl = especialidadeConfig?.label_paciente || 'Paciente';
   const ehOdonto = especialidadeConfig?.slug === 'odonto';
-  const tabs = ['timeline', 'dados', 'prontuario', 'tratamentos', ...(ehOdonto ? ['odontograma'] : []), 'documentos'];
-  const titulos = { timeline: 'Linha do tempo', dados: 'Dados', prontuario: 'Prontuário', tratamentos: 'Tratamentos', odontograma: 'Odontograma', documentos: 'Documentos' };
+  const tabs = ['timeline', 'dados', 'anamnese', 'prontuario', 'tratamentos', ...(ehOdonto ? ['odontograma'] : []), 'documentos'];
+  const titulos = { timeline: 'Linha do tempo', dados: 'Dados', anamnese: 'Anamnese', prontuario: 'Prontuário', tratamentos: 'Tratamentos', odontograma: 'Odontograma', documentos: 'Documentos' };
 
   // se a especialidade não permite prontuário ou documentos, esconder
   const docsDisp = especialidadeConfig?.documentos || [];
@@ -3100,6 +3323,7 @@ function renderDrawerPaciente(aba) {
         </div>
         <button onclick="fecharDrawerPaciente()" class="p-2 rounded-xl hover:bg-white/40 text-ink-600 hover:text-ink-900 flex-shrink-0" aria-label="Fechar painel"><i data-lucide="x" class="w-5 h-5"></i></button>
       </header>
+      ${renderProximaConsultaCard(stats.proxima_consulta)}
       <div class="px-5 py-3 grid grid-cols-3 md:grid-cols-6 gap-2 border-b border-ink-100/50 bg-white/30">
         ${contadores.map(([l, v, ic]) => `
           <div class="text-center">
@@ -3120,6 +3344,7 @@ function renderDrawerPaciente(aba) {
   if (aba === 'tratamentos') renderTabTratamentos();
   if (aba === 'odontograma') renderTabOdontograma();
   if (aba === 'documentos') renderTabDocumentos();
+  if (aba === 'anamnese') renderTabAnamnese();
 }
 
 function renderTabOdontograma() {
@@ -3146,9 +3371,52 @@ function renderTabOdontograma() {
         </svg>
       </div>
       <div id="odo-resumo" class="mt-4 text-xs text-ink-600"></div>
+      <div class="mt-5 border-t border-ink-100/50 pt-4">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="font-serif text-sm text-ink-900 flex items-center gap-2">
+            <i data-lucide="list" class="w-4 h-4 text-rose-500"></i>
+            Procedimentos por dente
+          </h4>
+          <span class="text-[10px] text-ink-600">Clique para editar</span>
+        </div>
+        <div id="odo-painel-proc" class="rounded-2xl border border-ink-100/60 overflow-hidden"></div>
+      </div>
     </div>`;
   refreshIcons();
   if (typeof window.renderOdontograma === 'function') window.renderOdontograma(drawerPacienteId);
+}
+
+function renderProximaConsultaCard(prox) {
+  if (!prox) return '';
+  const dt = agendaSPDate(prox.data_hora_utc || prox.data_hora);
+  const DIAS_LONG = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const hh = String(dt.getHours()).padStart(2,'0');
+  const mm = String(dt.getMinutes()).padStart(2,'0');
+  const dataStr = `${DIAS_LONG[dt.getDay()]}, ${dt.getDate()} de ${MESES[dt.getMonth()]} · ${hh}:${mm}`;
+  const detalhes = [prox.servico, prox.profissional].filter(Boolean).map(escapeHtml).join(' · ');
+  const statusBadge = prox.status === 'confirmado'
+    ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">CONFIRMADO</span>`
+    : `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">PENDENTE</span>`;
+  return `
+    <div class="px-5 py-3 border-b border-ink-100/50 bg-gradient-to-r from-rose-50/60 to-transparent">
+      <div class="flex items-center gap-3 cursor-pointer hover:bg-white/40 -mx-2 px-2 py-1.5 rounded-xl transition"
+           onclick="abrirDrawerAgendamento('${escapeHtml(prox.id)}')"
+           title="Abrir agendamento">
+        <div class="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="calendar-clock" class="w-4 h-4 text-rose-600"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-0.5">
+            <span class="text-[10px] uppercase tracking-wider text-ink-600 font-semibold">Próxima consulta</span>
+            ${statusBadge}
+          </div>
+          <div class="text-sm font-semibold text-ink-900 truncate">${escapeHtml(dataStr)}</div>
+          ${detalhes ? `<div class="text-xs text-ink-600 truncate">${detalhes}</div>` : ''}
+        </div>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-ink-600 flex-shrink-0"></i>
+      </div>
+    </div>`;
 }
 
 function calcIdade(dataISO) {
@@ -3218,7 +3486,30 @@ function renderTimelineItem(it) {
     </div>`;
 }
 
-function renderTabDados() {
+let _dadosSubTab = 'principais';
+
+// Captura valores dos inputs visíveis pro drawerPacienteData antes de trocar de sub-tab.
+// Garante que edição em uma aba não se perde quando o user navega pra outra sem salvar.
+function _dadosCapturarFormParaCache() {
+  const p = drawerPacienteData;
+  if (!p) return;
+  const get = (id) => { const el = $(id); return el ? el.value : undefined; };
+  if (get('dp-nome') !== undefined) p.nome = get('dp-nome').trim();
+  if (get('dp-telefone') !== undefined) p.telefone = get('dp-telefone').trim();
+  if (get('dp-email') !== undefined) p.email = get('dp-email').trim() || null;
+  ['data_nascimento','cpf','rg','sexo','profissao','estado_civil','telefone_fixo',
+   'diagnostico_breve','observacoes_clinicas','endereco_rua','endereco_numero',
+   'endereco_complemento','endereco_bairro','endereco_cidade','endereco_uf','endereco_cep']
+    .forEach(k => { const v = get('dp-' + k); if (v !== undefined) p[k] = v.trim() || null; });
+}
+
+function renderTabDados(subTab) {
+  if (subTab && subTab !== _dadosSubTab) {
+    _dadosCapturarFormParaCache();
+    _dadosSubTab = subTab;
+  } else if (subTab) {
+    _dadosSubTab = subTab;
+  }
   const b = $('drawer-paciente-body');
   const p = drawerPacienteData;
   const cfg = especialidadeConfig?.campos || {};
@@ -3226,16 +3517,36 @@ function renderTabDados() {
   const isVisivel = (k) => cfg[k] ? cfg[k].visivel !== false : false;
   const lbl = (k) => cfg[k]?.label || CAMPOS_PACIENTE_LABELS[k] || k;
 
-  // monta lista de campos a renderizar (só os visíveis pra especialidade)
-  const grupos = {
-    'Identificação': ['data_nascimento', 'cpf', 'rg', 'sexo', 'profissao', 'estado_civil'],
-    'Contato': ['telefone_fixo'],
-    'Endereço': ['endereco_rua', 'endereco_numero', 'endereco_complemento', 'endereco_bairro', 'endereco_cidade', 'endereco_uf', 'endereco_cep'],
-    'Clínico': ['diagnostico_breve', 'observacoes_clinicas'],
-  };
+  // Sub-tabs do cadastro — cada uma renderiza um subconjunto dos campos.
+  const subTabs = [
+    { id: 'principais',  label: 'Principais',     campos: null /* nome/tel/email — sempre visíveis */ },
+    { id: 'identidade',  label: 'Identidade',     campos: ['data_nascimento', 'cpf', 'rg', 'sexo', 'profissao', 'estado_civil'] },
+    { id: 'contato',     label: 'Contato',        campos: ['telefone_fixo'] },
+    { id: 'endereco',    label: 'Endereço',       campos: ['endereco_cep', 'endereco_rua', 'endereco_numero', 'endereco_complemento', 'endereco_bairro', 'endereco_cidade', 'endereco_uf'] },
+    { id: 'clinico',     label: 'Clínico',        campos: ['diagnostico_breve', 'observacoes_clinicas'] },
+  ];
 
+  // Esconde sub-tabs sem nenhum campo visível pra essa especialidade
+  const subTabsVisiveis = subTabs.filter(t => !t.campos || t.campos.some(isVisivel));
+  if (!subTabsVisiveis.find(t => t.id === _dadosSubTab)) _dadosSubTab = subTabsVisiveis[0]?.id || 'principais';
+
+  // Cabeçalho com sub-tabs
   let html = `
-    <form id="dp-form" onsubmit="event.preventDefault(); salvarDadosPaciente();" class="space-y-5">
+    <div class="flex gap-1 mb-5 overflow-x-auto pb-1">
+      ${subTabsVisiveis.map(t => `
+        <button type="button" onclick="renderTabDados('${t.id}')"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex-shrink-0
+                       ${_dadosSubTab === t.id ? 'bg-rose-100 text-rose-600' : 'text-ink-600 hover:bg-white/60'}">
+          ${escapeHtml(t.label)}
+        </button>`).join('')}
+    </div>
+    <form id="dp-form" onsubmit="event.preventDefault(); salvarDadosPaciente();" class="space-y-5">`;
+
+  // Renderiza só os campos da sub-tab ativa
+  const subAtual = subTabsVisiveis.find(t => t.id === _dadosSubTab);
+
+  if (subAtual.id === 'principais') {
+    html += `
       <div>
         <label class="lbl">Nome <span class="text-rose-500">*</span></label>
         <input id="dp-nome" class="field" value="${escapeHtml(p.nome)}" required>
@@ -3250,11 +3561,9 @@ function renderTabDados() {
           <input id="dp-email" type="email" class="field" value="${escapeHtml(p.email || '')}">
         </div>
       </div>`;
-
-  for (const [titulo, campos] of Object.entries(grupos)) {
-    const visiveis = campos.filter(isVisivel);
-    if (visiveis.length === 0) continue;
-    html += `<div class="border-t border-ink-100/60 pt-4"><h4 class="text-xs uppercase tracking-wider text-ink-600 font-bold mb-3">${escapeHtml(titulo)}</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
+  } else {
+    const visiveis = subAtual.campos.filter(isVisivel);
+    html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
     for (const k of visiveis) {
       const v = p[k] ?? '';
       const obrig = isObrig(k) ? ' <span class="text-rose-500">*</span>' : '';
@@ -3266,26 +3575,51 @@ function renderTabDados() {
       } else if (k === 'endereco_uf') {
         input = `<select id="dp-${k}" class="field">${UF_OPCOES.map(u => `<option value="${u}" ${v === u ? 'selected' : ''}>${u || '—'}</option>`).join('')}</select>`;
       } else if (k === 'diagnostico_breve' || k === 'observacoes_clinicas') {
-        input = `<textarea id="dp-${k}" class="field" rows="2">${escapeHtml(v)}</textarea>`;
+        input = `<textarea id="dp-${k}" class="field" rows="3">${escapeHtml(v)}</textarea>`;
       } else if (k === 'cpf') {
         input = `<input id="dp-${k}" class="field" placeholder="000.000.000-00" value="${escapeHtml(v)}">`;
+      } else if (k === 'endereco_cep') {
+        input = `<input id="dp-${k}" class="field" placeholder="00000-000" maxlength="9" onblur="cepAutofill(this.value)" value="${escapeHtml(v)}">`;
       } else {
         input = `<input id="dp-${k}" class="field" value="${escapeHtml(v)}">`;
       }
-      const grid = (k === 'diagnostico_breve' || k === 'observacoes_clinicas') ? 'md:col-span-2' : '';
+      const grid = (k === 'diagnostico_breve' || k === 'observacoes_clinicas' || k === 'endereco_rua') ? 'md:col-span-2' : '';
       html += `<div class="${grid}"><label class="lbl">${escapeHtml(lbl(k))}${obrig}</label>${input}</div>`;
     }
-    html += `</div></div>`;
+    html += `</div>`;
   }
 
   html += `
-      <div class="flex justify-end gap-2 pt-4">
+      <div class="flex justify-end gap-2 pt-4 border-t border-ink-100/60">
         <button type="button" onclick="fecharDrawerPaciente()" class="btn btn-ghost text-sm" style="padding:10px 16px;">Cancelar</button>
         <button type="submit" class="btn btn-primary text-sm" style="padding:10px 16px;"><i data-lucide="check"></i> Salvar</button>
       </div>
     </form>`;
   b.innerHTML = html;
   refreshIcons();
+}
+
+// CEP autofill via ViaCEP (https://viacep.com.br). Sem auth, sem chave, grátis.
+// Preenche cidade/UF/bairro/rua só se estiverem vazios — não sobrescreve o que o user já digitou.
+async function cepAutofill(cep) {
+  const limpo = String(cep || '').replace(/\D/g, '');
+  if (limpo.length !== 8) return;
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${limpo}/json/`);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.erro) { toast('CEP não encontrado', true); return; }
+    const setIfEmpty = (id, val) => {
+      const el = $(id);
+      if (el && !el.value && val) el.value = val;
+    };
+    setIfEmpty('dp-endereco_rua', d.logradouro);
+    setIfEmpty('dp-endereco_bairro', d.bairro);
+    setIfEmpty('dp-endereco_cidade', d.localidade);
+    const ufEl = $('dp-endereco_uf');
+    if (ufEl && !ufEl.value && d.uf) ufEl.value = d.uf;
+    toast('Endereço preenchido');
+  } catch { /* offline ou bloqueado — silencioso */ }
 }
 
 async function uploadFotoPaciente(file) {
@@ -3317,14 +3651,16 @@ async function removerFotoPaciente() {
 }
 
 async function salvarDadosPaciente() {
+  // Captura a aba atual pro cache primeiro
+  _dadosCapturarFormParaCache();
+  const p = drawerPacienteData;
   const payload = {
-    nome: $('dp-nome').value.trim(),
-    telefone: $('dp-telefone').value.trim(),
-    email: $('dp-email').value.trim() || null,
+    nome: p.nome,
+    telefone: p.telefone,
+    email: p.email,
   };
   ['data_nascimento','cpf','rg','sexo','profissao','estado_civil','telefone_fixo','diagnostico_breve','observacoes_clinicas','endereco_rua','endereco_numero','endereco_complemento','endereco_bairro','endereco_cidade','endereco_uf','endereco_cep'].forEach(k => {
-    const el = $('dp-' + k);
-    if (el) payload[k] = el.value.trim() || null;
+    payload[k] = p[k] ?? null;
   });
   try {
     await api('/api/pacientes/' + drawerPacienteId, { method: 'PUT', body: JSON.stringify(payload) });
