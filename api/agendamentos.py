@@ -147,7 +147,7 @@ def listar(
     if data_fim:
         try:
             fim_dt = datetime.fromisoformat(data_fim)
-            q = q.filter(Agendamento.data_hora < fim_dt.replace(hour=23, minute=59, second=59))
+            q = q.filter(Agendamento.data_hora <= fim_dt.replace(hour=23, minute=59, second=59))
         except ValueError:
             raise HTTPException(400, "data_fim inválida (use YYYY-MM-DD)")
     return q.order_by(Agendamento.data_hora).all()
