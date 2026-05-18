@@ -121,7 +121,9 @@ def criar(
 @router.get("", response_model=list[AgendamentoOut])
 def listar(
     status_filtro: str | None = None,
-    data: str | None = None,  # formato YYYY-MM-DD
+    data: str | None = None,
+    data_inicio: str | None = None,
+    data_fim: str | None = None,
     clinica: Clinica = Depends(clinica_atual),
     db: Session = Depends(get_db_dependency),
 ):
@@ -137,7 +139,18 @@ def listar(
             )
         except ValueError:
             raise HTTPException(400, "Data inválida (use YYYY-MM-DD)")
-    return q.order_by(Agendamento.data_hora.asc()).all()
+    if data_inicio:
+        try:
+            q = q.filter(Agendamento.data_hora >= datetime.fromisoformat(data_inicio))
+        except ValueError:
+            raise HTTPException(400, "data_inicio inválida (use YYYY-MM-DD)")
+    if data_fim:
+        try:
+            fim_dt = datetime.fromisoformat(data_fim)
+            q = q.filter(Agendamento.data_hora < fim_dt.replace(hour=23, minute=59, second=59))
+        except ValueError:
+            raise HTTPException(400, "data_fim inválida (use YYYY-MM-DD)")
+    return q.order_by(Agendamento.data_hora).all()
 
 
 @router.get("/{agendamento_id}", response_model=AgendamentoOut)
