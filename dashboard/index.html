@@ -2350,7 +2350,7 @@ async function loadPlano() {
 
 // ============================================================ Odontograma (Sprint Odonto)
 const ODO_ESTADOS = {
-  'hígido':            { cor: '#ffffff', label: 'Hígido',            text: '#1a1a1a' },
+  'hígido':            { cor: '#fdf8f0', label: 'Hígido',            text: '#1a1a1a' },
   'cárie':             { cor: '#f97316', label: 'Cárie',             text: '#fff' },
   'restauração':       { cor: '#3b82f6', label: 'Restauração',       text: '#fff' },
   'ausente':           { cor: '#6b7280', label: 'Ausente',           text: '#fff' },
@@ -2438,6 +2438,15 @@ function setOdoDenticao(tipo) {
   _odoRenderSvg();
   _odoRenderResumo();
 }
+function _odoOclusalSvg(fdi, x, y) {
+  const entry = _odoEstado[String(fdi)];
+  const estado = entry?.estado || 'hígido';
+  const def = ODO_ESTADOS[estado] || ODO_ESTADOS['hígido'];
+  const tipo = _odoTipoFDI(fdi);
+  const cx = x + ODO_DENTE_W / 2, cy = y + 8;
+  const [rx, ry] = tipo === 'incisor' ? [9,4] : tipo === 'canine' ? [7,5] : tipo === 'premolar' ? [10,6] : [14,7];
+  return `<g style="cursor:pointer;" onclick="abrirMenuDente('${fdi}')"><ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${def.cor}" stroke="rgba(0,0,0,0.35)" stroke-width="0.8"/></g>`;
+}
 function _odoRenderSvg() {
   const g = $('odo-dentes-group');
   const isD = _odoDenticao === 'decidua';
@@ -2445,9 +2454,12 @@ function _odoRenderSvg() {
   const inf = isD ? ODO_DECIDUA_INF : ODO_INFERIOR;
   const n = sup.length;
   const ox = (700 - (n * ODO_DENTE_W + (n - 1) * ODO_GAP_X)) / 2;
+  const step = ODO_DENTE_W + ODO_GAP_X;
   const partes = [];
-  sup.forEach((fdi, i) => partes.push(_odoDenteSvg(fdi, ox + i * (ODO_DENTE_W + ODO_GAP_X), 30, false)));
-  inf.forEach((fdi, i) => partes.push(_odoDenteSvg(fdi, ox + i * (ODO_DENTE_W + ODO_GAP_X), 114, true)));
+  sup.forEach((fdi, i) => partes.push(_odoDenteSvg(fdi, ox + i*step, 8, false)));
+  sup.forEach((fdi, i) => partes.push(_odoOclusalSvg(fdi, ox + i*step, 68)));
+  inf.forEach((fdi, i) => partes.push(_odoOclusalSvg(fdi, ox + i*step, 100)));
+  inf.forEach((fdi, i) => partes.push(_odoDenteSvg(fdi, ox + i*step, 118, true)));
   g.innerHTML = partes.join('');
 }
 function _odoDenteSvg(fdi, x, y, flipped) {
@@ -2457,57 +2469,57 @@ function _odoDenteSvg(fdi, x, y, flipped) {
   const temObs = !!entry?.observacao;
   const tooltipObs = temObs ? `\n${entry.observacao}` : '';
   const tipo = _odoTipoFDI(fdi);
-  const W = ODO_DENTE_W, H = ODO_DENTE_H, MID = H / 2;
+  const W = ODO_DENTE_W, H = ODO_DENTE_H;
+  const CROWN = 34, ROOT = 22; // crown taller than root
   let crown, roots;
   if (!flipped) {
-    // Superior: root at top (y..y+MID), crown at bottom facing center (y+MID..y+H)
-    const ky = y + MID;
+    const ky = y + ROOT; // y+22: neck / crown starts
     switch (tipo) {
       case 'incisor':
-        crown = `M${x+8},${ky} L${x+6},${y+H} L${x+30},${y+H} L${x+28},${ky} Z`;
+        crown = `M${x+7},${ky} L${x+5},${y+H} L${x+31},${y+H} L${x+29},${ky} Z`;
         roots = `M${x+12},${ky} L${x+15},${y+3} L${x+21},${y+3} L${x+24},${ky} Z`;
         break;
       case 'canine':
-        crown = `M${x+8},${ky} Q${x+5},${ky+14} ${x+18},${y+H} Q${x+31},${ky+14} ${x+28},${ky} Z`;
+        crown = `M${x+8},${ky} Q${x+5},${ky+17} ${x+18},${y+H} Q${x+31},${ky+17} ${x+28},${ky} Z`;
         roots = `M${x+12},${ky} L${x+14},${y+3} L${x+22},${y+3} L${x+24},${ky} Z`;
         break;
       case 'premolar':
-        crown = `M${x+5},${ky} L${x+5},${ky+16} Q${x+11},${y+H} ${x+15},${ky+20} Q${x+18},${ky+16} ${x+21},${ky+20} Q${x+25},${y+H} ${x+31},${ky+16} L${x+31},${ky} Z`;
+        crown = `M${x+5},${ky} L${x+5},${ky+18} Q${x+11},${y+H} ${x+15},${ky+22} Q${x+18},${ky+18} ${x+21},${ky+22} Q${x+25},${y+H} ${x+31},${ky+18} L${x+31},${ky} Z`;
         roots = `M${x+9},${ky} L${x+11},${y+4} L${x+17},${y+4} L${x+17},${ky} Z M${x+19},${ky} L${x+19},${y+4} L${x+25},${y+4} L${x+27},${ky} Z`;
         break;
-      default: // molar
-        crown = `M${x+2},${ky} L${x+2},${ky+14} Q${x+7},${y+H} ${x+12},${ky+20} Q${x+17},${ky+14} ${x+18},${ky+20} Q${x+19},${ky+14} ${x+24},${ky+20} Q${x+29},${y+H} ${x+34},${ky+14} L${x+34},${ky} Z`;
+      default:
+        crown = `M${x+2},${ky} L${x+2},${ky+16} Q${x+7},${y+H} ${x+12},${ky+22} Q${x+17},${ky+16} ${x+18},${ky+22} Q${x+19},${ky+16} ${x+24},${ky+22} Q${x+29},${y+H} ${x+34},${ky+16} L${x+34},${ky} Z`;
         roots = `M${x+3},${ky} L${x+5},${y+4} L${x+13},${y+4} L${x+14},${ky} Z M${x+22},${ky} L${x+23},${y+4} L${x+31},${y+4} L${x+33},${ky} Z`;
     }
   } else {
-    // Inferior: crown at top facing center (y..y+MID), root at bottom (y+MID..y+H)
-    const ry = y + MID;
+    const ry = y + CROWN; // y+34: root starts
     switch (tipo) {
       case 'incisor':
-        crown = `M${x+8},${ry} L${x+6},${y} L${x+30},${y} L${x+28},${ry} Z`;
+        crown = `M${x+7},${ry} L${x+5},${y} L${x+31},${y} L${x+29},${ry} Z`;
         roots = `M${x+12},${ry} L${x+15},${y+H-3} L${x+21},${y+H-3} L${x+24},${ry} Z`;
         break;
       case 'canine':
-        crown = `M${x+8},${ry} Q${x+5},${ry-14} ${x+18},${y} Q${x+31},${ry-14} ${x+28},${ry} Z`;
+        crown = `M${x+8},${ry} Q${x+5},${ry-17} ${x+18},${y} Q${x+31},${ry-17} ${x+28},${ry} Z`;
         roots = `M${x+12},${ry} L${x+14},${y+H-3} L${x+22},${y+H-3} L${x+24},${ry} Z`;
         break;
       case 'premolar':
-        crown = `M${x+5},${ry} L${x+5},${ry-16} Q${x+11},${y} ${x+15},${ry-20} Q${x+18},${ry-16} ${x+21},${ry-20} Q${x+25},${y} ${x+31},${ry-16} L${x+31},${ry} Z`;
+        crown = `M${x+5},${ry} L${x+5},${ry-18} Q${x+11},${y} ${x+15},${ry-22} Q${x+18},${ry-18} ${x+21},${ry-22} Q${x+25},${y} ${x+31},${ry-18} L${x+31},${ry} Z`;
         roots = `M${x+9},${ry} L${x+11},${y+H-4} L${x+17},${y+H-4} L${x+17},${ry} Z M${x+19},${ry} L${x+19},${y+H-4} L${x+25},${y+H-4} L${x+27},${ry} Z`;
         break;
-      default: // molar
-        crown = `M${x+2},${ry} L${x+2},${ry-14} Q${x+7},${y} ${x+12},${ry-20} Q${x+17},${ry-14} ${x+18},${ry-20} Q${x+19},${ry-14} ${x+24},${ry-20} Q${x+29},${y} ${x+34},${ry-14} L${x+34},${ry} Z`;
+      default:
+        crown = `M${x+2},${ry} L${x+2},${ry-16} Q${x+7},${y} ${x+12},${ry-22} Q${x+17},${ry-16} ${x+18},${ry-22} Q${x+19},${ry-16} ${x+24},${ry-22} Q${x+29},${y} ${x+34},${ry-16} L${x+34},${ry} Z`;
         roots = `M${x+3},${ry} L${x+5},${y+H-4} L${x+13},${y+H-4} L${x+14},${ry} Z M${x+22},${ry} L${x+23},${y+H-4} L${x+31},${y+H-4} L${x+33},${ry} Z`;
     }
   }
-  const numY = flipped ? y + H - 5 : y + 12;
+  const numY = flipped ? y + H - 7 : y + 14;
+  const obsCy = flipped ? y + 4 : y + ROOT + 4;
   return `
     <g style="cursor:pointer;" onclick="abrirMenuDente('${fdi}')">
       <title>Dente ${fdi} — ${def.label}${tooltipObs}</title>
-      <path d="${roots}" fill="#e2e8f0" stroke="rgba(0,0,0,0.2)" stroke-width="0.8"/>
-      <path d="${crown}" fill="${def.cor}" stroke="rgba(0,0,0,0.4)" stroke-width="1"/>
+      <path d="${roots}" fill="#e8d5b8" stroke="rgba(0,0,0,0.18)" stroke-width="0.8"/>
+      <path d="${crown}" fill="${def.cor}" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>
       <text x="${x+18}" y="${numY}" text-anchor="middle" font-size="8" font-weight="600" fill="rgba(45,49,66,0.55)">${fdi}</text>
-      ${temObs ? `<circle cx="${x+W-4}" cy="${flipped ? y+4 : y+H-6}" r="2.5" fill="#facc15" stroke="rgba(0,0,0,0.4)" stroke-width="0.5"/>` : ''}
+      ${temObs ? `<circle cx="${x+W-4}" cy="${obsCy}" r="2.5" fill="#facc15" stroke="rgba(0,0,0,0.4)" stroke-width="0.5"/>` : ''}
     </g>`;
 }
 function _odoRenderResumo() {
@@ -3009,11 +3021,11 @@ function renderTabOdontograma() {
       <p class="text-xs text-ink-600 mb-3">Clique num dente pra registrar estado. Mudanças vão pro audit_log.</p>
       <div id="odo-legenda" class="flex flex-wrap gap-2 mb-4 text-[10px]"></div>
       <div class="rounded-2xl bg-ink-100/40 border border-ink-100/60 p-4 overflow-x-auto">
-        <svg id="odo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 200" class="w-full h-auto" style="min-width:640px;">
-          <line x1="350" y1="10" x2="350" y2="190" stroke="rgba(45,49,66,0.15)" stroke-dasharray="3 4" stroke-width="1"/>
-          <line x1="10" y1="100" x2="690" y2="100" stroke="rgba(45,49,66,0.15)" stroke-dasharray="3 4" stroke-width="1"/>
-          <text x="20" y="20" font-size="9" fill="rgba(45,49,66,0.4)" font-family="ui-sans-serif">SUPERIOR</text>
-          <text x="20" y="195" font-size="9" fill="rgba(45,49,66,0.4)" font-family="ui-sans-serif">INFERIOR</text>
+        <svg id="odo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 185" class="w-full h-auto" style="min-width:640px;">
+          <line x1="350" y1="4" x2="350" y2="181" stroke="rgba(45,49,66,0.15)" stroke-dasharray="3 4" stroke-width="1"/>
+          <line x1="10" y1="92" x2="690" y2="92" stroke="rgba(45,49,66,0.15)" stroke-dasharray="3 4" stroke-width="1"/>
+          <text x="20" y="18" font-size="9" fill="rgba(45,49,66,0.4)" font-family="ui-sans-serif">SUPERIOR</text>
+          <text x="20" y="181" font-size="9" fill="rgba(45,49,66,0.4)" font-family="ui-sans-serif">INFERIOR</text>
           <g id="odo-dentes-group"></g>
         </svg>
       </div>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Odontograma — Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #f1f5f9; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .btn { display:inline-flex;align-items:center;gap:6px;border-radius:10px;border:1px solid transparent;cursor:pointer;font-weight:500;transition:all .15s; }
+    .btn-primary { background:#6366f1;color:#fff;border-color:#6366f1; }
+    .btn-primary:hover { background:#4f46e5; }
+    .btn-ghost { background:transparent;color:#374151;border-color:#e5e7eb; }
+    .btn-ghost:hover { background:#f3f4f6; }
+  </style>
+</head>
+<body class="p-6">
+
+<div class="max-w-4xl mx-auto bg-white rounded-2xl shadow p-6">
+  <h1 class="text-lg font-semibold text-gray-800 mb-1">Odontograma — Paciente Demo</h1>
+  <p class="text-sm text-gray-500 mb-5">Clique num dente para registrar o estado. Alterações ficam apenas nessa demo.</p>
+
+  <div id="odontograma-container">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <button data-odo-tab="permanente" onclick="setOdoDenticao('permanente')" class="btn btn-primary text-xs" style="padding:4px 12px;">Permanente</button>
+        <button data-odo-tab="decidua" onclick="setOdoDenticao('decidua')" class="btn btn-ghost text-xs" style="padding:4px 12px;">Decídua</button>
+      </div>
+      <button onclick="resetDemo()" class="btn btn-ghost text-xs" style="padding:6px 10px;">↺ Resetar</button>
+    </div>
+    <p class="text-xs text-gray-500 mb-3">Clique num dente para registrar estado.</p>
+    <div id="odo-legenda" class="flex flex-wrap gap-2 mb-4 text-[10px]"></div>
+    <div class="rounded-2xl bg-gray-50 border border-gray-200 p-4 overflow-x-auto">
+      <svg id="odo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 185" class="w-full h-auto" style="min-width:640px;">
+        <line x1="350" y1="4" x2="350" y2="181" stroke="rgba(45,49,66,0.15)" stroke-dasharray="3 4" stroke-width="1"/>
+        <line x1="10" y1="92" x2="690" y2="92" stroke="rgba(45,49,66,0.15)" stroke-dasharray="3 4" stroke-width="1"/>
+        <text x="20" y="18" font-size="9" fill="rgba(45,49,66,0.4)" font-family="ui-sans-serif">SUPERIOR</text>
+        <text x="20" y="181" font-size="9" fill="rgba(45,49,66,0.4)" font-family="ui-sans-serif">INFERIOR</text>
+        <g id="odo-dentes-group"></g>
+      </svg>
+    </div>
+    <div id="odo-resumo" class="mt-4 text-xs text-gray-500"></div>
+  </div>
+</div>
+
+<!-- Popover -->
+<div id="odo-popover" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+  <div class="bg-white rounded-2xl shadow-xl p-5 w-72">
+    <div class="flex items-center justify-between mb-3">
+      <span class="font-semibold text-gray-800">Dente <span id="odo-popover-fdi"></span></span>
+      <button onclick="fecharMenuDente()" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+    </div>
+    <label class="block text-xs text-gray-600 mb-1">Estado</label>
+    <select id="odo-popover-estado" class="w-full rounded-lg border border-gray-200 text-sm p-2 mb-3"></select>
+    <label class="block text-xs text-gray-600 mb-1">Observação</label>
+    <input id="odo-popover-obs" type="text" placeholder="Ex: cárie proximal mesial" class="w-full rounded-lg border border-gray-200 text-sm p-2 mb-4">
+    <div class="flex gap-2">
+      <button onclick="salvarDenteDoPopover()" class="btn btn-primary text-sm flex-1" style="padding:8px;">Salvar</button>
+      <button onclick="fecharMenuDente()" class="btn btn-ghost text-sm" style="padding:8px 12px;">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ODO_ESTADOS = {
+  'hígido':            { cor: '#fdf8f0', label: 'Hígido',            text: '#1a1a1a' },
+  'cárie':             { cor: '#f97316', label: 'Cárie',             text: '#fff' },
+  'restauração':       { cor: '#3b82f6', label: 'Restauração',       text: '#fff' },
+  'ausente':           { cor: '#6b7280', label: 'Ausente',           text: '#fff' },
+  'coroa':             { cor: '#eab308', label: 'Coroa',             text: '#1a1a1a' },
+  'canal':             { cor: '#a855f7', label: 'Canal',             text: '#fff' },
+  'extração_indicada': { cor: '#ef4444', label: 'Extração indicada', text: '#fff' },
+  'prótese':           { cor: '#22c55e', label: 'Prótese',           text: '#fff' },
+  'implante':          { cor: '#06b6d4', label: 'Implante',          text: '#fff' },
+};
+
+const ODO_SUPERIOR    = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
+const ODO_INFERIOR    = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
+const ODO_DECIDUA_SUP = [55,54,53,52,51, 61,62,63,64,65];
+const ODO_DECIDUA_INF = [85,84,83,82,81, 71,72,73,74,75];
+const ODO_DENTE_W = 36, ODO_DENTE_H = 56, ODO_GAP_X = 4;
+
+let _odoEstado = {
+  '16': { estado: 'cárie',       observacao: 'cárie proximal distal' },
+  '21': { estado: 'restauração', observacao: '' },
+  '36': { estado: 'canal',       observacao: 'endodontia concluída' },
+  '46': { estado: 'coroa',       observacao: '' },
+  '48': { estado: 'extração_indicada', observacao: 'siso impactado' },
+  '11': { estado: 'implante',    observacao: '' },
+  '22': { estado: 'ausente',     observacao: '' },
+};
+let _odoDenteSelecionado = null, _odoDenticao = 'permanente';
+
+function _odoTipoFDI(fdi) {
+  const n = fdi % 10;
+  if (n <= 2) return 'incisor';
+  if (n === 3) return 'canine';
+  if (n <= 5) return 'premolar';
+  return 'molar';
+}
+
+function setOdoDenticao(tipo) {
+  _odoDenticao = tipo;
+  document.querySelectorAll('[data-odo-tab]').forEach(b => {
+    b.classList.toggle('btn-primary', b.dataset.odoTab === tipo);
+    b.classList.toggle('btn-ghost',   b.dataset.odoTab !== tipo);
+  });
+  _odoRenderSvg();
+  _odoRenderResumo();
+}
+
+function _odoOclusalSvg(fdi, x, y) {
+  const entry = _odoEstado[String(fdi)];
+  const estado = entry?.estado || 'hígido';
+  const def = ODO_ESTADOS[estado] || ODO_ESTADOS['hígido'];
+  const tipo = _odoTipoFDI(fdi);
+  const cx = x + ODO_DENTE_W / 2, cy = y + 8;
+  const [rx, ry] = tipo === 'incisor' ? [9,4] : tipo === 'canine' ? [7,5] : tipo === 'premolar' ? [10,6] : [14,7];
+  return `<g style="cursor:pointer;" onclick="abrirMenuDente('${fdi}')"><ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${def.cor}" stroke="rgba(0,0,0,0.35)" stroke-width="0.8"/></g>`;
+}
+
+function _odoRenderLegenda() {
+  document.getElementById('odo-legenda').innerHTML = Object.entries(ODO_ESTADOS).map(([k, v]) => `
+    <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.7);border:1px solid #e5e7eb;">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${v.cor};border:1px solid rgba(0,0,0,0.2);flex-shrink:0;"></span>
+      <span style="font-size:10px;color:#374151;">${v.label}</span>
+    </span>`).join('');
+}
+
+function _odoRenderSvg() {
+  const g = document.getElementById('odo-dentes-group');
+  const isD = _odoDenticao === 'decidua';
+  const sup = isD ? ODO_DECIDUA_SUP : ODO_SUPERIOR;
+  const inf = isD ? ODO_DECIDUA_INF : ODO_INFERIOR;
+  const n = sup.length;
+  const ox = (700 - (n * ODO_DENTE_W + (n - 1) * ODO_GAP_X)) / 2;
+  const step = ODO_DENTE_W + ODO_GAP_X;
+  const partes = [];
+  sup.forEach((fdi, i) => partes.push(_odoDenteSvg(fdi, ox + i*step,  8, false)));
+  sup.forEach((fdi, i) => partes.push(_odoOclusalSvg(fdi, ox + i*step, 68)));
+  inf.forEach((fdi, i) => partes.push(_odoOclusalSvg(fdi, ox + i*step, 100)));
+  inf.forEach((fdi, i) => partes.push(_odoDenteSvg(fdi, ox + i*step, 118, true)));
+  g.innerHTML = partes.join('');
+}
+
+function _odoDenteSvg(fdi, x, y, flipped) {
+  const entry = _odoEstado[String(fdi)];
+  const estado = entry?.estado || 'hígido';
+  const def = ODO_ESTADOS[estado] || ODO_ESTADOS['hígido'];
+  const temObs = !!(entry?.observacao);
+  const tooltipObs = temObs ? `\n${entry.observacao}` : '';
+  const tipo = _odoTipoFDI(fdi);
+  const W = ODO_DENTE_W, H = ODO_DENTE_H;
+  const CROWN = 34, ROOT = 22;
+  let crown, roots;
+
+  if (!flipped) {
+    const ky = y + ROOT;
+    switch (tipo) {
+      case 'incisor':
+        crown = `M${x+7},${ky} L${x+5},${y+H} L${x+31},${y+H} L${x+29},${ky} Z`;
+        roots = `M${x+12},${ky} L${x+15},${y+3} L${x+21},${y+3} L${x+24},${ky} Z`;
+        break;
+      case 'canine':
+        crown = `M${x+8},${ky} Q${x+5},${ky+17} ${x+18},${y+H} Q${x+31},${ky+17} ${x+28},${ky} Z`;
+        roots = `M${x+12},${ky} L${x+14},${y+3} L${x+22},${y+3} L${x+24},${ky} Z`;
+        break;
+      case 'premolar':
+        crown = `M${x+5},${ky} L${x+5},${ky+18} Q${x+11},${y+H} ${x+15},${ky+22} Q${x+18},${ky+18} ${x+21},${ky+22} Q${x+25},${y+H} ${x+31},${ky+18} L${x+31},${ky} Z`;
+        roots = `M${x+9},${ky} L${x+11},${y+4} L${x+17},${y+4} L${x+17},${ky} Z M${x+19},${ky} L${x+19},${y+4} L${x+25},${y+4} L${x+27},${ky} Z`;
+        break;
+      default:
+        crown = `M${x+2},${ky} L${x+2},${ky+16} Q${x+7},${y+H} ${x+12},${ky+22} Q${x+17},${ky+16} ${x+18},${ky+22} Q${x+19},${ky+16} ${x+24},${ky+22} Q${x+29},${y+H} ${x+34},${ky+16} L${x+34},${ky} Z`;
+        roots = `M${x+3},${ky} L${x+5},${y+4} L${x+13},${y+4} L${x+14},${ky} Z M${x+22},${ky} L${x+23},${y+4} L${x+31},${y+4} L${x+33},${ky} Z`;
+    }
+  } else {
+    const ry = y + CROWN;
+    switch (tipo) {
+      case 'incisor':
+        crown = `M${x+7},${ry} L${x+5},${y} L${x+31},${y} L${x+29},${ry} Z`;
+        roots = `M${x+12},${ry} L${x+15},${y+H-3} L${x+21},${y+H-3} L${x+24},${ry} Z`;
+        break;
+      case 'canine':
+        crown = `M${x+8},${ry} Q${x+5},${ry-17} ${x+18},${y} Q${x+31},${ry-17} ${x+28},${ry} Z`;
+        roots = `M${x+12},${ry} L${x+14},${y+H-3} L${x+22},${y+H-3} L${x+24},${ry} Z`;
+        break;
+      case 'premolar':
+        crown = `M${x+5},${ry} L${x+5},${ry-18} Q${x+11},${y} ${x+15},${ry-22} Q${x+18},${ry-18} ${x+21},${ry-22} Q${x+25},${y} ${x+31},${ry-18} L${x+31},${ry} Z`;
+        roots = `M${x+9},${ry} L${x+11},${y+H-4} L${x+17},${y+H-4} L${x+17},${ry} Z M${x+19},${ry} L${x+19},${y+H-4} L${x+25},${y+H-4} L${x+27},${ry} Z`;
+        break;
+      default:
+        crown = `M${x+2},${ry} L${x+2},${ry-16} Q${x+7},${y} ${x+12},${ry-22} Q${x+17},${ry-16} ${x+18},${ry-22} Q${x+19},${ry-16} ${x+24},${ry-22} Q${x+29},${y} ${x+34},${ry-16} L${x+34},${ry} Z`;
+        roots = `M${x+3},${ry} L${x+5},${y+H-4} L${x+13},${y+H-4} L${x+14},${ry} Z M${x+22},${ry} L${x+23},${y+H-4} L${x+31},${y+H-4} L${x+33},${ry} Z`;
+    }
+  }
+
+  const numY = flipped ? y + H - 7 : y + 14;
+  const obsCy = flipped ? y + 4 : y + ROOT + 4;
+  return `
+    <g style="cursor:pointer;" onclick="abrirMenuDente('${fdi}')">
+      <title>Dente ${fdi} — ${def.label}${tooltipObs}</title>
+      <path d="${roots}" fill="#e8d5b8" stroke="rgba(0,0,0,0.18)" stroke-width="0.8"/>
+      <path d="${crown}" fill="${def.cor}" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>
+      <text x="${x+18}" y="${numY}" text-anchor="middle" font-size="8" font-weight="600" fill="rgba(45,49,66,0.55)">${fdi}</text>
+      ${temObs ? `<circle cx="${x+W-4}" cy="${obsCy}" r="2.5" fill="#facc15" stroke="rgba(0,0,0,0.4)" stroke-width="0.5"/>` : ''}
+    </g>`;
+}
+
+function _odoRenderResumo() {
+  const total = Object.keys(_odoEstado).length;
+  const el = document.getElementById('odo-resumo');
+  if (!total) { el.textContent = 'Nenhum dente registrado ainda.'; return; }
+  const contagem = {};
+  Object.values(_odoEstado).forEach(d => { const e = d.estado || 'hígido'; contagem[e] = (contagem[e]||0)+1; });
+  const partes = Object.entries(contagem).filter(([k]) => k !== 'hígido').sort((a,b) => b[1]-a[1])
+    .map(([k,n]) => `${n}× ${ODO_ESTADOS[k]?.label || k}`);
+  el.textContent = partes.length
+    ? `${total} dente${total>1?'s':''} registrado${total>1?'s':''} — ${partes.join(', ')}`
+    : `${total} dente${total>1?'s':''} registrado${total>1?'s':''} — todos hígidos`;
+}
+
+function abrirMenuDente(fdi) {
+  _odoDenteSelecionado = fdi;
+  const atual = _odoEstado[fdi] || { estado: 'hígido', observacao: '' };
+  document.getElementById('odo-popover-fdi').textContent = fdi;
+  document.getElementById('odo-popover-estado').innerHTML = Object.keys(ODO_ESTADOS).map(k =>
+    `<option value="${k}" ${k === atual.estado ? 'selected' : ''}>${ODO_ESTADOS[k].label}</option>`
+  ).join('');
+  document.getElementById('odo-popover-obs').value = atual.observacao || '';
+  document.getElementById('odo-popover').classList.remove('hidden');
+}
+
+function fecharMenuDente() {
+  document.getElementById('odo-popover').classList.add('hidden');
+  _odoDenteSelecionado = null;
+}
+
+function salvarDenteDoPopover() {
+  if (!_odoDenteSelecionado) return;
+  const estado = document.getElementById('odo-popover-estado').value;
+  const obs = document.getElementById('odo-popover-obs').value.trim();
+  if (estado === 'hígido' && !obs) {
+    delete _odoEstado[_odoDenteSelecionado];
+  } else {
+    _odoEstado[_odoDenteSelecionado] = { estado, observacao: obs || '' };
+  }
+  _odoRenderSvg();
+  _odoRenderResumo();
+  fecharMenuDente();
+}
+
+function resetDemo() {
+  _odoEstado = {};
+  _odoRenderSvg();
+  _odoRenderResumo();
+}
+
+_odoRenderLegenda();
+_odoRenderSvg();
+_odoRenderResumo();
+</script>
+</body>
+</html>
