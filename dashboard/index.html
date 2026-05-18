@@ -394,7 +394,7 @@
           <div><label class="lbl" for="ag-paciente-id">Paciente</label><select id="ag-paciente-id" class="field"></select></div>
           <div><label class="lbl" for="ag-data-hora">Data e hora</label><input id="ag-data-hora" type="datetime-local" required class="field"></div>
           <div><label class="lbl" for="ag-servico">Serviço</label><input id="ag-servico" placeholder="Ex: Limpeza de pele" class="field"></div>
-          <div><label class="lbl" for="ag-profissional">Profissional</label><input id="ag-profissional" placeholder="Ex: Ana" class="field"></div>
+          <div><label class="lbl" for="ag-profissional-id">Profissional</label><select id="ag-profissional-id" class="field"><option value="">— Sem profissional —</option></select></div>
         </div>
         <div class="flex gap-2"><button onclick="criarAgendamento()" class="btn btn-primary"><i data-lucide="check"></i> Criar</button><button onclick="closeNovoAgendamento()" class="btn btn-ghost">Cancelar</button></div>
       </div>
@@ -1555,6 +1555,16 @@ function openNovoAgendamento() {
   sel.innerHTML = pacientesCache.length === 0
     ? '<option value="">Cadastre uma paciente primeiro</option>'
     : pacientesCache.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.nome)} — ${escapeHtml(p.telefone)}</option>`).join('');
+  // Popular select de profissionais ativos cadastrados na aba Equipe
+  const selProf = $('ag-profissional-id');
+  if (selProf) {
+    const ativos = (profissionaisCache || []).filter(p => p.ativo !== false);
+    selProf.innerHTML = '<option value="">— Sem profissional —</option>' +
+      ativos.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.nome)}${p.especialidade ? ' · ' + escapeHtml(p.especialidade) : ''}</option>`).join('');
+    if (ativos.length === 0) {
+      selProf.innerHTML = '<option value="">Cadastre um profissional na aba Equipe</option>';
+    }
+  }
   refreshIcons();
 }
 function closeNovoAgendamento() { $('form-agendamento').classList.add('hidden'); }
@@ -1564,7 +1574,7 @@ async function criarAgendamento() {
     paciente_id: $('ag-paciente-id').value,
     data_hora: $('ag-data-hora').value + ':00',
     servico: $('ag-servico').value || null,
-    profissional: $('ag-profissional').value || null,
+    profissional_id: $('ag-profissional-id').value || null,
   };
   if (!payload.paciente_id) return toast('Selecione uma paciente', true);
   try {
