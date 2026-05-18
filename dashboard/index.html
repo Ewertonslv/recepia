@@ -1157,6 +1157,247 @@ function agendaRender() {
   refreshIcons();
 }
 
+function agendaRenderSemana() {
+  const HORA_INI = 7, HORA_FIM = 20, SLOT_H = 40;
+  const DIAS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const container = $('agenda-grid');
+  const days = agendaWeekDays(agendaDate);
+  const todayKey = agendaDateKey(new Date());
+
+  const ags = agendaFilterProfId
+    ? agendaCache.filter(a => a.profissional_id === agendaFilterProfId)
+    : agendaCache;
+
+  const pacMap = Object.fromEntries(pacientesCache.map(p => [p.id, p.nome]));
+  const profMap = Object.fromEntries(profissionaisCache.map(p => [p.id, { nome: p.nome, cor: p.cor || '#E8B4B8' }]));
+
+  const byDay = Object.fromEntries(days.map(d => [agendaDateKey(d), []]));
+  for (const a of ags) {
+    const key = agendaDateKey(agendaSPDate(a.data_hora_utc || a.data_hora));
+    if (key in byDay) byDay[key].push(a);
+  }
+
+  const headerCells = days.map(d => {
+    const key = agendaDateKey(d);
+    const count = byDay[key].length;
+    const isToday = key === todayKey;
+    return `<div class="agenda-day-head ${isToday ? 'today' : ''}">
+      <div style="font-size:11px;font-weight:600;color:${isToday ? '#c97f85' : '#aaa6b8'};">${DIAS[d.getDay()]}</div>
+      <div style="font-size:18px;font-weight:700;color:${isToday ? '#c97f85' : '#2D3142'};">${d.getDate()}</div>
+      <div style="font-size:10px;color:${isToday ? '#d99ca0' : '#aaa6b8'};">${count} pac.</div>
+    </div>`;
+  }).join('');
+
+  const totalH = (HORA_FIM - HORA_INI) * 2 * SLOT_H;
+  let timeLabels = '';
+  let slotLinesHTML = '';
+  for (let h = HORA_INI; h < HORA_FIM; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      timeLabels += `<div class="agenda-time-label">${m === 0 ? String(h).padStart(2,'0') + ':00' : ''}</div>`;
+      slotLinesHTML += `<div class="agenda-slot-line ${m === 0 ? 'on-hour' : ''}" style="top:${((h - HORA_INI) * 2 + (m === 30 ? 1 : 0)) * SLOT_H}px"></div>`;
+    }
+  }
+
+  const nowSP = agendaSPDate(new Date().toISOString());
+  const nowMin = nowSP.getHours() * 60 + nowSP.getMinutes();
+  const nowTop = (nowMin - HORA_INI * 60) / 30 * SLOT_H;
+  const nowVisible = nowMin >= HORA_INI * 60 && nowMin < HORA_FIM * 60;
+
+  const dayCols = days.map(d => {
+    const key = agendaDateKey(d);
+    const isToday = key === todayKey;
+    const dayAppts = byDay[key].map(a => {
+      const sp = agendaSPDate(a.data_hora_utc || a.data_hora);
+      return { ...a, startMin: sp.getHours() * 60 + sp.getMinutes(), endMin: sp.getHours() * 60 + sp.getMinutes() + (a.duracao_minutos || 30) };
+    });
+    const laid = agendaLayoutAppts(dayAppts);
+    const nowLineHTML = (isToday && nowVisible)
+      ? `<div class="agenda-now-line" style="top:${nowTop}px"><div class="agenda-now-dot"></div></div>` : '';
+    return `<div class="agenda-day-col" style="height:${totalH}px">${slotLinesHTML}${nowLineHTML}${laid.map(a => agendaApptBlock(a, pacMap, profMap)).join('')}</div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="agenda-week-wrap">
+      <div class="agenda-week-header" style="min-width:${7 * 90 + 56}px">
+        <div class="agenda-gutter"></div>${headerCells}
+      </div>
+      <div class="agenda-week-body" style="min-width:${7 * 90 + 56}px">
+        <div class="agenda-week-timeline" style="height:${totalH}px">
+          <div class="agenda-time-col">${timeLabels}</div>${dayCols}
+        </div>
+      </div>
+    </div>`;
+
+  const body = container.querySelector('.agenda-week-body');
+  if (body) body.scrollTop = nowVisible ? Math.max(nowTop - 80, 0) : SLOT_H * 2;
+}
+
+function agendaRenderDia() {
+  const HORA_INI = 7, HORA_FIM = 20, SLOT_H = 40;
+  const container = $('agenda-grid');
+  const todayKey = agendaDateKey(agendaDate);
+
+  const ags = (agendaFilterProfId
+    ? agendaCache.filter(a => a.profissional_id === agendaFilterProfId)
+    : agendaCache
+  ).filter(a => agendaDateKey(agendaSPDate(a.data_hora_utc || a.data_hora)) === todayKey);
+
+  const pacMap = Object.fromEntries(pacientesCache.map(p => [p.id, p.nome]));
+  const profMap = Object.fromEntries(profissionaisCache.map(p => [p.id, { nome: p.nome, cor: p.cor || '#E8B4B8' }]));
+
+  const totalH = (HORA_FIM - HORA_INI) * 2 * SLOT_H;
+
+  let timeLabels = '';
+  let slotLinesHTML = '';
+  for (let h = HORA_INI; h < HORA_FIM; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      timeLabels += `<div class="agenda-time-label">${m === 0 ? String(h).padStart(2,'0') + ':00' : ''}</div>`;
+      slotLinesHTML += `<div class="agenda-slot-line ${m === 0 ? 'on-hour' : ''}" style="top:${((h - HORA_INI) * 2 + (m === 30 ? 1 : 0)) * SLOT_H}px"></div>`;
+    }
+  }
+
+  const nowSP = agendaSPDate(new Date().toISOString());
+  const nowMin = nowSP.getHours() * 60 + nowSP.getMinutes();
+  const nowTop = (nowMin - HORA_INI * 60) / 30 * SLOT_H;
+  const isToday = todayKey === agendaDateKey(new Date());
+  const nowLineHTML = (isToday && nowMin >= HORA_INI * 60 && nowMin < HORA_FIM * 60)
+    ? `<div class="agenda-now-line" style="top:${nowTop}px"><div class="agenda-now-dot"></div></div>` : '';
+
+  const dayAppts = ags.map(a => {
+    const sp = agendaSPDate(a.data_hora_utc || a.data_hora);
+    return { ...a, startMin: sp.getHours() * 60 + sp.getMinutes(), endMin: sp.getHours() * 60 + sp.getMinutes() + (a.duracao_minutos || 30) };
+  });
+  const laid = agendaLayoutAppts(dayAppts);
+
+  const DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const d = agendaDate;
+
+  container.innerHTML = `
+    <div>
+      <div class="agenda-week-header flex" style="padding: 12px 0;">
+        <div class="agenda-gutter"></div>
+        <div class="flex-1 px-4">
+          <div style="font-size:11px;font-weight:600;color:#aaa6b8;">${DIAS[d.getDay()]}</div>
+          <div style="font-size:20px;font-weight:700;color:#2D3142;">${agendaPeriodLabel()}</div>
+          <div style="font-size:11px;color:#aaa6b8;">${laid.length} agendamento${laid.length !== 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      <div class="agenda-week-body">
+        <div class="agenda-week-timeline" style="height:${totalH}px;min-width:300px;">
+          <div class="agenda-time-col">${timeLabels}</div>
+          <div class="agenda-day-col flex-1" style="height:${totalH}px">${slotLinesHTML}${nowLineHTML}${laid.map(a => agendaApptBlock(a, pacMap, profMap)).join('')}</div>
+        </div>
+      </div>
+    </div>`;
+
+  const body = container.querySelector('.agenda-week-body');
+  if (body) body.scrollTop = isToday ? Math.max(nowTop - 80, 0) : SLOT_H * 2;
+}
+
+function agendaRenderMes() {
+  const container = $('agenda-grid');
+  const year = agendaDate.getFullYear(), month = agendaDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const todayKey = agendaDateKey(new Date());
+  const DIAS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+  const ags = agendaFilterProfId
+    ? agendaCache.filter(a => a.profissional_id === agendaFilterProfId)
+    : agendaCache;
+
+  const pacMap = Object.fromEntries(pacientesCache.map(p => [p.id, p.nome]));
+
+  const agByDay = {};
+  for (const a of ags) {
+    const key = agendaDateKey(agendaSPDate(a.data_hora_utc || a.data_hora));
+    if (!agByDay[key]) agByDay[key] = [];
+    agByDay[key].push(a);
+  }
+
+  const startDow = firstDay.getDay();
+  let cells = '';
+  for (let i = 0; i < startDow; i++) cells += `<div class="agenda-month-cell empty"></div>`;
+
+  for (let day = 1; day <= lastDay.getDate(); day++) {
+    const d = new Date(year, month, day);
+    const key = agendaDateKey(d);
+    const isToday = key === todayKey;
+    const dayAgs = agByDay[key] || [];
+    const MAX_SHOW = 3;
+    const shown = dayAgs.slice(0, MAX_SHOW);
+    const extra = dayAgs.length - MAX_SHOW;
+    const apptsHTML = shown.map(a =>
+      `<span class="agenda-month-appt" onclick="event.stopPropagation();abrirDrawerAgendamento('${escapeHtml(a.id)}')">${escapeHtml(pacMap[a.paciente_id] || '?')}</span>`
+    ).join('');
+    const extraHTML = extra > 0 ? `<div style="font-size:10px;color:#aaa6b8;margin-top:2px;">+${extra} mais</div>` : '';
+    cells += `<div class="agenda-month-cell ${isToday ? 'today' : ''}" onclick="agendaGoToDay('${key}')">
+      <div style="font-size:13px;font-weight:${isToday ? '700' : '500'};color:${isToday ? '#c97f85' : '#2D3142'};margin-bottom:3px;">${day}</div>
+      ${apptsHTML}${extraHTML}
+    </div>`;
+  }
+
+  container.innerHTML = `
+    <div class="p-4">
+      <div class="grid grid-cols-7 mb-1">
+        ${DIAS.map(n => `<div style="text-align:center;font-size:11px;font-weight:600;color:#aaa6b8;padding:6px 0;">${n}</div>`).join('')}
+      </div>
+      <div class="grid grid-cols-7" style="border:1px solid rgba(45,49,66,0.09);border-radius:12px;overflow:hidden;">
+        ${cells}
+      </div>
+    </div>`;
+}
+
+function agendaRenderAlertas() {
+  const container = $('agenda-alertas');
+  if (!container) return;
+
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const todasAgs = agendaFilterProfId
+    ? agendaCache.filter(a => a.profissional_id === agendaFilterProfId)
+    : agendaCache;
+
+  const realizados = {};
+  const futuros = new Set();
+
+  for (const a of todasAgs) {
+    const dt = agendaSPDate(a.data_hora_utc || a.data_hora);
+    if (a.status === 'realizado') {
+      if (!realizados[a.paciente_id] || dt > realizados[a.paciente_id])
+        realizados[a.paciente_id] = dt;
+    }
+    if (dt >= hoje && a.status !== 'cancelado' && a.status !== 'no_show')
+      futuros.add(a.paciente_id);
+  }
+
+  const candidatos = Object.entries(realizados)
+    .filter(([pid]) => !futuros.has(pid))
+    .map(([pid, dt]) => ({ pid, dt, nome: pacientesCache.find(p => p.id === pid)?.nome || '?' }))
+    .sort((a, b) => a.dt - b.dt)
+    .slice(0, 20);
+
+  if (candidatos.length === 0) {
+    container.innerHTML = `<p style="font-size:12px;color:#aaa6b8;text-align:center;padding:12px 0;">Nenhum retorno pendente.</p>`;
+    return;
+  }
+
+  function tempoRelativo(dt) {
+    const dias = Math.floor((hoje - dt) / (1000 * 60 * 60 * 24));
+    if (dias < 30) return `há ${dias} dias`;
+    const meses = Math.floor(dias / 30);
+    return `há ${meses} mês${meses > 1 ? 'es' : ''}`;
+  }
+
+  container.innerHTML = candidatos.map(c => `
+    <div class="p-3 rounded-xl hover:bg-white/40 transition cursor-pointer" onclick="abrirDrawerPaciente('${escapeHtml(c.pid)}')">
+      <div style="font-size:12px;font-weight:600;color:#2D3142;" class="truncate">${escapeHtml(c.nome)}</div>
+      <div style="font-size:10px;color:#aaa6b8;">${tempoRelativo(c.dt)}</div>
+    </div>
+  `).join('');
+}
+
 // ============================================================ Agendamentos
 async function loadAgendamentos() {
   let ini, fim;
