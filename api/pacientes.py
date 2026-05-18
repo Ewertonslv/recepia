@@ -161,7 +161,8 @@ def _stats_paciente(db: Session, clinica_id: str, paciente_id: str) -> dict:
     """Agregação rápida de status pra mostrar no cabeçalho do prontuário.
 
     Performance: antes fazia 8 queries (1 count total + 6 por status + 1 prontuários).
-    Agora faz 2 queries — 1 agregada em agendamentos + 1 count em prontuários.
+    Agora faz 3 queries — 1 agregada em agendamentos + 1 count em prontuários + 1
+    busca do próximo agendamento futuro.
     """
     row = db.query(
         func.count(Agendamento.id).label("total"),
@@ -181,6 +182,28 @@ def _stats_paciente(db: Session, clinica_id: str, paciente_id: str) -> dict:
         Prontuario.paciente_id == paciente_id,
     ).scalar() or 0
 
+    # Próximo agendamento futuro (não cancelado / no_show) — pra exibir no header do drawer.
+    prox = (
+        db.query(Agendamento)
+        .filter(
+            Agendamento.clinica_id == clinica_id,
+            Agendamento.paciente_id == paciente_id,
+            Agendamento.data_hora >= agora_utc(),
+            Agendamento.status.notin_([Status.CANCELADO, Status.NO_SHOW, Status.REALIZADO]),
+        )
+        .order_by(Agendamento.data_hora.asc())
+        .first()
+    )
+    proxima_consulta = None
+    if prox:
+        proxima_consulta = {
+            "id": prox.id,
+            "data_hora_utc": prox.data_hora.isoformat() + "Z",
+            "servico": prox.servico,
+            "profissional": prox.profissional,
+            "status": prox.status,
+        }
+
     return {
         "agendamentos_total": row.total or 0,
         "atendidos": row.atendidos or 0,
@@ -190,6 +213,7 @@ def _stats_paciente(db: Session, clinica_id: str, paciente_id: str) -> dict:
         "pendentes": row.pendentes or 0,
         "confirmados": row.confirmados or 0,
         "prontuarios_total": prontuarios_total,
+        "proxima_consulta": proxima_consulta,
     }
 
 

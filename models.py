@@ -432,6 +432,28 @@ class RecallEnviado(Base):
     )
 
 
+class Anamnese(Base):
+    """Sprint 8: questionário clínico estruturado por paciente.
+
+    1 anamnese por paciente (substitui ao re-preencher — versão é o atualizado_em).
+    Template de perguntas vem de core/anamnese.py por especialidade da clínica.
+    Respostas em JSON: {"<key>": {"resposta": bool|str, "observacao": str|None}}.
+    """
+    __tablename__ = "anamneses"
+
+    id = Column(String, primary_key=True, default=gen_id)
+    clinica_id = Column(String, ForeignKey("clinicas.id", ondelete="CASCADE"), nullable=False, index=True)
+    paciente_id = Column(String, ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False, index=True)
+    respostas = Column(JSON, nullable=False, default=dict)
+    preenchida_por = Column(String, ForeignKey("usuarios.id", ondelete="SET NULL"))
+    criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("clinica_id", "paciente_id", name="uq_anamnese_paciente"),
+    )
+
+
 class AdminTokenRevogado(Base):
     """Sprint 6: blacklist de JWTs admin revogados (logout / rotação)."""
     __tablename__ = "admin_tokens_revogados"
