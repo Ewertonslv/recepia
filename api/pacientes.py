@@ -375,49 +375,6 @@ def excluir_soft(
     db.commit()
 
 
-@router.get("/{paciente_id}/historico")
-def historico_paciente(
-    paciente_id: str,
-    clinica: Clinica = Depends(clinica_atual),
-    db: Session = Depends(get_db_dependency),
-):
-    """G3: histórico completo do paciente — agendamentos + todas as interações."""
-    paciente = (
-        db.query(Paciente)
-        .filter(Paciente.id == paciente_id, Paciente.clinica_id == clinica.id)
-        .first()
-    )
-    if not paciente:
-        raise HTTPException(404, "Paciente não encontrado")
-    agendamentos = (
-        db.query(Agendamento)
-        .filter(
-            Agendamento.paciente_id == paciente_id,
-            Agendamento.clinica_id == clinica.id,
-        )
-        .order_by(Agendamento.data_hora.desc())
-        .all()
-    )
-    return [
-        {
-            "id": a.id,
-            "data_hora_utc": a.data_hora.isoformat() + "Z",
-            "servico": a.servico,
-            "status": a.status,
-            "interacoes": [
-                {
-                    "tipo": i.tipo,
-                    "mensagem_enviada": i.mensagem_enviada,
-                    "mensagem_recebida": i.mensagem_recebida,
-                    "quando_utc": i.quando.isoformat() + "Z",
-                }
-                for i in sorted(a.interacoes, key=lambda x: x.quando)
-            ],
-        }
-        for a in agendamentos
-    ]
-
-
 @router.get("/{paciente_id}/timeline")
 def timeline_paciente(
     paciente_id: str,
@@ -522,6 +479,7 @@ def timeline_paciente(
                     "status": a.status,
                     "servico": a.servico,
                     "profissional": a.profissional,
+                    "profissional_id": a.profissional_id,
                 },
             })
         elif r.tipo == "prontuario":

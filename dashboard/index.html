@@ -393,7 +393,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
           <div><label class="lbl" for="ag-paciente-id">Paciente</label><select id="ag-paciente-id" class="field"></select></div>
           <div><label class="lbl" for="ag-data-hora">Data e hora</label><input id="ag-data-hora" type="datetime-local" required class="field"></div>
-          <div><label class="lbl" for="ag-servico">Serviço</label><input id="ag-servico" placeholder="Ex: Limpeza de pele" class="field"></div>
+          <div><label class="lbl" for="ag-servico">Serviço</label><input id="ag-servico" placeholder="Ex: Limpeza de pele" class="field" list="ag-servicos-list" autocomplete="off"><datalist id="ag-servicos-list"></datalist></div>
           <div><label class="lbl" for="ag-profissional-id">Profissional</label><select id="ag-profissional-id" class="field"><option value="">— Sem profissional —</option></select></div>
         </div>
         <div class="flex gap-2"><button onclick="criarAgendamento()" class="btn btn-primary"><i data-lucide="check"></i> Criar</button><button onclick="closeNovoAgendamento()" class="btn btn-ghost">Cancelar</button></div>
@@ -1565,6 +1565,11 @@ function openNovoAgendamento() {
       selProf.innerHTML = '<option value="">Cadastre um profissional na aba Equipe</option>';
     }
   }
+  // Datalist de serviços já usados (fix #1 — evita digitação livre fragmentada)
+  const dl = $('ag-servicos-list');
+  if (dl) {
+    dl.innerHTML = _servicosUnicos().map(s => `<option value="${escapeHtml(s)}"></option>`).join('');
+  }
   refreshIcons();
 }
 function closeNovoAgendamento() { $('form-agendamento').classList.add('hidden'); }
@@ -1593,47 +1598,218 @@ async function cancelarAg(id) {
 }
 
 // ============================================================ Drawer (substitui modal de interações)
+// Estado do drawer de agendamento (pra modo edição inline)
+let _drawerAgData = null;
+let _drawerAgEditMode = false;
+
 async function abrirDrawerAgendamento(agId) {
+  _drawerAgEditMode = false;
   const a = (await api('/api/agendamentos/' + agId).catch(() => null));
   if (!a) return toast('Agendamento não encontrado', true);
-  const pac = pacientesCache.find(p => p.id === a.paciente_id) || { nome: '?', telefone: '?' };
+  _drawerAgData = a;
+  if (!pacientesCache.length) { try { pacientesCache = await api('/api/pacientes'); } catch {} }
+  if (!profissionaisCache.length) { try { profissionaisCache = await api('/api/profissionais'); } catch {} }
   const ints = await api('/api/agendamentos/' + agId + '/interacoes').catch(() => []);
+  _renderDrawerAg(ints);
+}
+
+// Possíveis transições por status atual (espelha _TRANSICOES_PERMITIDAS no backend).
+// Não inclui o status atual (no-op) — a UI só mostra ações que MUDAM o status.
+const _AG_TRANSICOES_UI = {
+  pendente:   [['confirmado', 'Confirmar', 'check', 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'],
+               ['realizado',  'Marcar realizado', 'check-circle-2', 'bg-blue-100 text-blue-700 hover:bg-blue-200'],
+               ['no_show',    'Marcar falta',     'user-x',         'bg-red-100 text-red-700 hover:bg-red-200'],
+               ['cancelado',  'Cancelar',         'ban',            'bg-gray-100 text-gray-700 hover:bg-gray-200']],
+  confirmado: [['realizado',  'Marcar realizado', 'check-circle-2', 'bg-blue-100 text-blue-700 hover:bg-blue-200'],
+               ['no_show',    'Marcar falta',     'user-x',         'bg-red-100 text-red-700 hover:bg-red-200'],
+               ['cancelado',  'Cancelar',         'ban',            'bg-gray-100 text-gray-700 hover:bg-gray-200']],
+  realizado:  [['pendente',   'Reabrir',          'undo-2',         'bg-amber-100 text-amber-700 hover:bg-amber-200']],
+  no_show:    [['pendente',   'Reabrir',          'undo-2',         'bg-amber-100 text-amber-700 hover:bg-amber-200']],
+  cancelado:  [['pendente',   'Reabrir',          'undo-2',         'bg-amber-100 text-amber-700 hover:bg-amber-200']],
+  reagendado: [['pendente',   'Reabrir',          'undo-2',         'bg-amber-100 text-amber-700 hover:bg-amber-200']],
+};
+
+function _renderDrawerAg(ints) {
+  const a = _drawerAgData;
+  const pac = pacientesCache.find(p => p.id === a.paciente_id) || { nome: '?', telefone: '?' };
+  // Resolver nome do profissional: preferir cache pelo ID, fallback pra string
+  const prof = a.profissional_id ? profissionaisCache.find(p => p.id === a.profissional_id) : null;
+  const profNome = prof?.nome || a.profissional || '—';
+  const profCor = prof?.cor || '#D1D5DB';
+
+  const dt = agendaSPDate(a.data_hora_utc || a.data_hora);
+  const fmtDataLong = () => {
+    const DIAS = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+    const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    const hh = String(dt.getHours()).padStart(2,'0');
+    const mm = String(dt.getMinutes()).padStart(2,'0');
+    return `${DIAS[dt.getDay()]}, ${dt.getDate()} ${MESES[dt.getMonth()]} ${dt.getFullYear()} · ${hh}:${mm}`;
+  };
+  // datetime-local input format
+  const dtLocalVal = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}T${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+
+  const statusInfo = AGENDA_STATUS_COR[a.status] || AGENDA_STATUS_COR.pendente;
+  const transicoes = _AG_TRANSICOES_UI[a.status] || [];
+
+  // Bloco edição inline (mostra se _drawerAgEditMode === true)
+  const profOpts = (profissionaisCache || [])
+    .filter(p => p.ativo !== false)
+    .map(p => `<option value="${escapeHtml(p.id)}" ${p.id === a.profissional_id ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`)
+    .join('');
+
+  const blocoEdicao = `
+    <div class="rounded-2xl border border-ink-100/60 bg-white/40 p-4 space-y-3">
+      <h4 class="text-xs uppercase tracking-wider text-ink-600 font-bold">Editar</h4>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">Data e hora</label><input id="dag-data" type="datetime-local" class="field" value="${dtLocalVal}"></div>
+        <div><label class="lbl">Duração (min)</label><input id="dag-dur" type="number" min="5" step="5" class="field" value="${a.duracao_minutos || 30}"></div>
+        <div class="col-span-2"><label class="lbl">Serviço</label><input id="dag-serv" class="field" list="servicos-list" value="${escapeHtml(a.servico || '')}" placeholder="Ex: Limpeza"></div>
+        <div class="col-span-2"><label class="lbl">Profissional</label><select id="dag-prof" class="field"><option value="">— Sem profissional —</option>${profOpts}</select></div>
+      </div>
+      <div class="flex gap-2 justify-end pt-1">
+        <button onclick="_drawerAgEditMode=false;_renderDrawerAg(${JSON.stringify(ints).replace(/"/g,'&quot;')})" class="btn btn-ghost text-xs" style="padding:8px 14px;">Cancelar</button>
+        <button onclick="_salvarEdicaoDrawerAg()" class="btn btn-primary text-xs" style="padding:8px 14px;"><i data-lucide="save" class="w-3.5 h-3.5"></i> Salvar</button>
+      </div>
+    </div>`;
+
+  // Bloco info (mostra se NÃO está editando)
+  const blocoInfo = `
+    <div class="rounded-2xl border border-ink-100/60 bg-white/40 p-4 space-y-2 text-sm">
+      <div class="flex items-start gap-3">
+        <i data-lucide="calendar-clock" class="w-4 h-4 text-ink-600 flex-shrink-0 mt-0.5"></i>
+        <div class="flex-1">
+          <div class="font-semibold text-ink-900 capitalize">${escapeHtml(fmtDataLong())}</div>
+          <div class="text-xs text-ink-600">Duração: ${a.duracao_minutos || 30} min</div>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <i data-lucide="stethoscope" class="w-4 h-4 text-ink-600 flex-shrink-0 mt-0.5"></i>
+        <div class="flex-1 text-ink-900">${escapeHtml(a.servico || 'Sem serviço definido')}</div>
+      </div>
+      <div class="flex items-start gap-3">
+        <i data-lucide="user-circle-2" class="w-4 h-4 text-ink-600 flex-shrink-0 mt-0.5"></i>
+        <div class="flex-1 flex items-center gap-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${escapeHtml(profCor)};"></span>
+          <span class="text-ink-900">${escapeHtml(profNome)}</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 text-xs text-ink-600 pt-1 border-t border-ink-100/40">
+        <span class="inline-flex items-center gap-1"><i data-lucide="${a.confirmacao_enviada ? 'check-circle-2' : 'circle'}" class="w-3 h-3"></i> Confirmação ${a.confirmacao_enviada ? 'enviada' : 'pendente'}</span>
+        <span class="inline-flex items-center gap-1"><i data-lucide="${a.segunda_confirmacao ? 'check-circle-2' : 'circle'}" class="w-3 h-3"></i> Lembrete ${a.segunda_confirmacao ? 'enviado' : 'pendente'}</span>
+      </div>
+    </div>`;
 
   const html = `
     <div class="drawer slide-right glass flex flex-col">
       <div class="flex items-start justify-between p-6 border-b border-ink-100/50">
-        <div>
-          <h3 class="font-serif text-2xl text-ink-900">${escapeHtml(pac.nome)}</h3>
-          <p class="text-sm text-ink-600 mt-1">${escapeHtml(fmtData(a.data_hora_utc || a.data_hora))} · ${escapeHtml(a.servico || 'sem serviço')}</p>
-          <span class="badge badge-${escapeHtml(a.status)} mt-2">${escapeHtml(a.status)}</span>
+        <div class="flex-1 min-w-0">
+          <button onclick="fecharDrawer(); abrirDrawerPaciente('${escapeHtml(a.paciente_id)}')"
+                  class="font-serif text-2xl text-ink-900 hover:text-rose-600 transition text-left truncate w-full" title="Ver paciente">
+            ${escapeHtml(pac.nome)} <i data-lucide="external-link" class="w-4 h-4 inline-block align-middle text-ink-600"></i>
+          </button>
+          <p class="text-xs text-ink-600 mt-1 font-mono">${escapeHtml(pac.telefone)}</p>
+          <div class="mt-2 inline-flex items-center gap-2 px-2.5 py-1 rounded-full" style="background:${statusInfo.bg}1f;">
+            <span class="inline-block w-2 h-2 rounded-full" style="background:${statusInfo.bg};"></span>
+            <span class="text-xs font-bold text-ink-900">${escapeHtml(statusInfo.label.toUpperCase())}</span>
+          </div>
         </div>
-        <button onclick="fecharDrawer()" class="text-ink-600 hover:text-ink-900 p-2 -mr-2" aria-label="Fechar"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button onclick="fecharDrawer()" class="text-ink-600 hover:text-ink-900 p-2 -mr-2 flex-shrink-0" aria-label="Fechar"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
-      <div class="flex-1 overflow-y-auto p-6">
-        <p class="text-xs text-ink-600 uppercase font-semibold tracking-wider mb-4">Conversa com a IA</p>
-        ${ints.length === 0
-          ? `<div class="text-center py-12 text-ink-600"><i data-lucide="message-circle-off" class="w-10 h-10 mx-auto mb-2 opacity-40"></i><p class="text-sm">Sem mensagens ainda. A IA vai falar com ela 24h antes da consulta.</p></div>`
-          : ints.map(i => `
-            <div class="mb-4">
-              <div class="text-xs text-ink-600 mb-1.5">${escapeHtml(fmtData(i.quando))} · ${escapeHtml(i.tipo)}</div>
-              ${i.mensagem_enviada ? `<div class="bg-rose-100 p-3 rounded-2xl rounded-tl-sm text-sm text-ink-900 max-w-[85%]">${escapeHtml(i.mensagem_enviada)}</div>` : ''}
-              ${i.mensagem_recebida ? `<div class="bg-cream p-3 rounded-2xl rounded-tr-sm text-sm text-ink-900 max-w-[85%] ml-auto mt-1">${escapeHtml(i.mensagem_recebida)}</div>` : ''}
-            </div>
-          `).join('')
-        }
+
+      <div class="flex-1 overflow-y-auto p-5 space-y-4">
+        ${_drawerAgEditMode ? blocoEdicao : blocoInfo}
+
+        ${!_drawerAgEditMode ? `
+        <div class="flex flex-wrap gap-2">
+          <button onclick="_drawerAgEditMode=true;_renderDrawerAg(${JSON.stringify(ints).replace(/"/g,'&quot;')})" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/60 hover:bg-white text-ink-700 transition flex items-center gap-1.5">
+            <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Editar
+          </button>
+          <button onclick="fecharDrawer(); abrirDrawerPaciente('${escapeHtml(a.paciente_id)}', 'prontuario')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/60 hover:bg-white text-ink-700 transition flex items-center gap-1.5">
+            <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i> Prontuário
+          </button>
+        </div>
+
+        ${transicoes.length > 0 ? `
+        <div>
+          <h4 class="text-xs uppercase tracking-wider text-ink-600 font-bold mb-2">Mudar status</h4>
+          <div class="flex flex-wrap gap-2">
+            ${transicoes.map(([novoSt, label, ic, classes]) => `
+              <button onclick="_mudarStatusAg('${escapeHtml(novoSt)}')"
+                      class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${classes}">
+                <i data-lucide="${ic}" class="w-3.5 h-3.5"></i> ${label}
+              </button>`).join('')}
+          </div>
+        </div>` : ''}
+        ` : ''}
+
+        <div>
+          <h4 class="text-xs uppercase tracking-wider text-ink-600 font-bold mb-3">Conversa com a IA</h4>
+          ${ints.length === 0
+            ? `<div class="text-center py-8 text-ink-600 rounded-2xl border border-dashed border-ink-100/60"><i data-lucide="message-circle-off" class="w-8 h-8 mx-auto mb-2 opacity-40"></i><p class="text-xs">Sem mensagens ainda. A IA vai falar 24h antes da consulta.</p></div>`
+            : ints.map(i => `
+              <div class="mb-3">
+                <div class="text-[10px] text-ink-600 mb-1 uppercase tracking-wider font-semibold">${escapeHtml(fmtData(i.quando))} · ${escapeHtml(i.tipo)}</div>
+                ${i.mensagem_enviada ? `<div class="bg-rose-100 p-3 rounded-2xl rounded-tl-sm text-sm text-ink-900 max-w-[90%]">${escapeHtml(i.mensagem_enviada)}</div>` : ''}
+                ${i.mensagem_recebida ? `<div class="bg-cream p-3 rounded-2xl rounded-tr-sm text-sm text-ink-900 max-w-[90%] ml-auto mt-1">${escapeHtml(i.mensagem_recebida)}</div>` : ''}
+              </div>`).join('')
+          }
+        </div>
       </div>
-      <div class="p-4 border-t border-ink-100/50 flex gap-2">
-        ${a.status === 'pendente' ? `<button onclick="cancelarAg('${escapeHtml(a.id)}'); fecharDrawer();" class="btn btn-danger text-sm flex-1">Cancelar consulta</button>` : ''}
-        <button onclick="fecharDrawer()" class="btn btn-ghost text-sm flex-1">Fechar</button>
+
+      <div class="p-4 border-t border-ink-100/50">
+        <button onclick="fecharDrawer()" class="btn btn-ghost text-sm w-full">Fechar</button>
       </div>
     </div>
     <div class="fixed inset-0 bg-ink-900/30 backdrop-blur-sm z-[55] overlay" onclick="fecharDrawer()" aria-hidden="true"></div>
+    <datalist id="servicos-list">${_servicosUnicos().map(s => `<option value="${escapeHtml(s)}"></option>`).join('')}</datalist>
   `;
-  const container = document.createElement('div');
+  // Re-monta o container
+  let container = $('drawer-container');
+  if (container) container.remove();
+  container = document.createElement('div');
   container.id = 'drawer-container';
   container.innerHTML = html;
   document.body.appendChild(container);
   refreshIcons();
+}
+
+// Compila lista de serviços únicos já usados (pra autocompletar — fix #1)
+function _servicosUnicos() {
+  const set = new Set();
+  for (const a of (agendaCache || [])) {
+    if (a.servico && a.servico.trim()) set.add(a.servico.trim());
+  }
+  return [...set].sort();
+}
+
+async function _mudarStatusAg(novoStatus) {
+  if (!_drawerAgData) return;
+  try {
+    await api('/api/agendamentos/' + _drawerAgData.id, {
+      method: 'PUT', body: JSON.stringify({ status: novoStatus }),
+    });
+    toast('Status atualizado');
+    fecharDrawer();
+    loadAgendamentos();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function _salvarEdicaoDrawerAg() {
+  if (!_drawerAgData) return;
+  const payload = {
+    data_hora: $('dag-data').value + ':00',
+    duracao_minutos: parseInt($('dag-dur').value, 10) || 30,
+    servico: $('dag-serv').value.trim() || null,
+    profissional_id: $('dag-prof').value || null,
+  };
+  try {
+    await api('/api/agendamentos/' + _drawerAgData.id, {
+      method: 'PUT', body: JSON.stringify(payload),
+    });
+    toast('Agendamento atualizado');
+    fecharDrawer();
+    loadAgendamentos();
+  } catch (e) { toast(e.message, true); }
 }
 function fecharDrawer() {
   const d = $('drawer-container');
@@ -1934,6 +2110,11 @@ async function loadProfissionais() {
       api('/api/plano/me/uso').catch(() => null),
     ]);
     profissionaisCache = profs;
+    // Fix #7 da auditoria: se a agenda já foi carregada antes, re-pintar pra
+    // refletir profissionais novos/inativos sem precisar dar F5.
+    if (typeof agendaCache !== 'undefined' && agendaCache.length > 0 && typeof agendaRender === 'function') {
+      try { agendaRender(); } catch {}
+    }
     if (uso) {
       const limite = uso.uso?.profissionais?.limite;
       const atual = uso.uso?.profissionais?.atual ?? 0;
@@ -3274,6 +3455,8 @@ async function abrirDrawerPaciente(pacienteId, aba = 'timeline') {
     </div>`;
   refreshIcons();
   try {
+    // Garante profissionaisCache pra lookup de nome em timeline / cards (fix #8)
+    if (!profissionaisCache.length) { try { profissionaisCache = await api('/api/profissionais'); } catch {} }
     drawerPacienteData = await api('/api/pacientes/' + pacienteId);
     renderDrawerPaciente(aba);
   } catch (e) { toast(e.message, true); fecharDrawerPaciente(); }
@@ -3284,6 +3467,11 @@ function fecharDrawerPaciente() {
   if (c) c.remove();
   drawerPacienteId = null;
   drawerPacienteData = null;
+  // Limpa caches por-paciente pra não vazar dados entre aberturas (fix #2 da auditoria)
+  planosCache = [];
+  _anamneseData = null;
+  _odoEstado = {};
+  _odoPacienteIdAtual = null;
 }
 
 function renderDrawerPaciente(aba) {
@@ -3471,7 +3659,12 @@ function renderTimelineItem(it) {
   const d = it.dados || {};
   let titulo = '', corpo = '';
   if (it.tipo === 'agendamento') {
-    titulo = (d.servico || 'Atendimento') + (d.profissional ? ' · ' + d.profissional : '');
+    // Fix #8 da auditoria: se a string vazia mas tem profissional_id, faz lookup no cache
+    let profNome = d.profissional;
+    if (!profNome && d.profissional_id && profissionaisCache.length) {
+      profNome = profissionaisCache.find(p => p.id === d.profissional_id)?.nome || '';
+    }
+    titulo = (d.servico || 'Atendimento') + (profNome ? ' · ' + profNome : '');
     corpo = `Status: <span class="badge badge-${d.status || 'pendente'}">${escapeHtml(d.status || '—')}</span>`;
   } else if (it.tipo === 'prontuario') {
     titulo = 'Prontuário';

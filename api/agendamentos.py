@@ -13,6 +13,32 @@ from core.timezones import to_utc_naive
 router = APIRouter(prefix="/api/agendamentos", tags=["agendamentos"])
 
 
+# Transições de status permitidas. Bloqueia mudanças sem sentido (ex: realizado → pendente).
+# 'reabrir' é uma transição administrativa que volta pra pendente — útil pra desfazer erro humano.
+_TRANSICOES_PERMITIDAS = {
+    Status.PENDENTE:    {Status.CONFIRMADO, Status.CANCELADO, Status.REAGENDADO, Status.NO_SHOW, Status.REALIZADO},
+    Status.CONFIRMADO:  {Status.REALIZADO, Status.NO_SHOW, Status.CANCELADO, Status.REAGENDADO, Status.PENDENTE},
+    Status.REAGENDADO:  {Status.PENDENTE, Status.CONFIRMADO, Status.CANCELADO},
+    # Estados "finais" só permitem reabrir pra pendente (correção de erro humano).
+    Status.REALIZADO:   {Status.PENDENTE},
+    Status.NO_SHOW:     {Status.PENDENTE},
+    Status.CANCELADO:   {Status.PENDENTE},
+}
+
+
+def _validar_transicao_status(status_atual: str, novo_status: str) -> None:
+    """Levanta 400 se transição não for permitida. Aceita mesmo status (no-op)."""
+    if status_atual == novo_status:
+        return
+    permitidas = _TRANSICOES_PERMITIDAS.get(status_atual, set())
+    if novo_status not in permitidas:
+        raise HTTPException(
+            400,
+            f"Transição '{status_atual}' → '{novo_status}' não permitida. "
+            f"Permitidas: {sorted(permitidas) or 'nenhuma'}"
+        )
+
+
 class AgendamentoIn(BaseModel):
     paciente_id: str
     data_hora: datetime
@@ -101,6 +127,8 @@ def criar(
     prof_id, prof_nome = _resolver_profissional(
         db, clinica.id, payload.profissional_id, payload.profissional,
     )
+    if payload.profissional_id and not prof_id:
+        raise HTTPException(404, "Profissional não pertence a esta clínica")
     agendamento = Agendamento(
         clinica_id=clinica.id,
         paciente_id=payload.paciente_id,
@@ -185,15 +213,21 @@ def atualizar(
     if not a:
         raise HTTPException(404, "Agendamento não encontrado")
     if payload.status is not None:
+        _validar_transicao_status(a.status, payload.status)
         a.status = payload.status
     if payload.data_hora is not None:
         a.data_hora = to_utc_naive(payload.data_hora)
     if payload.servico is not None:
         a.servico = payload.servico
     if payload.profissional is not None or payload.profissional_id is not None:
+        # Fix #4: se vem `profissional` string sem `profissional_id`, _resolver_profissional
+        # já valida tenant — mas se nome não bate com ninguém da clínica, retorna a string
+        # como veio (legado). Garantimos aqui que só aceita IDs válidos da clínica.
         prof_id, prof_nome = _resolver_profissional(
             db, clinica.id, payload.profissional_id, payload.profissional,
         )
+        if payload.profissional_id and not prof_id:
+            raise HTTPException(404, "Profissional não pertence a esta clínica")
         a.profissional_id = prof_id
         a.profissional = prof_nome
     audit.log(db, **ctx, acao=AcaoAudit.UPDATE, recurso="agendamento", recurso_id=a.id,
