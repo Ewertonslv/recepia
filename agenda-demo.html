@@ -274,7 +274,7 @@ function agendaApptBlock(a, pMap, prMap) {
   const top = (a.startMin - HORA_INI*60) / 30 * SLOT_H;
   const height = Math.max((a.endMin - a.startMin) / 30 * SLOT_H - 2, 18);
   const info = prMap[a.profissional_id] || { nome:'', cor:'#E8B4B8' };
-  const cor = info.cor || '#E8B4B8';
+  const cor = info.cor || '#D1D5DB';
   const w = a._cols > 0 ? 100 / a._cols : 100;
   const left = a._col * w;
   const nomePac = (pMap[a.paciente_id] || '?').split(' ').slice(0,2).join(' ');
