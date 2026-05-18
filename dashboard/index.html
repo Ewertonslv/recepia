@@ -675,6 +675,10 @@ let usuarioRole = safeLocalGet('recepia_usuario_role') || 'admin';
 let usuarioNome = safeLocalGet('recepia_usuario_nome') || '';
 let pacientesCache = [];
 let profissionaisCache = [];
+let agendaView = 'semana';   // 'dia' | 'semana' | 'mes'
+let agendaDate = new Date(); // âncora da visão atual
+let agendaFilterProfId = ''; // '' = todos
+let agendaCache = [];        // agendamentos do período carregado
 let especialidadeConfig = null;  // carregado no init, cacheado durante a sessão
 let trialStatus = null;          // {em_trial, expirado, dias_restantes, planos_disponiveis, ...}
 
@@ -1016,31 +1020,173 @@ async function checarStatusBanner() {
   } catch { /* silent */ }
 }
 
+// ── Agenda visual — utilitários ─────────────────────────────────────
+
+function agendaSPDate(isoStr) {
+  return new Date(new Date(isoStr).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+}
+
+function agendaDateKey(date) {
+  return new Date(date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
+function agendaWeekDays(anchor) {
+  const d = new Date(anchor);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay()); // domingo
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = new Date(d);
+    day.setDate(day.getDate() + i);
+    return day;
+  });
+}
+
+function agendaPeriodLabel() {
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const MESES_ABR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  if (agendaView === 'dia') {
+    const d = agendaDate;
+    return `${String(d.getDate()).padStart(2,'0')} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+  }
+  if (agendaView === 'semana') {
+    const days = agendaWeekDays(agendaDate);
+    const ini = days[0], fim = days[6];
+    if (ini.getMonth() === fim.getMonth())
+      return `${ini.getDate()} a ${fim.getDate()} de ${MESES[ini.getMonth()]}`;
+    return `${ini.getDate()} ${MESES_ABR[ini.getMonth()]} – ${fim.getDate()} ${MESES_ABR[fim.getMonth()]}`;
+  }
+  return `${MESES[agendaDate.getMonth()]} de ${agendaDate.getFullYear()}`;
+}
+
+function agendaLayoutAppts(appts) {
+  const sorted = [...appts].sort((a, b) => a.startMin - b.startMin);
+  const cols = [];
+  for (const appt of sorted) {
+    let placed = false;
+    for (let c = 0; c < cols.length; c++) {
+      if (cols[c][cols[c].length - 1].endMin <= appt.startMin) {
+        cols[c].push(appt); appt._col = c; placed = true; break;
+      }
+    }
+    if (!placed) { appt._col = cols.length; cols.push([appt]); }
+  }
+  for (const appt of sorted) {
+    let maxCol = appt._col;
+    for (const other of sorted) {
+      if (other !== appt && other.startMin < appt.endMin && other.endMin > appt.startMin)
+        maxCol = Math.max(maxCol, other._col);
+    }
+    appt._cols = maxCol + 1;
+  }
+  return sorted;
+}
+
+function agendaApptBlock(a, pacMap, profMap) {
+  const HORA_INI = 7, SLOT_H = 40;
+  const sp = agendaSPDate(a.data_hora_utc || a.data_hora);
+  const startMin = sp.getHours() * 60 + sp.getMinutes();
+  const endMin = startMin + (a.duracao_minutos || 30);
+  const topPx = (startMin - HORA_INI * 60) / 30 * SLOT_H;
+  const heightPx = Math.max(endMin - startMin, 30) / 30 * SLOT_H;
+  const w = 100 / (a._cols || 1);
+  const left = (a._col || 0) * w;
+  const prof = a.profissional_id ? profMap[a.profissional_id] : null;
+  const cor = (prof && prof.cor) ? prof.cor : '#E8B4B8';
+  const nomePac = escapeHtml(pacMap[a.paciente_id] || '?');
+  const hIni = String(Math.floor(startMin/60)).padStart(2,'0') + ':' + String(startMin%60).padStart(2,'0');
+  const hFim = String(Math.floor(endMin/60)).padStart(2,'0') + ':' + String(endMin%60).padStart(2,'0');
+  return `<div class="agenda-appt"
+    style="top:${topPx}px;height:${heightPx - 2}px;background:${escapeHtml(cor)}28;border-left-color:${escapeHtml(cor)};left:calc(${left}% + 2px);width:calc(${w}% - 4px);"
+    onclick="abrirDrawerAgendamento('${escapeHtml(a.id)}')"
+    title="${nomePac} — ${hIni} a ${hFim}">
+    <div class="font-semibold text-ink-900 truncate">${nomePac}</div>
+    <div style="font-size:10px;color:#5C5552;">${hIni}–${hFim}</div>
+  </div>`;
+}
+
+function agendaUpdateProfFilter() {
+  const sel = $('agenda-prof-filter');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' +
+    profissionaisCache.filter(p => p.ativo !== false).map(p =>
+      `<option value="${escapeHtml(p.id)}" ${p.id === current ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`
+    ).join('');
+}
+
+function agendaUpdateToolbar() {
+  $('agenda-periodo').textContent = agendaPeriodLabel();
+  ['dia','semana','mes'].forEach(v => {
+    const btn = $(`agenda-btn-${v}`);
+    if (btn) btn.classList.toggle('active', agendaView === v);
+  });
+}
+
+function agendaNav(dir) {
+  if (dir === 0) { agendaDate = new Date(); loadAgendamentos(); return; }
+  const d = new Date(agendaDate);
+  if (agendaView === 'dia') d.setDate(d.getDate() + dir);
+  else if (agendaView === 'semana') d.setDate(d.getDate() + dir * 7);
+  else d.setMonth(d.getMonth() + dir);
+  agendaDate = d;
+  loadAgendamentos();
+}
+
+function agendaSetView(v) {
+  agendaView = v;
+  loadAgendamentos();
+}
+
+function agendaSetFilter(profId) {
+  agendaFilterProfId = profId;
+  agendaRender();
+}
+
+function agendaGoToDay(key) {
+  const [d, m, y] = key.split('/');
+  agendaDate = new Date(+y, +m - 1, +d);
+  agendaSetView('dia');
+}
+
+function agendaRender() {
+  agendaUpdateToolbar();
+  if (agendaView === 'semana') agendaRenderSemana();
+  else if (agendaView === 'dia') agendaRenderDia();
+  else agendaRenderMes();
+  agendaRenderAlertas();
+  refreshIcons();
+}
+
 // ============================================================ Agendamentos
 async function loadAgendamentos() {
-  $('lista-agendamentos').innerHTML = `<tr><td colspan="5" class="px-7 py-12"><div class="skel h-6 w-full"></div></td></tr>`;
+  let ini, fim;
+  if (agendaView === 'dia') {
+    ini = new Date(agendaDate); ini.setHours(0, 0, 0, 0);
+    fim = new Date(agendaDate); fim.setHours(23, 59, 59, 999);
+  } else if (agendaView === 'semana') {
+    const days = agendaWeekDays(agendaDate);
+    ini = new Date(days[0]); ini.setHours(0, 0, 0, 0);
+    fim = new Date(days[6]); fim.setHours(23, 59, 59, 999);
+  } else {
+    const year = agendaDate.getFullYear(), month = agendaDate.getMonth();
+    ini = new Date(year, month, 1);
+    fim = new Date(year, month + 1, 0, 23, 59, 59, 999);
+  }
+  const isoIni = ini.toISOString().slice(0, 10);
+  const isoFim = fim.toISOString().slice(0, 10);
+
+  $('agenda-grid').innerHTML = `<div class="p-8"><div class="skel h-6 w-1/3 mx-auto mb-4 rounded-xl"></div><div class="skel h-64 w-full rounded-xl"></div></div>`;
+  agendaUpdateToolbar();
+
   try {
-    const [ags, pacs] = await Promise.all([api('/api/agendamentos'), api('/api/pacientes')]);
-    pacientesCache = pacs;
-    const pacMap = Object.fromEntries(pacs.map(p => [p.id, p.nome]));
-    $('lista-agendamentos').innerHTML = ags.length === 0
-      ? `<tr><td colspan="5" class="px-7 py-16 text-center text-ink-600"><i data-lucide="calendar-x" class="w-12 h-12 mx-auto mb-3 opacity-40"></i><p class="text-sm mb-3">Nenhum agendamento ainda.</p><button onclick="openNovoAgendamento()" class="btn btn-primary text-sm" style="padding:8px 16px;">+ Criar primeiro</button></td></tr>`
-      : ags.map(a => `
-          <tr class="hover:bg-white/40 transition cursor-pointer" onclick="abrirDrawerAgendamento('${escapeHtml(a.id)}')">
-            <td class="px-7 py-4 font-medium text-ink-900">${escapeHtml(fmtData(a.data_hora_utc || a.data_hora))}</td>
-            <td class="px-7 py-4">
-              <span class="text-ink-900 hover:text-rose-500 font-medium inline-flex items-center gap-1.5">
-                ${escapeHtml(pacMap[a.paciente_id] || '?')} <i data-lucide="message-circle" class="w-3.5 h-3.5 text-ink-600"></i>
-              </span>
-            </td>
-            <td class="px-7 py-4 text-ink-600">${escapeHtml(a.servico || '—')}</td>
-            <td class="px-7 py-4"><span class="badge badge-${escapeHtml(a.status)}">${escapeHtml(a.status)}</span></td>
-            <td class="px-7 py-4 text-right">${a.status === 'pendente' ? `<button onclick="event.stopPropagation(); cancelarAg('${escapeHtml(a.id)}')" class="text-red-600 text-xs hover:underline font-medium">Cancelar</button>` : ''}</td>
-          </tr>
-        `).join('');
-    refreshIcons();
+    if (!pacientesCache.length) pacientesCache = await api('/api/pacientes');
+    if (!profissionaisCache.length) profissionaisCache = await api('/api/profissionais');
+    agendaCache = await api(`/api/agendamentos?data_inicio=${isoIni}&data_fim=${isoFim}`);
+    agendaUpdateProfFilter();
+    agendaRender();
   } catch (e) {
-    $('lista-agendamentos').innerHTML = `<tr><td colspan="5" class="px-7 py-12 text-center"><p class="text-red-600 text-sm mb-3">${escapeHtml(e.message)}</p><button onclick="loadAgendamentos()" class="btn btn-ghost text-sm">Tentar de novo</button></td></tr>`;
+    $('agenda-grid').innerHTML = `<div class="p-8 text-center"><p class="text-red-600 text-sm mb-3">${escapeHtml(e.message)}</p><button onclick="loadAgendamentos()" class="btn btn-ghost text-sm">Tentar de novo</button></div>`;
+    refreshIcons();
   }
 }
 
