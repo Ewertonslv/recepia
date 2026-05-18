@@ -348,14 +348,29 @@
 
     <!-- TAB: Agenda -->
     <section id="tab-agendamentos" class="hidden fade-in" role="tabpanel">
-      <header class="flex items-end justify-between mb-8 flex-wrap gap-4">
-        <div>
-          <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight mb-2">Agenda</h2>
-          <p class="text-ink-600 text-sm">Clica no nome da paciente pra ver a conversa que a IA teve com ela.</p>
+      <!-- Toolbar -->
+      <div class="flex items-start justify-between mb-5 flex-wrap gap-3">
+        <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight">Agenda</h2>
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center glass rounded-xl p-1 gap-0.5">
+            <button onclick="agendaNav(-1)" class="px-3 py-1.5 rounded-lg text-sm text-ink-600 hover:bg-white/60 transition font-bold">‹</button>
+            <button onclick="agendaNav(0)" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-ink-600 hover:bg-white/60 transition">Hoje</button>
+            <button onclick="agendaNav(1)" class="px-3 py-1.5 rounded-lg text-sm text-ink-600 hover:bg-white/60 transition font-bold">›</button>
+          </div>
+          <span id="agenda-periodo" class="text-sm font-semibold text-ink-900 min-w-[160px] text-center">—</span>
+          <div class="flex items-center glass rounded-xl p-1 gap-0.5">
+            <button id="agenda-btn-dia" onclick="agendaSetView('dia')" class="agenda-view-btn">Dia</button>
+            <button id="agenda-btn-semana" onclick="agendaSetView('semana')" class="agenda-view-btn">Semana</button>
+            <button id="agenda-btn-mes" onclick="agendaSetView('mes')" class="agenda-view-btn">Mês</button>
+          </div>
+          <select id="agenda-prof-filter" onchange="agendaSetFilter(this.value)" class="field text-xs" style="padding:7px 36px 7px 12px;width:auto;min-width:120px;">
+            <option value="">Todos</option>
+          </select>
+          <button onclick="openNovoAgendamento()" class="btn btn-primary text-sm" style="padding:8px 16px;"><i data-lucide="plus"></i> Novo</button>
         </div>
-        <button onclick="openNovoAgendamento()" class="btn btn-primary"><i data-lucide="plus"></i> Novo</button>
-      </header>
+      </div>
 
+      <!-- Form novo agendamento (mantido idêntico) -->
       <div class="glass rounded-3xl p-7 mb-5 hidden slide-down" id="form-agendamento">
         <h3 class="font-serif text-xl text-ink-900 mb-5">Novo agendamento</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
@@ -367,14 +382,19 @@
         <div class="flex gap-2"><button onclick="criarAgendamento()" class="btn btn-primary"><i data-lucide="check"></i> Criar</button><button onclick="closeNovoAgendamento()" class="btn btn-ghost">Cancelar</button></div>
       </div>
 
-      <div class="glass rounded-3xl overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm min-w-[640px]">
-            <thead class="bg-white/50 text-ink-600 text-left text-xs uppercase tracking-wider">
-              <tr><th class="px-7 py-4 font-semibold">Data/Hora</th><th class="px-7 py-4 font-semibold">Paciente</th><th class="px-7 py-4 font-semibold">Serviço</th><th class="px-7 py-4 font-semibold">Status</th><th class="px-7 py-4 font-semibold"></th></tr>
-            </thead>
-            <tbody id="lista-agendamentos" class="divide-y divide-ink-100/50"></tbody>
-          </table>
+      <!-- Grade + painel de alertas -->
+      <div class="flex gap-4 items-start">
+        <div class="flex-1 min-w-0 glass rounded-3xl overflow-hidden">
+          <div id="agenda-grid"></div>
+        </div>
+        <div class="hidden xl:block w-64 flex-shrink-0">
+          <div class="glass rounded-3xl p-5 sticky top-6">
+            <div class="flex items-center gap-2 mb-3">
+              <i data-lucide="bell" class="w-4 h-4 text-rose-400"></i>
+              <h3 class="font-serif text-lg text-ink-900">Retornos</h3>
+            </div>
+            <div id="agenda-alertas" class="space-y-2 overflow-y-auto" style="max-height:60vh;"></div>
+          </div>
         </div>
       </div>
     </section>
