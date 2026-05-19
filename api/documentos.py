@@ -47,7 +47,7 @@ router = APIRouter(prefix="/api/pacientes/{paciente_id}/documentos", tags=["docu
 # Constantes
 # ============================================================================
 
-TIPOS_VALIDOS = {"prontuario", "atestado", "declaracao_comparecimento", "receituario", "termo_consentimento"}
+TIPOS_VALIDOS = {"prontuario", "atestado", "declaracao_comparecimento", "receituario", "termo_consentimento", "recibo"}
 MAX_PRESCRICAO = 4000
 MAX_FOTOS_PDF = 6  # cap pra não inchar PDF nem exportar álbum inteiro
 
@@ -237,6 +237,11 @@ def gerar_documento(
     procedimento: Optional[str] = Query(None, min_length=2, max_length=300),
     riscos: Optional[str] = Query(None, max_length=2000),
     cuidados_pos: Optional[str] = Query(None, max_length=2000),
+    servico_recibo: Optional[str] = Query(None, max_length=120),
+    valor_recibo: Optional[str] = Query(None, max_length=30),
+    profissional_recibo: Optional[str] = Query(None, max_length=120),
+    hora_recibo: Optional[str] = Query(None, max_length=5),
+    observacoes_recibo: Optional[str] = Query(None, max_length=1000),
     clinica: Clinica = Depends(clinica_atual),
     usuario: Usuario = Depends(usuario_atual),
     ctx: dict = Depends(audit_context),
@@ -336,6 +341,17 @@ def gerar_documento(
             "riscos": (riscos or "").strip() or None,
             "cuidados_pos": (cuidados_pos or "").strip() or None,
             "data": data or date.today(),
+        })
+
+    elif tipo == "recibo":
+        from datetime import date as _date
+        contexto.update({
+            "servico": (servico_recibo or "Atendimento").strip(),
+            "profissional_nome": (profissional_recibo or "").strip() or None,
+            "data_atendimento": data or _date.today(),
+            "hora_atendimento": hora_recibo,
+            "valor": (valor_recibo or "").strip() or None,
+            "observacoes": (observacoes_recibo or "").strip() or None,
         })
 
     # 6) Render. WeasyPrint pode falhar em template malformado — surface 500

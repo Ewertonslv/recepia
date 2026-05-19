@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block titulo_html %}Recibo de Atendimento · {{ paciente.nome | e }}{% endblock %}
+
+{% block titulo %}
+<h1 class="titulo" style="text-align:center;">RECIBO DE ATENDIMENTO</h1>
+{% endblock %}
+
+{% block conteudo %}
+<div class="box" style="margin-bottom:20px;">
+  <div class="field">
+    <span class="lbl">Paciente</span>
+    <span class="val">{{ paciente.nome | e }}</span>
+  </div>
+  {% if paciente.cpf %}
+  <div class="field">
+    <span class="lbl">CPF</span>
+    <span class="val">{{ paciente.cpf | cpf }}</span>
+  </div>
+  {% endif %}
+  {% if paciente.telefone %}
+  <div class="field">
+    <span class="lbl">Telefone</span>
+    <span class="val">{{ paciente.telefone | e }}</span>
+  </div>
+  {% endif %}
+</div>
+
+<table class="dados" style="margin-bottom:20px;">
+  <tr>
+    <th style="width:40%">Item</th>
+    <th style="width:30%">Profissional</th>
+    <th style="width:30%">Data / Horário</th>
+  </tr>
+  <tr>
+    <td>{{ servico | e }}</td>
+    <td>{{ profissional_nome | e if profissional_nome else '—' }}</td>
+    <td>{{ data_atendimento | br_data }}{% if hora_atendimento %} às {{ hora_atendimento | e }}{% endif %}</td>
+  </tr>
+</table>
+
+{% if valor %}
+<div style="text-align:right; font-size:14pt; font-weight:700; margin-bottom:24px; color:#1a1a1a;">
+  Valor: <span style="color:#b91c1c;">{{ valor | e }}</span>
+</div>
+{% endif %}
+
+{% if observacoes %}
+<div class="box" style="margin-bottom:20px;">
+  <div class="field" style="display:block;">
+    <span class="lbl">Observações</span>
+    <div class="val" style="margin-top:4px; white-space:pre-wrap;">{{ observacoes | e }}</div>
+  </div>
+</div>
+{% endif %}
+
+<p style="margin-top:28px; font-size:10pt; color:#555; text-align:justify;">
+  Declaro que recebi o(s) serviço(s) acima discriminado(s), realizado(s) nas dependências de
+  <strong>{{ clinica.nome | e }}</strong>, conforme descrito neste recibo.
+</p>
+
+<div class="local-data">
+  {% if clinica.endereco_cidade %}{{ clinica.endereco_cidade | e }}, {% endif %}{{ data_emissao | br_data }}.
+</div>
+
+<div style="display:flex; justify-content:space-between; margin-top:60px; gap:40px;">
+  <div class="assinatura" style="flex:1;">
+    <div class="linha">
+      <div class="nome">{{ paciente.nome | e }}</div>
+      <div class="registro">Paciente / Responsável</div>
+    </div>
+  </div>
+  <div class="assinatura" style="flex:1;">
+    <div class="linha">
+      <div class="nome">{% if clinica.responsavel_tecnico %}{{ clinica.responsavel_tecnico | e }}{% else %}—{% endif %}</div>
+      <div class="registro">{% if clinica.registro_conselho %}{{ clinica.registro_conselho | e }}{% endif %}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
