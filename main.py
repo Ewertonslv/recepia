@@ -30,9 +30,9 @@ from core.timezones import agora_utc, from_utc_to_br
 from database import get_db_dependency, init_db
 from models import Agendamento, Clinica, Status
 from api import (
-    agendamentos, anamnese, auth, clinicas, configuracoes, documentos, fotos, horarios,
+    agendamentos, anamnese, auth, bloqueios, clinicas, configuracoes, documentos, fotos, horarios,
     odontograma, paciente_foto, pacientes, planos, planos_tratamento,
-    profissionais, prontuarios, signup, webhooks, whatsapp,
+    procedimentos, profissionais, prontuarios, signup, webhooks, whatsapp,
 )
 
 
@@ -97,6 +97,8 @@ app.include_router(paciente_foto.router)   # /api/pacientes/{id}/foto (Sprint 2 
 app.include_router(documentos.router)      # /api/pacientes/{id}/documentos/* (Sprint 2 — PDFs)
 app.include_router(odontograma.router)     # /api/pacientes/{id}/odontograma (Sprint 2 — odonto only)
 app.include_router(anamnese.router)        # /api/pacientes/{id}/anamnese (Sprint 8 — questionário clínico)
+app.include_router(procedimentos.router)   # /api/procedimentos (Sprint 9)
+app.include_router(bloqueios.router)       # /api/bloqueios (Sprint 9)
 app.include_router(whatsapp.router)        # /api/whatsapp (clínica conecta seu WhatsApp)
 app.include_router(webhooks.router)        # /api/webhook (Evolution callback)
 

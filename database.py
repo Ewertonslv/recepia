@@ -184,3 +184,34 @@ def _aplicar_migracoes_idempotentes() -> None:
         """))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_anamneses_clinica_id ON anamneses(clinica_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_anamneses_paciente_id ON anamneses(paciente_id)"))
+
+        # Sprint 9 — catálogo de procedimentos
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS procedimentos (
+                id VARCHAR PRIMARY KEY,
+                clinica_id VARCHAR NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+                nome VARCHAR(120) NOT NULL,
+                duracao_minutos INTEGER NOT NULL DEFAULT 30,
+                cor VARCHAR(7) NOT NULL DEFAULT '#E8B4B8',
+                ativo BOOLEAN NOT NULL DEFAULT TRUE,
+                criado_em TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
+                atualizado_em TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
+                CONSTRAINT uq_procedimento_clinica_nome UNIQUE (clinica_id, nome)
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_procedimentos_clinica_id ON procedimentos(clinica_id)"))
+
+        # Sprint 9 — bloqueios de agenda
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS bloqueios_agenda (
+                id VARCHAR PRIMARY KEY,
+                clinica_id VARCHAR NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+                profissional_id VARCHAR REFERENCES profissionais(id) ON DELETE CASCADE,
+                inicio TIMESTAMP NOT NULL,
+                fim TIMESTAMP NOT NULL,
+                motivo VARCHAR(120) NOT NULL DEFAULT 'Bloqueio',
+                criado_em TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc')
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_bloqueios_clinica_id ON bloqueios_agenda(clinica_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_bloqueios_clinica_inicio ON bloqueios_agenda(clinica_id, inicio)"))

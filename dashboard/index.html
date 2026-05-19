@@ -243,6 +243,7 @@
       <button onclick="showTab('agendamentos')" data-tab="agendamentos" role="tab" aria-controls="tab-agendamentos" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="calendar-days"></i> Agenda</button>
       <button onclick="showTab('pacientes')" data-tab="pacientes" role="tab" aria-controls="tab-pacientes" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="users"></i> Pacientes</button>
       <button onclick="showTab('profissionais')" data-tab="profissionais" role="tab" aria-controls="tab-profissionais" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="user-cog"></i> Equipe</button>
+      <button onclick="showTab('procedimentos')" data-tab="procedimentos" role="tab" aria-controls="tab-procedimentos" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="clipboard-plus"></i> Procedimentos</button>
       <button onclick="showTab('prontuarios')" data-tab="prontuarios" role="tab" aria-controls="tab-prontuarios" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="clipboard-list"></i> Prontuários</button>
       <button onclick="showTab('plano')" data-tab="plano" role="tab" aria-controls="tab-plano" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="sparkles"></i> Plano</button>
       <button onclick="showTab('configuracoes')" data-tab="configuracoes" role="tab" aria-controls="tab-configuracoes" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="message-square"></i> Mensagens</button>
@@ -383,6 +384,7 @@
           <select id="agenda-prof-filter" onchange="agendaSetFilter(this.value)" class="field text-xs" style="padding:7px 36px 7px 12px;width:auto;min-width:120px;">
             <option value="">Todos</option>
           </select>
+          <button onclick="openModalBloqueio()" class="btn btn-ghost text-sm" style="padding:8px 16px;" title="Bloquear horário (almoço, férias, feriado)"><i data-lucide="ban"></i> Bloquear</button>
           <button onclick="openNovoAgendamento()" class="btn btn-primary text-sm" style="padding:8px 16px;"><i data-lucide="plus"></i> Novo</button>
         </div>
       </div>
@@ -393,8 +395,9 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
           <div><label class="lbl" for="ag-paciente-id">Paciente</label><select id="ag-paciente-id" class="field"></select></div>
           <div><label class="lbl" for="ag-data-hora">Data e hora</label><input id="ag-data-hora" type="datetime-local" required class="field"></div>
-          <div><label class="lbl" for="ag-servico">Serviço</label><input id="ag-servico" placeholder="Ex: Limpeza de pele" class="field" list="ag-servicos-list" autocomplete="off"><datalist id="ag-servicos-list"></datalist></div>
+          <div><label class="lbl" for="ag-servico">Serviço</label><select id="ag-servico-proc" class="field" onchange="agServicoSelect(this.value)"><option value="">— Escolher do catálogo —</option></select><input id="ag-servico" placeholder="Ou digitar livre..." class="field mt-1" list="ag-servicos-list" autocomplete="off"><datalist id="ag-servicos-list"></datalist></div>
           <div><label class="lbl" for="ag-profissional-id">Profissional</label><select id="ag-profissional-id" class="field"><option value="">— Sem profissional —</option></select></div>
+          <div><label class="lbl" for="ag-duracao">Duração (min)</label><input id="ag-duracao" type="number" min="5" step="5" value="30" class="field"></div>
         </div>
         <div class="flex gap-2"><button onclick="criarAgendamento()" class="btn btn-primary"><i data-lucide="check"></i> Criar</button><button onclick="closeNovoAgendamento()" class="btn btn-ghost">Cancelar</button></div>
       </div>
@@ -610,6 +613,20 @@
       <div id="plano-comparativo" class="grid grid-cols-1 md:grid-cols-3 gap-5"></div>
     </section>
 
+    <!-- TAB: Procedimentos -->
+    <section id="tab-procedimentos" class="hidden fade-in" role="tabpanel">
+      <header class="flex items-end justify-between mb-8 flex-wrap gap-4">
+        <div>
+          <h2 class="font-serif text-3xl md:text-4xl text-ink-900 tracking-tight mb-2">Procedimentos</h2>
+          <p class="text-ink-600 text-sm">Catálogo de serviços com duração padrão. Aparece como opção no agendamento.</p>
+        </div>
+        <button onclick="openFormProcedimento(null)" class="btn btn-primary"><i data-lucide="plus"></i> Novo</button>
+      </header>
+      <div id="procedimentos-lista" class="glass rounded-3xl overflow-hidden">
+        <div class="p-10 text-center text-ink-600"><i data-lucide="loader-2" class="w-6 h-6 mx-auto mb-2 animate-spin"></i> Carregando...</div>
+      </div>
+    </section>
+
     <!-- TAB: WhatsApp -->
     <section id="tab-whatsapp" class="hidden fade-in" role="tabpanel">
       <header class="mb-8">
@@ -713,6 +730,8 @@ let agendaView = 'semana';   // 'dia' | 'semana' | 'mes'
 let agendaDate = new Date(); // âncora da visão atual
 let agendaFilterProfId = ''; // '' = todos
 let agendaCache = [];        // agendamentos do período carregado
+let bloqueiosCache = [];     // bloqueios de horário do período carregado
+let procedimentosCache = []; // catálogo de procedimentos da clínica
 let especialidadeConfig = null;  // carregado no init, cacheado durante a sessão
 let trialStatus = null;          // {em_trial, expirado, dias_restantes, planos_disponiveis, ...}
 
@@ -929,7 +948,7 @@ function showTab(name) {
   btn.classList.add('active');
   btn.setAttribute('aria-selected', 'true');
   if (window.innerWidth < 1025) $('sidebar').classList.remove('open');
-  const loaders = { dashboard: loadDashboard, agendamentos: loadAgendamentos, pacientes: loadPacientes, profissionais: loadProfissionais, prontuarios: loadProntuarios, plano: loadPlano, configuracoes: loadConfiguracoes, horarios: loadHorarios, whatsapp: checarStatus };
+  const loaders = { dashboard: loadDashboard, agendamentos: loadAgendamentos, pacientes: loadPacientes, profissionais: loadProfissionais, procedimentos: loadProcedimentos, prontuarios: loadProntuarios, plano: loadPlano, configuracoes: loadConfiguracoes, horarios: loadHorarios, whatsapp: checarStatus };
   if (loaders[name]) loaders[name]();
 }
 function toggleSidebar() { $('sidebar').classList.toggle('open'); }
@@ -1330,7 +1349,22 @@ function agendaRenderSemana() {
     const laid = agendaLayoutAppts(dayAppts);
     const nowLineHTML = (isToday && nowVisible)
       ? `<div class="agenda-now-line" style="top:${nowTop}px"><div class="agenda-now-dot"></div></div>` : '';
-    return `<div class="agenda-day-col" style="height:${totalH}px">${slotLinesHTML}${nowLineHTML}${laid.map(a => agendaApptBlock(a, pacMap, profMap)).join('')}</div>`;
+    const bloqueiosHTML = (bloqueiosCache || []).map(b => {
+      const bIni = agendaSPDate(b.inicio);
+      const bFim = agendaSPDate(b.fim);
+      const bKey = agendaDateKey(bIni);
+      if (bKey !== key) return '';
+      const bStart = Math.max(bIni.getHours() * 60 + bIni.getMinutes(), HORA_INI * 60);
+      const bEnd = Math.min(bFim.getHours() * 60 + bFim.getMinutes(), HORA_FIM * 60);
+      if (bEnd <= bStart) return '';
+      const top = (bStart - HORA_INI * 60) / 30 * SLOT_H;
+      const height = (bEnd - bStart) / 30 * SLOT_H;
+      return `<div title="🚫 ${escapeHtml(b.motivo)}" onclick="confirmarRemoverBloqueio('${escapeHtml(b.id)}','${escapeHtml(b.motivo)}')"
+        style="position:absolute;left:0;right:0;top:${top}px;height:${height}px;background:repeating-linear-gradient(45deg,rgba(156,163,175,.18),rgba(156,163,175,.18) 5px,rgba(156,163,175,.06) 5px,rgba(156,163,175,.06) 10px);border:1px solid rgba(156,163,175,.4);border-radius:4px;z-index:1;cursor:pointer;display:flex;align-items:center;padding:0 6px;overflow:hidden;">
+        <span style="font-size:10px;font-weight:600;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🚫 ${escapeHtml(b.motivo)}</span>
+      </div>`;
+    }).join('');
+    return `<div class="agenda-day-col" style="height:${totalH}px">${slotLinesHTML}${nowLineHTML}${bloqueiosHTML}${laid.map(a => agendaApptBlock(a, pacMap, profMap)).join('')}</div>`;
   }).join('');
 
   container.innerHTML = `
@@ -1386,6 +1420,21 @@ function agendaRenderDia() {
   });
   const laid = agendaLayoutAppts(dayAppts);
 
+  const bloqueiosDia = (bloqueiosCache || []).map(b => {
+    const bIni = agendaSPDate(b.inicio);
+    const bFim = agendaSPDate(b.fim);
+    if (agendaDateKey(bIni) !== todayKey) return '';
+    const bStart = Math.max(bIni.getHours() * 60 + bIni.getMinutes(), HORA_INI * 60);
+    const bEnd = Math.min(bFim.getHours() * 60 + bFim.getMinutes(), HORA_FIM * 60);
+    if (bEnd <= bStart) return '';
+    const top = (bStart - HORA_INI * 60) / 30 * SLOT_H;
+    const height = (bEnd - bStart) / 30 * SLOT_H;
+    return `<div title="🚫 ${escapeHtml(b.motivo)}" onclick="confirmarRemoverBloqueio('${escapeHtml(b.id)}','${escapeHtml(b.motivo)}')"
+      style="position:absolute;left:0;right:0;top:${top}px;height:${height}px;background:repeating-linear-gradient(45deg,rgba(156,163,175,.18),rgba(156,163,175,.18) 5px,rgba(156,163,175,.06) 5px,rgba(156,163,175,.06) 10px);border:1px solid rgba(156,163,175,.4);border-radius:4px;z-index:1;cursor:pointer;display:flex;align-items:center;padding:0 6px;overflow:hidden;">
+      <span style="font-size:10px;font-weight:600;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🚫 ${escapeHtml(b.motivo)}</span>
+    </div>`;
+  }).join('');
+
   const DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   const d = agendaDate;
 
@@ -1402,7 +1451,7 @@ function agendaRenderDia() {
       <div class="agenda-week-body">
         <div class="agenda-week-timeline" style="height:${totalH}px;min-width:300px;">
           <div class="agenda-time-col">${timeLabels}</div>
-          <div class="agenda-day-col flex-1" style="height:${totalH}px">${slotLinesHTML}${nowLineHTML}${laid.map(a => agendaApptBlock(a, pacMap, profMap)).join('')}</div>
+          <div class="agenda-day-col flex-1" style="height:${totalH}px">${slotLinesHTML}${nowLineHTML}${bloqueiosDia}${laid.map(a => agendaApptBlock(a, pacMap, profMap)).join('')}</div>
         </div>
       </div>
     </div>`;
@@ -1538,9 +1587,15 @@ async function loadAgendamentos() {
   agendaUpdateToolbar();
 
   try {
-    if (!pacientesCache.length) pacientesCache = await api('/api/pacientes');
-    if (!profissionaisCache.length) profissionaisCache = await api('/api/profissionais');
-    agendaCache = await api(`/api/agendamentos?data_inicio=${isoIni}&data_fim=${isoFim}`);
+    const [, , ags, blqs, procs] = await Promise.all([
+      pacientesCache.length ? null : api('/api/pacientes').then(d => { pacientesCache = d; }),
+      profissionaisCache.length ? null : api('/api/profissionais').then(d => { profissionaisCache = d; }),
+      api(`/api/agendamentos?data_inicio=${isoIni}&data_fim=${isoFim}`),
+      api(`/api/bloqueios?data_inicio=${isoIni}&data_fim=${isoFim}`).catch(() => []),
+      procedimentosCache.length ? null : api('/api/procedimentos').then(d => { procedimentosCache = d; }).catch(() => null),
+    ]);
+    agendaCache = ags;
+    bloqueiosCache = blqs || [];
     agendaUpdateProfFilter();
     agendaRender();
   } catch (e) {
@@ -1565,20 +1620,38 @@ function openNovoAgendamento() {
       selProf.innerHTML = '<option value="">Cadastre um profissional na aba Equipe</option>';
     }
   }
+  // Select de procedimentos do catálogo
+  const selProc = $('ag-servico-proc');
+  if (selProc) {
+    selProc.innerHTML = '<option value="">— Escolher do catálogo —</option>' +
+      procedimentosCache.filter(p => p.ativo).map(p =>
+        `<option value="${escapeHtml(p.nome)}">${escapeHtml(p.nome)} (${p.duracao_minutos} min)</option>`
+      ).join('');
+  }
   // Datalist de serviços já usados (fix #1 — evita digitação livre fragmentada)
   const dl = $('ag-servicos-list');
   if (dl) {
     dl.innerHTML = _servicosUnicos().map(s => `<option value="${escapeHtml(s)}"></option>`).join('');
   }
+  $('ag-duracao').value = 30;
   refreshIcons();
 }
 function closeNovoAgendamento() { $('form-agendamento').classList.add('hidden'); }
 
+function agServicoSelect(nome) {
+  if (!nome) return;
+  const proc = procedimentosCache.find(p => p.nome === nome);
+  $('ag-servico').value = nome;
+  if (proc && proc.duracao_minutos) $('ag-duracao').value = proc.duracao_minutos;
+}
+
 async function criarAgendamento() {
+  const servicoFinal = $('ag-servico').value.trim() || $('ag-servico-proc').value || null;
   const payload = {
     paciente_id: $('ag-paciente-id').value,
     data_hora: $('ag-data-hora').value + ':00',
-    servico: $('ag-servico').value || null,
+    duracao_minutos: parseInt($('ag-duracao').value, 10) || 30,
+    servico: servicoFinal,
     profissional_id: $('ag-profissional-id').value || null,
   };
   if (!payload.paciente_id) return toast('Selecione uma paciente', true);
@@ -1727,6 +1800,10 @@ function _renderDrawerAg(ints) {
           <button onclick="fecharDrawer(); abrirDrawerPaciente('${escapeHtml(a.paciente_id)}', 'prontuario')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/60 hover:bg-white text-ink-700 transition flex items-center gap-1.5">
             <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i> Prontuário
           </button>
+          ${a.status === 'realizado' ? `
+          <button onclick="abrirModalRecibo('${escapeHtml(a.paciente_id)}','${escapeHtml(a.servico||'')}','${escapeHtml(profNome)}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition flex items-center gap-1.5">
+            <i data-lucide="receipt" class="w-3.5 h-3.5"></i> Gerar recibo
+          </button>` : ''}
         </div>
 
         ${transicoes.length > 0 ? `
@@ -2096,6 +2173,228 @@ async function desconectarWhatsapp() {
   if (!ok) return;
   try { await api('/api/whatsapp/desconectar', { method: 'POST' }); toast('Desconectado'); checarStatus(); }
   catch (e) { toast(e.message, true); }
+}
+
+// ============================================================ Procedimentos (catálogo de serviços)
+async function loadProcedimentos() {
+  const el = $('procedimentos-lista');
+  if (!el) return;
+  el.innerHTML = `<div class="p-8 text-center text-ink-600"><i data-lucide="loader-2" class="w-6 h-6 mx-auto mb-2 animate-spin"></i></div>`;
+  try {
+    const procs = await api('/api/procedimentos?apenas_ativos=false');
+    procedimentosCache = procs.filter(p => p.ativo);
+    if (procs.length === 0) {
+      el.innerHTML = `<div class="p-12 text-center">
+        <i data-lucide="clipboard-plus" class="w-12 h-12 mx-auto mb-4 text-ink-300"></i>
+        <h3 class="font-serif text-xl text-ink-900 mb-2">Nenhum procedimento ainda</h3>
+        <p class="text-ink-600 text-sm mb-5">Cadastre os serviços que sua clínica oferece para auto-preencher duração nos agendamentos.</p>
+        <button onclick="openFormProcedimento(null)" class="btn btn-primary"><i data-lucide="plus"></i> Cadastrar primeiro</button>
+      </div>`;
+    } else {
+      el.innerHTML = `<table class="w-full text-sm">
+        <thead class="bg-white/50 text-ink-600 text-left text-xs uppercase tracking-wider">
+          <tr>
+            <th class="px-6 py-4 font-semibold">Procedimento</th>
+            <th class="px-6 py-4 font-semibold">Duração</th>
+            <th class="px-6 py-4 font-semibold">Cor</th>
+            <th class="px-6 py-4 font-semibold">Status</th>
+            <th class="px-6 py-4 font-semibold"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-ink-100/50">
+          ${procs.map(p => `
+          <tr class="${p.ativo ? '' : 'opacity-50'}">
+            <td class="px-6 py-4 font-medium text-ink-900">${escapeHtml(p.nome)}</td>
+            <td class="px-6 py-4 text-ink-600">${p.duracao_minutos} min</td>
+            <td class="px-6 py-4"><span class="inline-block w-5 h-5 rounded-full border border-ink-100" style="background:${escapeHtml(p.cor)}"></span></td>
+            <td class="px-6 py-4"><span class="text-[10px] px-2 py-1 rounded-full font-semibold uppercase tracking-wider ${p.ativo ? 'bg-sage-100 text-sage-600' : 'bg-ink-100 text-ink-600'}">${p.ativo ? 'ativo' : 'inativo'}</span></td>
+            <td class="px-6 py-4 text-right">
+              <button onclick="openFormProcedimento(${JSON.stringify(p).replace(/"/g,'&quot;')})" class="btn btn-ghost text-xs" style="padding:6px 12px;"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+              ${p.ativo ? `<button onclick="desativarProcedimento('${escapeHtml(p.id)}','${escapeHtml(p.nome)}')" class="btn btn-ghost text-xs" style="padding:6px 12px;" title="Desativar"><i data-lucide="archive" class="w-3.5 h-3.5 text-rose-500"></i></button>` : ''}
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+    }
+    refreshIcons();
+  } catch (e) {
+    el.innerHTML = `<div class="p-8 text-center text-red-600 text-sm">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function openFormProcedimento(proc) {
+  const isEdit = !!proc;
+  const cores = ['#E8B4B8','#A8C4A2','#F5C6A5','#B8D4E8','#D4B8E8','#E8D8A8','#FBBF24','#6EE7B7'];
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4 fade-in overlay';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  overlay.innerHTML = `
+    <div class="glass rounded-3xl shadow-2xl max-w-md w-full p-7">
+      <h3 class="font-serif text-2xl text-ink-900 mb-5">${isEdit ? 'Editar procedimento' : 'Novo procedimento'}</h3>
+      <div class="space-y-4">
+        <div><label class="lbl">Nome <span class="text-rose-500">*</span></label><input id="pc-nome" class="field" value="${escapeHtml(proc?.nome||'')}" placeholder="Ex: Limpeza de pele" required></div>
+        <div><label class="lbl">Duração padrão (minutos)</label><input id="pc-dur" type="number" min="5" step="5" class="field" value="${proc?.duracao_minutos||30}"></div>
+        <div>
+          <label class="lbl">Cor identificadora</label>
+          <div class="flex gap-2 flex-wrap" id="pc-cores">
+            ${cores.map(c => `<button type="button" data-cor="${c}" class="w-9 h-9 rounded-xl border-2 ${(proc?.cor||'#E8B4B8')===c?'border-ink-900':'border-transparent'} hover:scale-110 transition" style="background:${c}"></button>`).join('')}
+          </div>
+          <input type="hidden" id="pc-cor" value="${escapeHtml(proc?.cor||'#E8B4B8')}">
+        </div>
+        ${isEdit ? `<label class="flex items-center gap-2 text-sm text-ink-600 cursor-pointer"><input id="pc-ativo" type="checkbox" ${proc.ativo?'checked':''}> Ativo</label>` : ''}
+      </div>
+      <div class="flex gap-2 justify-end mt-6">
+        <button data-cancel class="btn btn-ghost">Cancelar</button>
+        <button data-save class="btn btn-primary"><i data-lucide="check"></i> ${isEdit?'Salvar':'Criar'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-cancel]').onclick = close;
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelectorAll('#pc-cores button').forEach(btn => {
+    btn.onclick = () => {
+      overlay.querySelectorAll('#pc-cores button').forEach(b => b.classList.replace('border-ink-900','border-transparent'));
+      btn.classList.replace('border-transparent','border-ink-900');
+      overlay.querySelector('#pc-cor').value = btn.dataset.cor;
+    };
+  });
+  overlay.querySelector('[data-save]').onclick = async () => {
+    const payload = {
+      nome: overlay.querySelector('#pc-nome').value.trim(),
+      duracao_minutos: parseInt(overlay.querySelector('#pc-dur').value,10)||30,
+      cor: overlay.querySelector('#pc-cor').value,
+    };
+    if (isEdit) payload.ativo = overlay.querySelector('#pc-ativo').checked;
+    if (payload.nome.length < 2) return toast('Nome muito curto',true);
+    try {
+      if (isEdit) await api('/api/procedimentos/'+proc.id, {method:'PUT',body:JSON.stringify(payload)});
+      else await api('/api/procedimentos', {method:'POST',body:JSON.stringify(payload)});
+      close();
+      toast(isEdit ? 'Procedimento atualizado' : 'Procedimento criado');
+      loadProcedimentos();
+    } catch(e) { toast(e.message,true); }
+  };
+  refreshIcons();
+  overlay.querySelector('#pc-nome').focus();
+}
+
+async function desativarProcedimento(id, nome) {
+  const ok = await customConfirm('Desativar '+nome+'?','Não aparecerá mais nos novos agendamentos.','Desativar',true);
+  if (!ok) return;
+  try {
+    await api('/api/procedimentos/'+id, {method:'PUT',body:JSON.stringify({ativo:false})});
+    toast('Procedimento desativado');
+    loadProcedimentos();
+  } catch(e) { toast(e.message,true); }
+}
+
+// ============================================================ Bloqueios de agenda
+function openModalBloqueio() {
+  const profOpts = (profissionaisCache||[]).filter(p => p.ativo !== false)
+    .map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.nome)}</option>`).join('');
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4 fade-in overlay';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  // Sugerir inicio/fim baseado na data atual da agenda
+  const baseDate = `${agendaDate.getFullYear()}-${String(agendaDate.getMonth()+1).padStart(2,'0')}-${String(agendaDate.getDate()).padStart(2,'0')}`;
+  overlay.innerHTML = `
+    <div class="glass rounded-3xl shadow-2xl max-w-md w-full p-7">
+      <h3 class="font-serif text-2xl text-ink-900 mb-5">Bloquear horário</h3>
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="lbl">Início</label><input id="blq-ini" type="datetime-local" class="field" value="${baseDate}T12:00"></div>
+          <div><label class="lbl">Fim</label><input id="blq-fim" type="datetime-local" class="field" value="${baseDate}T13:00"></div>
+        </div>
+        <div><label class="lbl">Motivo</label><input id="blq-motivo" class="field" placeholder="Ex: Almoço, Feriado, Férias" value="Almoço"></div>
+        <div><label class="lbl">Profissional (opcional)</label><select id="blq-prof" class="field"><option value="">— Toda a clínica —</option>${profOpts}</select></div>
+      </div>
+      <div class="flex gap-2 justify-end mt-6">
+        <button data-cancel class="btn btn-ghost">Cancelar</button>
+        <button data-save class="btn btn-primary"><i data-lucide="ban"></i> Bloquear</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-cancel]').onclick = close;
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelector('[data-save]').onclick = async () => {
+    const payload = {
+      inicio: overlay.querySelector('#blq-ini').value + ':00',
+      fim: overlay.querySelector('#blq-fim').value + ':00',
+      motivo: overlay.querySelector('#blq-motivo').value.trim() || 'Bloqueio',
+      profissional_id: overlay.querySelector('#blq-prof').value || null,
+    };
+    if (!payload.inicio || !payload.fim) return toast('Preencha início e fim',true);
+    try {
+      await api('/api/bloqueios', {method:'POST',body:JSON.stringify(payload)});
+      close();
+      toast('Horário bloqueado');
+      loadAgendamentos();
+    } catch(e) { toast(e.message,true); }
+  };
+  refreshIcons();
+}
+
+async function confirmarRemoverBloqueio(id, motivo) {
+  const ok = await customConfirm('Remover bloqueio?', `"${motivo}" será liberado na agenda.`, 'Remover', true);
+  if (!ok) return;
+  try {
+    await api('/api/bloqueios/'+id, {method:'DELETE'});
+    toast('Bloqueio removido');
+    loadAgendamentos();
+  } catch(e) { toast(e.message,true); }
+}
+
+// ============================================================ Recibo PDF
+function abrirModalRecibo(pacienteId, servico, profissional) {
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-ink-900/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4 fade-in overlay';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  const hoje = new Date();
+  const dataHoje = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+  const horaAgora = `${String(hoje.getHours()).padStart(2,'0')}:${String(hoje.getMinutes()).padStart(2,'0')}`;
+  overlay.innerHTML = `
+    <div class="glass rounded-3xl shadow-2xl max-w-md w-full p-7">
+      <h3 class="font-serif text-2xl text-ink-900 mb-5">Gerar recibo</h3>
+      <div class="space-y-4">
+        <div><label class="lbl">Serviço</label><input id="recibo-servico" class="field" value="${escapeHtml(servico||'Atendimento')}"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="lbl">Data</label><input id="recibo-data" type="date" class="field" value="${dataHoje}"></div>
+          <div><label class="lbl">Hora</label><input id="recibo-hora" type="time" class="field" value="${horaAgora}"></div>
+        </div>
+        <div><label class="lbl">Profissional</label><input id="recibo-prof" class="field" value="${escapeHtml(profissional||'')}"></div>
+        <div><label class="lbl">Valor <span class="text-ink-600 font-normal text-xs">(opcional)</span></label><input id="recibo-valor" class="field" placeholder="Ex: R$ 120,00"></div>
+        <div><label class="lbl">Observações <span class="text-ink-600 font-normal text-xs">(opcional)</span></label><textarea id="recibo-obs" class="field" rows="2" placeholder="Informações adicionais..."></textarea></div>
+      </div>
+      <div class="flex gap-2 justify-end mt-6">
+        <button data-cancel class="btn btn-ghost">Cancelar</button>
+        <button data-save class="btn btn-primary"><i data-lucide="file-down"></i> Baixar PDF</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-cancel]').onclick = close;
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelector('[data-save]').onclick = () => {
+    const params = new URLSearchParams({
+      servico_recibo: overlay.querySelector('#recibo-servico').value.trim() || 'Atendimento',
+      data: overlay.querySelector('#recibo-data').value,
+      hora_recibo: overlay.querySelector('#recibo-hora').value,
+      profissional_recibo: overlay.querySelector('#recibo-prof').value.trim(),
+      valor_recibo: overlay.querySelector('#recibo-valor').value.trim(),
+      observacoes_recibo: overlay.querySelector('#recibo-obs').value.trim(),
+    });
+    // Remove params vazios
+    for (const [k,v] of [...params]) { if (!v) params.delete(k); }
+    const url = `/api/pacientes/${encodeURIComponent(pacienteId)}/documentos/recibo.pdf?${params.toString()}`;
+    window.open(url, '_blank');
+    close();
+  };
+  refreshIcons();
 }
 
 // ============================================================ Profissionais (Equipe)

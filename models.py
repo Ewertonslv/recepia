@@ -454,6 +454,48 @@ class Anamnese(Base):
     )
 
 
+class Procedimento(Base):
+    """Sprint 9: catálogo de procedimentos da clínica.
+
+    Quando selecionado no agendamento, auto-preenche duracao_minutos e cor.
+    """
+    __tablename__ = "procedimentos"
+
+    id = Column(String, primary_key=True, default=gen_id)
+    clinica_id = Column(String, ForeignKey("clinicas.id", ondelete="CASCADE"), nullable=False, index=True)
+    nome = Column(String(120), nullable=False)
+    duracao_minutos = Column(Integer, default=30, nullable=False)
+    cor = Column(String(7), default="#E8B4B8")  # hex color for agenda block
+    ativo = Column(Boolean, default=True, nullable=False)
+    criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("clinica_id", "nome", name="uq_procedimento_clinica_nome"),
+    )
+
+
+class BloqueioAgenda(Base):
+    """Sprint 9: bloqueio de horário na agenda (almoço, férias, feriado).
+
+    profissional_id NULL = bloqueio geral da clínica.
+    inicio/fim = UTC naive (mesmo padrão dos agendamentos).
+    """
+    __tablename__ = "bloqueios_agenda"
+
+    id = Column(String, primary_key=True, default=gen_id)
+    clinica_id = Column(String, ForeignKey("clinicas.id", ondelete="CASCADE"), nullable=False, index=True)
+    profissional_id = Column(String, ForeignKey("profissionais.id", ondelete="CASCADE"), nullable=True, index=True)
+    inicio = Column(DateTime, nullable=False, index=True)
+    fim = Column(DateTime, nullable=False)
+    motivo = Column(String(120), default="Bloqueio")
+    criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_bloqueios_clinica_inicio", "clinica_id", "inicio"),
+    )
+
+
 class AdminTokenRevogado(Base):
     """Sprint 6: blacklist de JWTs admin revogados (logout / rotação)."""
     __tablename__ = "admin_tokens_revogados"

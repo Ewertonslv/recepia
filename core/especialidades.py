@@ -197,7 +197,7 @@ ESPECIALIDADES: dict[str, EspecialidadeConfig] = {
             "diagnostico_breve": CampoConfig(label="Histórico odontológico"),
             "foto_key": CampoConfig(visivel=True),
         },
-        documentos=["prontuario", "atestado", "declaracao_comparecimento", "receituario", "termo_consentimento"],
+        documentos=["prontuario", "atestado", "declaracao_comparecimento", "receituario", "termo_consentimento", "recibo"],
         foto_destaque=False,
         anamnese_template=_ANAMNESE_ODONTO,
         procedimentos_sugeridos=[
@@ -230,7 +230,7 @@ ESPECIALIDADES: dict[str, EspecialidadeConfig] = {
             "observacoes_clinicas": CampoConfig(label="Plano terapêutico"),
             "foto_key": CampoConfig(visivel=True),
         },
-        documentos=["prontuario", "atestado", "declaracao_comparecimento"],
+        documentos=["prontuario", "atestado", "declaracao_comparecimento", "recibo"],
         foto_destaque=False,
         anamnese_template=_ANAMNESE_FISIO,
         procedimentos_sugeridos=[
@@ -264,7 +264,7 @@ ESPECIALIDADES: dict[str, EspecialidadeConfig] = {
             "observacoes_clinicas": CampoConfig(),
             "foto_key": CampoConfig(visivel=True),
         },
-        documentos=["prontuario", "atestado", "declaracao_comparecimento", "receituario"],
+        documentos=["prontuario", "atestado", "declaracao_comparecimento", "receituario", "recibo"],
         foto_destaque=False,
         anamnese_template=_ANAMNESE_MEDICO,
         procedimentos_sugeridos=[
@@ -295,7 +295,7 @@ ESPECIALIDADES: dict[str, EspecialidadeConfig] = {
             "observacoes_clinicas": CampoConfig(label="Plano de procedimentos"),
             "foto_key": CampoConfig(visivel=True),
         },
-        documentos=["prontuario", "declaracao_comparecimento"],
+        documentos=["prontuario", "declaracao_comparecimento", "recibo"],
         foto_destaque=True,  # foto antes/depois é central
         anamnese_template=_ANAMNESE_ESTETICA,
         procedimentos_sugeridos=[
@@ -323,7 +323,7 @@ ESPECIALIDADES: dict[str, EspecialidadeConfig] = {
             # foto_key escondida em psico — sigilo profissional reforçado
             "foto_key": CampoConfig(visivel=False),
         },
-        documentos=["prontuario", "declaracao_comparecimento"],
+        documentos=["prontuario", "declaracao_comparecimento", "recibo"],
         foto_destaque=False,
         anamnese_template=_ANAMNESE_PSICO,
         procedimentos_sugeridos=[
