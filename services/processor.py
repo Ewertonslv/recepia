@@ -13,6 +13,7 @@ from models import Status
 
 # Status especiais que não estão no enum Status (são "ações" internas)
 INTENCAO_REAGENDAR = "reagendar"
+INTENCAO_AGENDAR = "agendar"  # paciente quer marcar uma consulta nova
 INTENCAO_NAO_ENTENDIDO = "nao_entendido"
 INTENCAO_OPT_OUT = "opt_out"  # LGPD Art. 8 §5
 
@@ -46,14 +47,15 @@ def mascara_pii(texto: str) -> str:
 # Classificação via Groq (Llama 3.3 70B)
 # ============================================================================
 
-_PROMPT_CLASSIFICAR = """Você classifica respostas de pacientes de clínica de estética sobre confirmação de consulta.
+_PROMPT_CLASSIFICAR = """Você classifica mensagens que pacientes enviam pra uma clínica pelo WhatsApp.
 
 Categorias possíveis (responda APENAS o nome da categoria, em CAPS):
-- CONFIRMADO  → paciente confirma presença (sim, ok, blz, confirmado, vou sim, tô indo, perfeito)
-- CANCELADO   → paciente cancela (não, não posso, cancelar, não vou conseguir, infelizmente)
-- REAGENDAR   → paciente quer mudar horário (reagendar, outro horário, outro dia, posso amanhã?)
-- DUVIDA      → paciente faz pergunta ou está confuso (que horas mesmo?, quanto custa?, onde fica?)
-- OPT_OUT     → paciente quer parar de receber mensagens automáticas (sair, parar, descadastrar, não me mande mais mensagem, cancelar inscrição)
+- CONFIRMADO  → confirma presença numa consulta já marcada (sim, ok, blz, confirmado, vou sim, tô indo, perfeito, pode ser)
+- CANCELADO   → cancela ou não vai comparecer (não, não posso, cancelar, não vou conseguir, infelizmente não)
+- REAGENDAR   → quer mudar o horário de uma consulta já marcada (reagendar, remarcar, outro horário, outro dia)
+- AGENDAR     → quer marcar uma consulta nova (quero marcar, queria agendar, tem horário?, gostaria de uma consulta, marcar uma avaliação)
+- DUVIDA      → faz uma pergunta ou está confuso (que horas mesmo?, quanto custa?, onde fica?, atendem convênio?)
+- OPT_OUT     → quer parar de receber mensagens automáticas (sair, parar, descadastrar, não me mande mais mensagem)
 - OUTRO       → mensagem fora do contexto, propaganda, spam
 
 Mensagem do paciente: "{mensagem}"
@@ -70,7 +72,7 @@ class IAProcessor:
     # ------------------------------------------------------------------ public
 
     def classificar_resposta(self, mensagem: str) -> str:
-        """Retorna: Status.CONFIRMADO | Status.CANCELADO | 'reagendar' | 'nao_entendido'."""
+        """Retorna: Status.CONFIRMADO | Status.CANCELADO | 'reagendar' | 'agendar' | 'opt_out' | 'nao_entendido'."""
         if not mensagem or not mensagem.strip():
             return INTENCAO_NAO_ENTENDIDO
 
@@ -99,10 +101,11 @@ class IAProcessor:
         resposta = (completion.choices[0].message.content or "").strip().upper()
 
         mapa = {
-            "OPT_OUT": INTENCAO_OPT_OUT,  # check antes pra não casar em "CONFIRMADO" se vier "NÃO QUERO MAIS"
+            "OPT_OUT": INTENCAO_OPT_OUT,      # antes de tudo: "NÃO QUERO MAIS" não pode virar CANCELADO
+            "REAGENDAR": INTENCAO_REAGENDAR,  # antes de AGENDAR: "AGENDAR" é substring de "REAGENDAR"
+            "AGENDAR": INTENCAO_AGENDAR,
             "CONFIRMADO": Status.CONFIRMADO,
             "CANCELADO": Status.CANCELADO,
-            "REAGENDAR": INTENCAO_REAGENDAR,
             "DUVIDA": INTENCAO_NAO_ENTENDIDO,
             "OUTRO": INTENCAO_NAO_ENTENDIDO,
         }
@@ -119,6 +122,11 @@ class IAProcessor:
                            r"\bnão posso\b", r"\bnao posso\b", r"\bimposs[ií]vel\b"]
     _PATTERNS_REAGENDAR = [r"\breagendar\b", r"\boutro hor[aá]rio\b",
                            r"\boutro dia\b", r"\bremarcar\b", r"\bmudar\b"]
+    _PATTERNS_AGENDAR = [r"\bagendar\b", r"\bmarcar\b", r"\bmarca[çc][aã]o\b",
+                         r"quero.*(consulta|hor[aá]rio|avalia[çc])",
+                         r"queria.*(marcar|agendar|consulta|hor[aá]rio)",
+                         r"gostaria.*(marcar|agendar|consulta)",
+                         r"\btem.*(hor[aá]rio|vaga)"]
     _PATTERNS_OPT_OUT = [r"\bsair\b", r"\bparar\b", r"\bn[aã]o me mande?\b",
                          r"\bdescadastra[rt]?\b", r"\bcancelar inscri", r"\bunsubscribe\b",
                          r"\bpare de mandar\b"]
@@ -132,6 +140,10 @@ class IAProcessor:
         for p in self._PATTERNS_REAGENDAR:
             if re.search(p, m):
                 return INTENCAO_REAGENDAR
+        # AGENDAR antes de CANCELADO: "quero marcar, não sei o dia" não pode virar CANCELADO
+        for p in self._PATTERNS_AGENDAR:
+            if re.search(p, m):
+                return INTENCAO_AGENDAR
         for p in self._PATTERNS_CANCELADO:
             if re.search(p, m):
                 return Status.CANCELADO

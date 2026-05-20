@@ -11,7 +11,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from core.timezones import TZ_BR, agora_br, agora_utc, from_utc_to_br
-from models import Agendamento, Clinica, HorarioFuncionamento, Status
+from models import Agendamento, BloqueioAgenda, Clinica, HorarioFuncionamento, Status
 
 
 DIA_SEMANA_BR = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
@@ -68,6 +68,15 @@ def sugerir_slots(
         q = q.filter(Agendamento.id != excluir_agendamento_id)
     ocupados_utc = {row[0] for row in q.all()}
 
+    # Sprint 9: períodos bloqueados (almoço, férias, feriado). Conservador —
+    # qualquer bloqueio que cruze a janela invalida o slot, mesmo se for de
+    # um único profissional (clínicas pequenas: melhor não oferecer do que furar).
+    bloqueios = db.query(BloqueioAgenda.inicio, BloqueioAgenda.fim).filter(
+        BloqueioAgenda.clinica_id == clinica.id,
+        BloqueioAgenda.fim > inicio_range_utc,
+        BloqueioAgenda.inicio < fim_range_utc,
+    ).all()
+
     slots: list[dict] = []
     hoje_br = agora.date()
 
@@ -96,6 +105,11 @@ def sugerir_slots(
 
             # Filtra: já ocupado
             if slot_utc_naive in ocupados_utc:
+                atual += delta
+                continue
+
+            # Filtra: dentro de um bloqueio de agenda
+            if any(b_ini <= slot_utc_naive < b_fim for b_ini, b_fim in bloqueios):
                 atual += delta
                 continue
 
