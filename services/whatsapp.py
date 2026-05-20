@@ -99,13 +99,20 @@ class WhatsAppService:
     # ------------------------------------------------------------------ webhook
 
     def configurar_webhook(self, instance_name: str, url_webhook: str) -> dict:
-        """Aponta o webhook da instância pra URL pública da Recepia."""
+        """Aponta o webhook da instância pra URL pública da Recepia.
+
+        Evolution 2.3.x: payload aninhado em "webhook" com chaves camelCase.
+        (A 2.2.x usava o formato plano `webhook_by_events` — incompatível.)
+        """
         url = f"{self.base_url}/webhook/set/{instance_name}"
         payload = {
-            "enabled": True,
-            "url": url_webhook,
-            "webhook_by_events": False,
-            "events": ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+            "webhook": {
+                "enabled": True,
+                "url": url_webhook,
+                "byEvents": False,
+                "base64": False,
+                "events": ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+            }
         }
         try:
             with httpx.Client(timeout=self.timeout) as client:
