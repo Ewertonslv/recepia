@@ -131,6 +131,7 @@ class Usuario(Base):
     # Self-signup (Sprint 4) — contato do responsável + aceite LGPD
     telefone = Column(String(20), nullable=True)
     aceitou_termos_em = Column(DateTime, nullable=True)
+    google_id = Column(String(128), unique=True, nullable=True)  # OAuth Google subject ID
     criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     clinica = relationship("Clinica", back_populates="usuarios")
