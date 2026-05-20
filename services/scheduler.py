@@ -31,6 +31,15 @@ from services.whatsapp import WhatsAppService
 
 log = logging.getLogger("recepia.scheduler")
 
+# Fallback de mensagens quando a clínica não cadastrou o template em Configuracao.
+# Sem isso o bot ficava MUDO ao não entender — pior experiência possível.
+_DEFAULT_RESPOSTAS = {
+    "msg_confirmado": "Perfeito, {nome}! ✅ Sua consulta de {data_hora} está confirmada. Te espero! 💛",
+    "msg_cancelado": "Tudo bem, {nome}. Sua consulta de {data_hora} foi cancelada. Quando quiser remarcar, é só me chamar 💛",
+    "msg_nao_entendido": ("Desculpa, {nome}, não entendi bem 😅 Posso te ajudar a "
+                          "confirmar, remarcar ou cancelar sua consulta — é só me dizer o que precisa."),
+}
+
 
 class SchedulerService:
     def __init__(self, db: Session):
@@ -635,7 +644,8 @@ class SchedulerService:
 
     def _enviar_template_resposta(self, clinica: Clinica, paciente: Paciente,
                                    template_key: str, agendamento: Agendamento) -> None:
-        template = self._template(clinica.id, template_key)
+        # Template do tenant; se não cadastrado, cai no default — nunca fica mudo.
+        template = self._template(clinica.id, template_key) or _DEFAULT_RESPOSTAS.get(template_key)
         if not template:
             return
         msg = self._render(template, paciente, clinica, agendamento.data_hora)

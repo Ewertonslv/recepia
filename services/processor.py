@@ -120,8 +120,10 @@ class IAProcessor:
                             r"\bcerto\b", r"\bbom\b", r"\bperfeito\b", r"\bclaro\b"]
     _PATTERNS_CANCELADO = [r"\bn[ãa]o\b", r"\bcancelar?\b", r"\bcancelado\b",
                            r"\bnão posso\b", r"\bnao posso\b", r"\bimposs[ií]vel\b"]
-    _PATTERNS_REAGENDAR = [r"\breagendar\b", r"\boutro hor[aá]rio\b",
-                           r"\boutro dia\b", r"\bremarcar\b", r"\bmudar\b"]
+    _PATTERNS_REAGENDAR = [r"\breagendar\b", r"\bremarcar\b", r"\bmud\w*",
+                           r"\btroc\w*", r"\boutro hor[aá]rio\b", r"\boutro dia\b",
+                           r"\badiar\b", r"\bantecipar\b", r"\bmais (?:tarde|cedo)\b",
+                           r"\bpode ser (?:de|às|as|mais)\b"]
     _PATTERNS_AGENDAR = [r"\bagendar\b", r"\bmarcar\b", r"\bmarca[çc][aã]o\b",
                          r"quero.*(consulta|hor[aá]rio|avalia[çc])",
                          r"queria.*(marcar|agendar|consulta|hor[aá]rio)",
