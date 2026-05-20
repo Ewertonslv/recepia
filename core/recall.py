@@ -205,25 +205,13 @@ def processar_recall(db: Session, clinica: Clinica, hoje: datetime | None = None
         if paciente.opt_out or paciente.deletado_em is not None:
             continue
         mensagem = _renderizar(clinica.recall_template, paciente, clinica)
-        try:
-            resultado = ws.enviar_mensagem(
-                instance_name=clinica.evolution_instance_name,
-                telefone=paciente.telefone,
-                mensagem=mensagem,
-            )
-        except Exception as e:  # noqa: BLE001 — defensivo, não estoura cron
-            log.exception("recall: erro enviando pra paciente=%s: %s", paciente.id, e)
-            falhas += 1
-            continue
+        # Captura antes do commit (expire_on_commit invalidaria os objetos ORM).
+        instance_name = clinica.evolution_instance_name
+        telefone = paciente.telefone
 
-        if not resultado.get("success"):
-            log.warning(
-                "recall: falha envio paciente=%s clinica=%s err=%s",
-                paciente.id, clinica.id, resultado.get("error"),
-            )
-            falhas += 1
-            continue
-
+        # Claim-before-send: grava o RecallEnviado e COMMITA antes de disparar.
+        # Se o envio falhar/der timeout, o paciente entra no cooldown e NÃO recebe
+        # o recall duplicado — preferimos perder um envio a mandar duas vezes.
         db.add(RecallEnviado(
             clinica_id=clinica.id,
             paciente_id=paciente.id,
@@ -240,14 +228,34 @@ def processar_recall(db: Session, clinica: Clinica, hoje: datetime | None = None
             recurso_id=paciente.id,
             detalhes={
                 "prontuario_origem_id": prontuario.id,
-                "telefone_hash": paciente.telefone[-4:],  # só últimos 4 dígitos no audit (LGPD)
+                "telefone_hash": telefone[-4:],  # só últimos 4 dígitos no audit (LGPD)
                 "intervalo_dias": clinica.recall_intervalo_dias,
                 "chave": clinica.recall_procedimento_chave,
             },
         )
+        db.commit()
+
+        try:
+            resultado = ws.enviar_mensagem(
+                instance_name=instance_name,
+                telefone=telefone,
+                mensagem=mensagem,
+            )
+        except Exception as e:  # noqa: BLE001 — defensivo, não estoura cron
+            log.exception("recall: erro enviando pra paciente=%s: %s", paciente.id, e)
+            falhas += 1
+            continue
+
+        if not resultado.get("success"):
+            log.warning(
+                "recall: falha envio paciente=%s clinica=%s err=%s",
+                paciente.id, clinica.id, resultado.get("error"),
+            )
+            falhas += 1
+            continue
+
         enviados += 1
 
-    db.commit()
     return RecallStats(enviados=enviados, falhas=falhas, candidatos=len(candidatos))
 
 
