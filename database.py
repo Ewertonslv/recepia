@@ -215,3 +215,8 @@ def _aplicar_migracoes_idempotentes() -> None:
         """))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_bloqueios_clinica_id ON bloqueios_agenda(clinica_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_bloqueios_clinica_inicio ON bloqueios_agenda(clinica_id, inicio)"))
+
+        # Sprint 9 — Google OAuth + admin improvements
+        conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS google_id VARCHAR(128) UNIQUE"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_usuarios_google_id ON usuarios(google_id) WHERE google_id IS NOT NULL"))
+        conn.execute(text("ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS notas_internas TEXT"))

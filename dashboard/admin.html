@@ -381,7 +381,15 @@ function filtrarClinicas() {
         <div class="text-[11px] text-white/40 font-mono">${escapeHtml(c.id.slice(0, 8))}…</div>
       </td>
       <td class="px-5 py-4 text-white/80 text-xs">${escapeHtml(nomeEspec(c.especialidade))}</td>
-      <td class="px-5 py-4"><span class="badge badge-${escapeHtml(c.plano)}">${escapeHtml(PLANO_NOMES[c.plano] || c.plano)}</span></td>
+      <td class="px-5 py-4">
+        <span class="badge badge-${escapeHtml(c.plano)}">${escapeHtml(PLANO_NOMES[c.plano] || c.plano)}</span>
+        ${c.plano === 'trial' && c.trial_expira_em ? (() => {
+          const dias = Math.round((new Date(c.trial_expira_em + 'T00:00:00') - new Date()) / 86400000);
+          const cor = dias <= 1 ? 'text-red-400' : dias <= 3 ? 'text-amber-400' : 'text-white/40';
+          const txt = dias < 0 ? `expirou há ${-dias}d` : dias === 0 ? 'expira hoje' : `${dias}d restantes`;
+          return `<div class="text-[10px] ${cor} flex items-center gap-1 mt-0.5"><i data-lucide="clock" class="w-3 h-3"></i> ${txt}</div>`;
+        })() : ''}
+      </td>
       <td class="px-5 py-4"><span class="badge ${c.ativo ? 'badge-ativo' : 'badge-inativo'}">${c.ativo ? 'ativa' : 'inativa'}</span></td>
       <td class="px-5 py-4">${c.evolution_conectado ? '<i data-lucide="check-circle-2" class="w-4 h-4 text-sage-500"></i>' : '<i data-lucide="circle" class="w-4 h-4 text-white/30"></i>'}</td>
       <td class="px-5 py-4 text-white/70 text-xs">${escapeHtml(c.admin_login_email || '—')}</td>
@@ -490,9 +498,38 @@ function renderOverview(c) {
       </div>
 
       <div class="border-t border-white/10 pt-5">
+        <label class="lbl">Impersonar <span class="text-amber-400/80 font-normal normal-case text-[10px]">token 15min — auditado</span></label>
+        <button onclick="impersonarClinica('${c.id}', '${escapeHtml(c.nome)}')" class="btn btn-ghost text-sm">
+          <i data-lucide="user-check"></i> Logar como admin desta clínica
+        </button>
+        <p class="text-[11px] text-white/40 mt-2">Abre o dashboard em nova aba. Expira em 15 minutos.</p>
+      </div>
+
+      <div class="border-t border-white/10 pt-5">
         <label class="lbl">API Key (integrações)</label>
         <button onclick="rotateApiKey('${c.id}')" class="btn btn-ghost text-xs"><i data-lucide="refresh-cw"></i> Rotacionar API Key</button>
         <p class="text-[11px] text-white/40 mt-2">Invalida a key antiga. A nova só será mostrada uma vez.</p>
+      </div>
+
+      <div class="border-t border-white/10 pt-5">
+        <label class="lbl">Estender trial</label>
+        <div class="flex gap-2 items-center flex-wrap">
+          <select id="ov-trial-dias" class="field" style="max-width:160px;">
+            <option value="7">+ 7 dias</option>
+            <option value="14">+ 14 dias</option>
+            <option value="30">+ 30 dias</option>
+          </select>
+          <button onclick="estenderTrial('${c.id}')" class="btn btn-ghost text-sm">
+            <i data-lucide="calendar-plus"></i> Estender
+          </button>
+        </div>
+        ${c.trial_expira_em ? `<p class="text-[11px] text-white/40 mt-2">Expira em: ${escapeHtml(c.trial_expira_em || '—')}</p>` : ''}
+      </div>
+
+      <div class="border-t border-white/10 pt-5">
+        <label class="lbl">Notas internas <span class="text-white/30 font-normal normal-case">(só você vê)</span></label>
+        <textarea id="ov-notas" class="field" rows="3" placeholder="Ex: cliente quente, ligou dia X, pediu desconto...">${escapeHtml(c.notas_internas || '')}</textarea>
+        <button onclick="salvarNotas('${c.id}')" class="btn btn-ghost text-sm mt-2"><i data-lucide="save"></i> Salvar nota</button>
       </div>
     </div>`;
   refreshIcons();
@@ -623,6 +660,46 @@ async function desativarClinica(id) {
   if (!confirm('Desativar essa clínica? Os usuários não conseguirão mais logar.')) return;
   try { await api(`/admin/clinicas/${id}/desativar`, { method: 'POST' }); toast('Clínica desativada', 'aviso'); loadClinicas(); abrirDrawer(id, 'overview'); }
   catch (e) { toast(e.message, 'erro'); }
+}
+
+async function estenderTrial(id) {
+  const dias = parseInt($('ov-trial-dias').value, 10) || 7;
+  if (!confirm(`Estender trial de ${dias} dias pra esta clínica?`)) return;
+  try {
+    const r = await api(`/admin/clinicas/${id}/extend-trial?dias=${dias}`, { method: 'POST' });
+    toast(`Trial estendido até ${r.trial_expira_em}`);
+    loadClinicas();
+    abrirDrawer(id, 'overview');
+  } catch(e) { toast(e.message, 'erro'); }
+}
+
+async function salvarNotas(id) {
+  const notas = $('ov-notas')?.value || '';
+  try {
+    await api(`/admin/clinicas/${id}/notas`, { method: 'PUT', body: JSON.stringify({ notas_internas: notas }) });
+    toast('Nota salva');
+    // update cache
+    const c = clinicasCache.find(x => x.id === id);
+    if (c) c.notas_internas = notas;
+  } catch(e) { toast(e.message, 'erro'); }
+}
+
+async function impersonarClinica(id, nome) {
+  if (!confirm(`Impersonar "${nome}"?\n\nVocê vai acessar o dashboard COMO o admin desta clínica por 15 minutos. Toda ação ficará registrada no audit log como impersonação.`)) return;
+  try {
+    const r = await api(`/admin/clinicas/${id}/impersonar`, { method: 'POST' });
+    // Guarda em localStorage pra o dashboard pegar
+    const payload = {
+      recepia_token: r.access_token,
+      recepia_clinica_nome: r.clinica_nome,
+      recepia_usuario_role: r.role,
+      recepia_usuario_nome: r.usuario_nome + ' [IMPERSONADO]',
+    };
+    // Abre dashboard em nova aba com token via URL param
+    const params = new URLSearchParams({ impersonate_token: r.access_token, clinica_nome: r.clinica_nome, role: r.role, usuario_nome: r.usuario_nome });
+    window.open(`/dashboard/?impersonate=1#${params.toString()}`, '_blank');
+    toast(`Abrindo dashboard como ${r.usuario_nome}…`);
+  } catch(e) { toast(e.message, 'erro'); }
 }
 
 async function rotateApiKey(id) {

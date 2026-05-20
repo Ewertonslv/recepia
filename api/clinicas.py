@@ -788,6 +788,102 @@ def exportar_leads_csv(
     )
 
 
+@router.post("/{clinica_id}/extend-trial")
+def estender_trial(
+    clinica_id: str,
+    dias: int = 7,
+    db: Session = Depends(get_db_dependency),
+    ctx: dict = Depends(audit_context_admin),
+):
+    """Admin: estende o trial de uma clínica por N dias a partir de hoje (ou da expiração atual)."""
+    clinica = db.query(Clinica).filter(Clinica.id == clinica_id).first()
+    if not clinica:
+        raise HTTPException(404, "Clínica não encontrada")
+    from datetime import date
+    base = clinica.trial_expira_em if (clinica.trial_expira_em and clinica.trial_expira_em > date.today()) else date.today()
+    clinica.trial_expira_em = base + timedelta(days=dias)
+    if clinica.plano != Plano.TRIAL:
+        clinica.plano = Plano.TRIAL
+    audit.log(db, **ctx, clinica_id=clinica.id, acao=AcaoAudit.UPDATE, recurso="clinica",
+              recurso_id=clinica.id, detalhes={"acao": "extend_trial", "dias": dias, "nova_expiracao": clinica.trial_expira_em.isoformat()})
+    db.commit()
+    return {"trial_expira_em": clinica.trial_expira_em.isoformat(), "dias_adicionados": dias}
+
+
+@router.get("/{clinica_id}/notas")
+def obter_notas(clinica_id: str, db: Session = Depends(get_db_dependency)):
+    """Admin: lê notas internas sobre a clínica (visível só aqui, nunca pra clínica)."""
+    clinica = db.query(Clinica).filter(Clinica.id == clinica_id).first()
+    if not clinica:
+        raise HTTPException(404, "Clínica não encontrada")
+    return {"notas_internas": getattr(clinica, "notas_internas", None) or ""}
+
+
+@router.put("/{clinica_id}/notas")
+def salvar_notas(
+    clinica_id: str,
+    body: dict,
+    db: Session = Depends(get_db_dependency),
+    ctx: dict = Depends(audit_context_admin),
+):
+    """Admin: salva notas internas sobre a clínica."""
+    clinica = db.query(Clinica).filter(Clinica.id == clinica_id).first()
+    if not clinica:
+        raise HTTPException(404, "Clínica não encontrada")
+    clinica.notas_internas = (body.get("notas_internas") or "").strip()[:2000]
+    audit.log(db, **ctx, clinica_id=clinica.id, acao=AcaoAudit.UPDATE, recurso="clinica",
+              recurso_id=clinica.id, detalhes={"acao": "notas_internas"})
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/{clinica_id}/impersonar")
+def impersonar_clinica(
+    clinica_id: str,
+    db: Session = Depends(get_db_dependency),
+    ctx: dict = Depends(audit_context_admin),
+):
+    """Admin: gera JWT curto (15min) pra logar como admin da clínica. AUDIT obrigatório."""
+    clinica = db.query(Clinica).filter(Clinica.id == clinica_id).first()
+    if not clinica:
+        raise HTTPException(404, "Clínica não encontrada")
+    admin_user = db.query(Usuario).filter(
+        Usuario.clinica_id == clinica_id,
+        Usuario.role == "admin",
+        Usuario.ativo == True,
+    ).first()
+    if not admin_user:
+        raise HTTPException(404, "Nenhum admin ativo nesta clínica")
+    # Token de curta duração (15 min) para impersonação
+    from datetime import timezone
+    from jose import jwt as _jwt
+    from config import settings
+    from core.security import JWT_AUD, JWT_ISS
+    payload = {
+        "sub": admin_user.id,
+        "clinica_id": clinica_id,
+        "role": admin_user.role,
+        "aud": JWT_AUD,
+        "iss": JWT_ISS,
+        "exp": datetime.utcnow() + timedelta(minutes=15),
+        "iat": datetime.utcnow(),
+        "impersonado_por": "admin_master",
+    }
+    token = _jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    audit.log(db, **ctx, clinica_id=clinica.id, acao=AcaoAudit.READ, recurso="impersonar",
+              recurso_id=clinica.id, detalhes={"admin_email": admin_user.email})
+    db.commit()
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "clinica_id": clinica_id,
+        "clinica_nome": clinica.nome,
+        "role": admin_user.role,
+        "usuario_nome": admin_user.nome or admin_user.email,
+        "expira_em_minutos": 15,
+    }
+
+
 # ============================================================================
 # Self-service da clínica logada (router_me) — JWT do dashboard
 # ============================================================================

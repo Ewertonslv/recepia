@@ -92,6 +92,9 @@
       .btn-danger { background: #fee2e2; color: #991b1b; padding: 12px 20px; border-radius: 12px; }
       .btn-danger:hover { background: #fecaca; }
       .btn [data-lucide] { width: 16px; height: 16px; }
+      .btn-google { background: white; color: #2D3142; padding: 12px 20px; border-radius: 12px; border: 1.5px solid #e0e0e0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+      .btn-google:hover { background: #f8f8f8; box-shadow: 0 2px 8px rgba(0,0,0,0.10); transform: translateY(-1px); }
+      .btn-google:active { transform: translateY(0); }
 
       /* inputs */
       .field { width: 100%; padding: 12px 16px; background: rgba(250,247,245,0.6); border: 1px solid transparent; border-radius: 12px; color: #2D3142; font-size: 14px; transition: all 200ms; }
@@ -214,6 +217,19 @@
         </button>
         <div id="login-erro" class="text-sm text-red-600 text-center min-h-[20px]" role="alert" aria-live="polite"></div>
       </form>
+      <div class="relative my-6">
+        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-ink-100"></div></div>
+        <div class="relative flex justify-center text-xs"><span class="bg-white/70 backdrop-blur px-3 text-ink-300 uppercase tracking-wide">ou</span></div>
+      </div>
+      <a id="btn-google" href="/auth/google" class="w-full btn btn-google py-3.5 text-sm font-semibold">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M17.64 9.2045c0-.6381-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.125-.8427 2.0782-1.7959 2.7163v2.2581h2.9087c1.7018-1.5668 2.6836-3.874 2.6836-6.6149z" fill="#4285F4"/>
+          <path d="M9 18c2.43 0 4.4673-.8059 5.9564-2.1814l-2.9087-2.2581c-.8059.54-1.8368.8591-3.0477.8591-2.3441 0-4.3282-1.5832-5.036-3.7104H.9574v2.3318C2.4382 15.9832 5.4818 18 9 18z" fill="#34A853"/>
+          <path d="M3.964 10.71c-.18-.54-.2827-1.1168-.2827-1.71s.1027-1.17.2827-1.71V4.9582H.9573C.3477 6.1732 0 7.5477 0 9s.3477 2.8268.9573 4.0418L3.964 10.71z" fill="#FBBC05"/>
+          <path d="M9 3.5796c1.3214 0 2.5077.4541 3.4405 1.346l2.5814-2.5814C13.4632.8918 11.4259 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9582L3.964 7.29C4.6718 5.1627 6.6559 3.5796 9 3.5796z" fill="#EA4335"/>
+        </svg>
+        Entrar com Google
+      </a>
     </div>
     <p class="text-center text-xs text-ink-600 mt-8">Esqueceu a senha? Fale com seu consultor recepia.</p>
   </div>
@@ -743,6 +759,41 @@ function init() {
     document.body.innerHTML = '<div style="padding:40px;font-family:Inter,sans-serif;text-align:center;max-width:480px;margin:80px auto;"><h1 style="font-size:22px;margin-bottom:12px;">Modo privado detectado</h1><p style="color:#5C5552;">Seu navegador bloqueou o armazenamento local. Saia do modo privado/anônimo pra usar a Recepia.</p></div>';
     return;
   }
+
+  // ── Callbacks OAuth / impersonação via URL ────────────────────────────────
+  const _sp = new URLSearchParams(location.search);
+  if (_sp.has('google_login') || _sp.has('impersonate')) {
+    const _hp = new URLSearchParams(location.hash.slice(1));
+    const _tok = _hp.get('token') || _hp.get('impersonate_token');
+    if (_tok) {
+      const _nomeBase = _hp.get('usuario_nome') || '';
+      const _nome = _sp.has('impersonate') ? _nomeBase + ' [IMPERSONADO]' : _nomeBase;
+      safeLocalSet('recepia_token', _tok);
+      safeLocalSet('recepia_clinica_nome', _hp.get('clinica_nome') || '');
+      safeLocalSet('recepia_usuario_role', _hp.get('role') || 'admin');
+      safeLocalSet('recepia_usuario_nome', _nome);
+      token = _tok;
+      clinicaNome = _hp.get('clinica_nome') || '';
+      usuarioRole = _hp.get('role') || 'admin';
+      usuarioNome = _nome;
+    }
+    // Limpa URL antes de continuar — token não fica no histórico
+    history.replaceState(null, '', '/dashboard/');
+  } else if (_sp.has('google_error')) {
+    const _errMap = {
+      usuario_nao_encontrado: 'Conta Google não encontrada. Faça login com email/senha primeiro.',
+      token_exchange_failed: 'Falha ao comunicar com Google. Tente novamente.',
+      userinfo_failed: 'Não foi possível obter dados do Google. Tente novamente.',
+      access_denied: 'Acesso negado pelo Google.',
+    };
+    history.replaceState(null, '', '/dashboard/');
+    $('login-screen').classList.remove('hidden');
+    $('login-erro').textContent = _errMap[_sp.get('google_error')] || 'Erro no login com Google. Tente novamente.';
+    refreshIcons();
+    return;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   if (token) {
     $('app').classList.remove('hidden');
     $('clinica-nome').textContent = clinicaNome || '';
