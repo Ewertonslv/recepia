@@ -105,7 +105,13 @@ class SchedulerService:
                             flag_attr="segunda_confirmacao", tipo=TipoInteracao.LEMBRETE)
 
     def _enviar(self, agendamento: Agendamento, *, template_key: str, flag_attr: str, tipo: str) -> bool:
-        """R2: DRY de enviar_confirmacao/enviar_lembrete."""
+        """R2: DRY de enviar_confirmacao/enviar_lembrete.
+
+        Idempotência (claim-before-send): marca o flag e COMMITA antes de disparar.
+        Se o envio falhar, der timeout ou o worker cair, o pior caso é UMA mensagem
+        a menos — nunca o mesmo paciente recebendo a confirmação duas vezes. Pra
+        mensagem automática, spam é muito pior que um envio perdido.
+        """
         clinica = agendamento.clinica
         paciente = agendamento.paciente
         if paciente.opt_out or paciente.deletado_em is not None:
@@ -114,17 +120,29 @@ class SchedulerService:
         if not template:
             return False
         mensagem = self._render(template, paciente, clinica, agendamento.data_hora)
+        # Captura antes do commit — expire_on_commit invalidaria os objetos ORM.
+        instance_name = clinica.evolution_instance_name
+        telefone = paciente.telefone
+        clinica_id = clinica.id
+        agendamento_id = agendamento.id
+
+        # Claim: marca como enviado e persiste ANTES do disparo.
+        setattr(agendamento, flag_attr, True)
+        self.db.commit()
+
         result = self.whatsapp.enviar_mensagem(
-            instance_name=clinica.evolution_instance_name,
-            telefone=paciente.telefone,
+            instance_name=instance_name,
+            telefone=telefone,
             mensagem=mensagem,
         )
         if not result.get("success"):
+            log.warning("falha envio %s: cli=%s ag=%s err=%s",
+                        tipo, clinica_id, agendamento_id, result.get("error"))
             return False
-        setattr(agendamento, flag_attr, True)
+
         self.db.add(Interacao(
-            clinica_id=clinica.id,
-            agendamento_id=agendamento.id,
+            clinica_id=clinica_id,
+            agendamento_id=agendamento_id,
             tipo=tipo,
             mensagem_enviada=mensagem,
         ))
