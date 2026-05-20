@@ -21,7 +21,8 @@ from models import (
     Interacao, Paciente, Status, TipoInteracao,
 )
 from services.processor import (
-    IAProcessor, INTENCAO_REAGENDAR, INTENCAO_NAO_ENTENDIDO, INTENCAO_OPT_OUT,
+    IAProcessor, INTENCAO_AGENDAR, INTENCAO_REAGENDAR, INTENCAO_NAO_ENTENDIDO,
+    INTENCAO_OPT_OUT,
 )
 from services.slots import (
     extrair_numero_resposta, formatar_opcoes_pra_mensagem, sugerir_slots,
@@ -131,14 +132,17 @@ class SchedulerService:
         telefone: str,
         mensagem: str,
         evolution_message_id: Optional[str] = None,
+        push_name: Optional[str] = None,
     ) -> dict:
         """Chamado pelo webhook quando paciente responde no WhatsApp.
 
         Fluxo:
-        1. Identifica paciente
+        1. Identifica paciente (pode não existir — contato novo)
         2. Opt-out (LGPD Art. 8 §5) — sempre tem prioridade
         3. Se houver EstadoConversa ATIVO → processa como continuação (G1)
-        4. Senão → classifica intenção e despacha
+        4. Contato novo → agenda (se pediu) ou cumprimenta
+        5. Paciente sem agendamento pendente → agenda novo / recusa / cumprimenta
+        6. Paciente com agendamento pendente → confirma / cancela / reagenda
         """
         paciente = (
             self.db.query(Paciente)
@@ -150,29 +154,45 @@ class SchedulerService:
             .first()
         )
 
-        # Opt-out tem precedência sobre tudo
+        # Opt-out tem precedência sobre tudo (precisa de paciente pra registrar)
         intencao = self.processor.classificar_resposta(mensagem)
         if intencao == INTENCAO_OPT_OUT and paciente:
             return self._processar_opt_out(clinica, paciente, mensagem, evolution_message_id)
 
+        # G1: estado de conversa ativo? (fluxo multi-step) — só pra paciente conhecido
+        if paciente:
+            estado = self._estado_ativo(clinica.id, paciente.id)
+            if estado and estado.fluxo == FluxoConversa.REAGENDAMENTO:
+                return self._processar_escolha_reagendamento(
+                    clinica, paciente, estado, mensagem, evolution_message_id
+                )
+            if estado and estado.fluxo == FluxoConversa.NOVO_AGENDAMENTO:
+                return self._processar_escolha_agendamento(
+                    clinica, paciente, estado, mensagem, evolution_message_id
+                )
+
+        # ── Contato novo (número não cadastrado) ───────────────────────────
         if not paciente:
-            self._safe_add_interacao(
+            log_ok = self._safe_add_interacao(
                 clinica_id=clinica.id, agendamento_id=None,
                 tipo=TipoInteracao.RESPOSTA,
                 mensagem_recebida=mensagem,
                 evolution_message_id=evolution_message_id,
             )
+            if not log_ok:
+                return {"status": "dedup"}
+            if intencao == INTENCAO_AGENDAR:
+                # Gap 1: marca consulta nova — cria o paciente dentro do fluxo
+                return self._iniciar_fluxo_agendamento(
+                    clinica, None, telefone, push_name, mensagem
+                )
+            # Gap 3: número novo sem intenção clara → boas-vindas (convida a marcar)
+            self._enviar_msg(clinica, telefone, self._boas_vindas_msg(clinica),
+                             tipo=TipoInteracao.RESPOSTA)
             self.db.commit()
-            return {"status": "ignored", "reason": "no_patient"}
+            return {"status": "boas_vindas"}
 
-        # G1: estado de conversa ativo? (fluxo multi-step)
-        estado = self._estado_ativo(clinica.id, paciente.id)
-        if estado and estado.fluxo == FluxoConversa.REAGENDAMENTO:
-            return self._processar_escolha_reagendamento(
-                clinica, paciente, estado, mensagem, evolution_message_id
-            )
-
-        # Fluxo single-shot: pega agendamento pendente + classifica
+        # ── Paciente conhecido: busca agendamento pendente futuro ──────────
         agendamento_q = (
             self.db.query(Agendamento)
             .filter(
@@ -188,16 +208,35 @@ class SchedulerService:
         except Exception:
             agendamento = agendamento_q.first()
 
+        # ── Sem agendamento pendente → marca novo / recusa / cumprimenta ───
         if not agendamento:
-            self._safe_add_interacao(
+            log_ok = self._safe_add_interacao(
                 clinica_id=clinica.id, agendamento_id=None,
                 tipo=TipoInteracao.RESPOSTA,
                 mensagem_recebida=mensagem,
                 evolution_message_id=evolution_message_id,
             )
+            if not log_ok:
+                return {"status": "dedup"}
+            # Gap 1 + Gap 2: "sim"/"quero marcar" — inclui resposta afirmativa a um recall
+            if intencao in (INTENCAO_AGENDAR, Status.CONFIRMADO, INTENCAO_REAGENDAR):
+                return self._iniciar_fluxo_agendamento(
+                    clinica, paciente, telefone, push_name, mensagem
+                )
+            if intencao == Status.CANCELADO:
+                self._enviar_msg(
+                    clinica, telefone,
+                    f"Tudo bem, {paciente.nome}! Quando quiser marcar, é só me chamar 💛",
+                    tipo=TipoInteracao.RESPOSTA,
+                )
+                self.db.commit()
+                return {"status": "recusou"}
+            self._enviar_msg(clinica, telefone, self._boas_vindas_msg(clinica),
+                             tipo=TipoInteracao.RESPOSTA)
             self.db.commit()
-            return {"status": "ignored", "reason": "no_pending_appointment"}
+            return {"status": "boas_vindas"}
 
+        # ── Paciente com agendamento pendente → confirma/cancela/reagenda ──
         dedup_ok = self._safe_add_interacao(
             clinica_id=clinica.id, agendamento_id=agendamento.id,
             tipo=TipoInteracao.RESPOSTA,
@@ -207,7 +246,6 @@ class SchedulerService:
         if not dedup_ok:
             return {"status": "dedup"}
 
-        # Despacha por intenção
         if intencao == Status.CONFIRMADO:
             agendamento.status = Status.CONFIRMADO
             self._enviar_template_resposta(clinica, paciente, "msg_confirmado", agendamento)
@@ -216,6 +254,11 @@ class SchedulerService:
             self._enviar_template_resposta(clinica, paciente, "msg_cancelado", agendamento)
         elif intencao == INTENCAO_REAGENDAR:
             self._iniciar_fluxo_reagendamento(clinica, paciente, agendamento)
+        elif intencao == INTENCAO_AGENDAR:
+            # paciente quer marcar OUTRA consulta além da pendente
+            return self._iniciar_fluxo_agendamento(
+                clinica, paciente, telefone, push_name, mensagem
+            )
         else:  # nao_entendido
             self._enviar_template_resposta(clinica, paciente, "msg_nao_entendido", agendamento)
 
@@ -225,6 +268,178 @@ class SchedulerService:
             "intencao": intencao,
             "agendamento_id": agendamento.id,
             "novo_status": agendamento.status,
+        }
+
+    # ========================================================================
+    # GAP 1: FLUXO DE AGENDAMENTO NOVO (multi-step)
+    # ========================================================================
+
+    def _iniciar_fluxo_agendamento(
+        self,
+        clinica: Clinica,
+        paciente: Optional[Paciente],
+        telefone: str,
+        push_name: Optional[str],
+        servico_hint: str,
+    ) -> dict:
+        """Oferece horários livres pra marcar uma consulta nova.
+
+        `paciente` pode ser None (contato novo) — nesse caso cria o registro,
+        porque EstadoConversa exige paciente_id. A mensagem de entrada já deve
+        ter sido logada pelo chamador (dedup feito lá).
+        """
+        slots = sugerir_slots(self.db, clinica, n_slots=3, dias_a_frente=7)
+
+        if not paciente:
+            nome = (push_name or "").strip() or "Novo contato"
+            paciente = Paciente(clinica_id=clinica.id, nome=nome[:120], telefone=telefone)
+            self.db.add(paciente)
+            self.db.flush()
+
+        if not slots:
+            self._enviar_msg(
+                clinica, telefone,
+                f"Oi {paciente.nome}! No momento não tenho horários livres pra te oferecer. "
+                "Me diz 1 ou 2 horários que funcionam pra você que a recepção te encaixa 💛",
+                tipo=TipoInteracao.AGENDAMENTO,
+            )
+            self.db.commit()
+            return {"status": "agendamento_sem_slots", "paciente_id": paciente.id}
+
+        # 1 estado ativo por paciente — substitui se já existir
+        existente = self._estado_ativo(clinica.id, paciente.id)
+        if existente:
+            self.db.delete(existente)
+            self.db.flush()
+
+        estado = EstadoConversa(
+            clinica_id=clinica.id,
+            paciente_id=paciente.id,
+            fluxo=FluxoConversa.NOVO_AGENDAMENTO,
+            contexto={
+                "slots_oferecidos": [
+                    {
+                        "numero": s["numero"],
+                        "data_hora_utc": s["data_hora_utc"].isoformat(),
+                        "label": s["label"],
+                    }
+                    for s in slots
+                ],
+                "servico_hint": (servico_hint or "").strip()[:200],
+            },
+            expira_em=agora_utc() + timedelta(hours=24),
+        )
+        self.db.add(estado)
+
+        opcoes_txt = formatar_opcoes_pra_mensagem(slots)
+        msg = (
+            f"Oi {paciente.nome}! 😊 Vou te ajudar a marcar. "
+            f"Tenho estes horários disponíveis:\n\n{opcoes_txt}\n\n"
+            "Responde com o número da opção que preferir."
+        )
+        self._enviar_msg(clinica, telefone, msg, tipo=TipoInteracao.AGENDAMENTO)
+        self.db.commit()
+        return {"status": "agendamento_iniciado", "paciente_id": paciente.id}
+
+    def _processar_escolha_agendamento(
+        self,
+        clinica: Clinica,
+        paciente: Paciente,
+        estado: EstadoConversa,
+        mensagem: str,
+        evolution_message_id: Optional[str],
+    ) -> dict:
+        slots = estado.contexto.get("slots_oferecidos", [])
+        servico_hint = estado.contexto.get("servico_hint", "")
+
+        dedup_ok = self._safe_add_interacao(
+            clinica_id=clinica.id, agendamento_id=None,
+            tipo=TipoInteracao.AGENDAMENTO,
+            mensagem_recebida=mensagem,
+            evolution_message_id=evolution_message_id,
+        )
+        if not dedup_ok:
+            return {"status": "dedup"}
+
+        n = extrair_numero_resposta(mensagem, max_num=len(slots))
+        if n is None:
+            # Sem número: pode ser desistência. (Opt-out já foi tratado no topo.)
+            intencao = self.processor.classificar_resposta(mensagem)
+            if intencao == Status.CANCELADO:
+                self.db.delete(estado)
+                self._enviar_msg(
+                    clinica, paciente.telefone,
+                    f"Sem problema, {paciente.nome}! Quando quiser marcar, é só me chamar 💛",
+                    tipo=TipoInteracao.AGENDAMENTO,
+                )
+                self.db.commit()
+                return {"status": "agendamento_desistiu"}
+            opcoes_txt = "\n".join(f"{s['numero']}. {s['label']}" for s in slots)
+            self._enviar_msg(
+                clinica, paciente.telefone,
+                f"Desculpa {paciente.nome}, não entendi qual horário você quer. "
+                f"Me responde só com o número:\n\n{opcoes_txt}",
+                tipo=TipoInteracao.AGENDAMENTO,
+            )
+            self.db.commit()
+            return {"status": "aguardando_resposta_valida"}
+
+        escolhido = next((s for s in slots if s["numero"] == n), None)
+        if not escolhido:
+            self._enviar_msg(
+                clinica, paciente.telefone,
+                f"Esse número não está nas opções. Escolhe entre 1 e {len(slots)}, por favor.",
+                tipo=TipoInteracao.AGENDAMENTO,
+            )
+            self.db.commit()
+            return {"status": "numero_invalido"}
+
+        data_utc = datetime.fromisoformat(escolhido["data_hora_utc"])
+
+        # Corrida: outro paciente pode ter pego esse horário desde a oferta
+        ja_ocupado = (
+            self.db.query(Agendamento)
+            .filter(
+                Agendamento.clinica_id == clinica.id,
+                Agendamento.data_hora == data_utc,
+                Agendamento.status.in_([Status.PENDENTE, Status.CONFIRMADO]),
+            )
+            .first()
+        )
+        if ja_ocupado:
+            # reabre o fluxo com horários atualizados (substitui o estado atual)
+            return self._iniciar_fluxo_agendamento(
+                clinica, paciente, paciente.telefone, None, servico_hint
+            )
+
+        servico = (
+            f"WhatsApp: {servico_hint}"[:120] if servico_hint else "Agendado pelo WhatsApp"
+        )
+        agendamento = Agendamento(
+            clinica_id=clinica.id,
+            paciente_id=paciente.id,
+            data_hora=data_utc,
+            status=Status.PENDENTE,
+            servico=servico,
+        )
+        self.db.add(agendamento)
+        self.db.flush()
+        self.db.delete(estado)
+
+        data_br = from_utc_to_br(data_utc).strftime("%d/%m às %H:%M")
+        self._enviar_msg(
+            clinica, paciente.telefone,
+            f"Prontinho, {paciente.nome}! ✅ Sua consulta ficou marcada pra {data_br}. "
+            "Vou te lembrar 24h antes. Até lá! 💛",
+            agendamento_id=agendamento.id, tipo=TipoInteracao.AGENDAMENTO,
+        )
+        self.db.commit()
+        log.info("agendamento_via_whatsapp: cli=%s pac=%s ag=%s -> %s",
+                 clinica.id, paciente.id, agendamento.id, data_utc.isoformat())
+        return {
+            "status": "agendamento_confirmado",
+            "agendamento_id": agendamento.id,
+            "horario_utc": data_utc.isoformat(),
         }
 
     # ========================================================================
@@ -426,6 +641,20 @@ class SchedulerService:
         msg = self._render(template, paciente, clinica, agendamento.data_hora)
         self._enviar_msg(clinica, paciente.telefone, msg, agendamento_id=agendamento.id,
                          tipo=TipoInteracao.RESPOSTA)
+
+    def _boas_vindas_msg(self, clinica: Clinica) -> str:
+        """Gap 3: saudação pra número novo / mensagem sem contexto. Usa o template
+        da vertical da clínica (`boas_vindas`); cai pra genérico se não houver."""
+        tpl = None
+        try:
+            from core.especialidades import get_especialidade
+            tpl = get_especialidade(clinica.especialidade).mensagens_whatsapp.get("boas_vindas")
+        except Exception:  # noqa: BLE001 — defensivo, nunca quebra o fluxo
+            tpl = None
+        if not tpl:
+            tpl = ("Olá! 😊 Aqui é o atendimento da {clinica}. "
+                   "Posso te ajudar a marcar um horário — é só me dizer o que você precisa!")
+        return tpl.replace("{clinica}", clinica.nome)
 
     def _enviar_msg(
         self, clinica: Clinica, telefone: str, mensagem: str,

@@ -171,6 +171,7 @@ async def webhook_evolution(
             telefone=telefone,
             mensagem=texto,
             evolution_message_id=message_id,
+            push_name=data.pushName,
         )
         # B8: sempre retorna shape mínimo, sem vazar agendamento_id/intencao
         return {"status": "ok"}

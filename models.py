@@ -32,6 +32,7 @@ class TipoInteracao:
     RESPOSTA = "resposta"
     CANCELAMENTO = "cancelamento"
     REAGENDAMENTO = "reagendamento"
+    AGENDAMENTO = "agendamento"  # paciente marcou consulta nova pelo WhatsApp
     OPT_OUT = "opt_out"  # paciente pediu pra parar
 
 
