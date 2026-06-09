@@ -195,5 +195,13 @@ def relatorios_dashboard(
     }
 
 
+@app.get("/api/relatorios/ia")
+def relatorios_ia(clinica: Clinica = Depends(clinica_atual)):
+    """Observabilidade do classificador LLM neste processo: chamadas, tokens,
+    custo estimado (USD), latência média e quantos caíram no fallback/guardrail."""
+    from services.processor import metricas_llm
+    return metricas_llm.snapshot()
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
