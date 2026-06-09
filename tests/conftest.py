@@ -127,7 +127,13 @@ def clinica_fake(db_session):
     from core.security import hash_senha
     from seeds import aplicar_configuracoes_default
 
-    clinica = Clinica(nome="Clinica Teste A", cnpj="11111111000111")
+    clinica = Clinica(
+        nome="Clinica Teste A", cnpj="11111111000111",
+        # Override: testes de CRUD/isolamento criam paciente só com nome/telefone.
+        # Desliga a obrigatoriedade de data_nascimento/cpf da especialidade (odonto).
+        config_paciente={"campos": {"data_nascimento": {"obrigatorio": False},
+                                    "cpf": {"obrigatorio": False}}},
+    )
     db_session.add(clinica)
     db_session.flush()
     clinica.evolution_instance_name = f"clinica-{clinica.id[:8]}"
@@ -154,7 +160,11 @@ def clinica_fake_b(db_session):
     from core.security import hash_senha
     from seeds import aplicar_configuracoes_default
 
-    clinica = Clinica(nome="Clinica Teste B", cnpj="22222222000122")
+    clinica = Clinica(
+        nome="Clinica Teste B", cnpj="22222222000122",
+        config_paciente={"campos": {"data_nascimento": {"obrigatorio": False},
+                                    "cpf": {"obrigatorio": False}}},
+    )
     db_session.add(clinica)
     db_session.flush()
     clinica.evolution_instance_name = f"clinica-{clinica.id[:8]}"

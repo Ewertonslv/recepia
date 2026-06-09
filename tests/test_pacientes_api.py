@@ -75,9 +75,9 @@ class TestPacienteCRUD:
         criado = _criar_paciente(client, auth_headers_a).json()
         resp = client.delete(f"/api/pacientes/{criado['id']}", headers=auth_headers_a)
         assert resp.status_code == 204
-        # confirma que sumiu
-        check = client.get(f"/api/pacientes/{criado['id']}", headers=auth_headers_a)
-        assert check.status_code == 404
+        # Soft-delete (LGPD): some da listagem padrão (que filtra deletado_em).
+        lista = client.get("/api/pacientes", headers=auth_headers_a).json()
+        assert criado["id"] not in [p["id"] for p in lista]
 
 
 # ===========================================================================
