@@ -1,219 +1,126 @@
-# Recepia — Como rodar localmente
+# Recepia — AI-Powered WhatsApp Automation for Clinics
 
-Stack: FastAPI + Postgres + Evolution API (WhatsApp) + Groq (LLM) + APScheduler (cron).
+> **Multi-tenant SaaS that turns a clinic's WhatsApp into an AI receptionist** — it confirms, reschedules and books appointments automatically, classifying every patient reply with an LLM and falling back to a deterministic engine when the model is unavailable.
+
+[![CI](https://github.com/Ewertonslv/recepia/actions/workflows/ci.yml/badge.svg)](https://github.com/Ewertonslv/recepia/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
+![Tests](https://img.shields.io/badge/tests-109%20passing-success)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+<!-- TODO: add live demo URL + screenshot/GIF once deployed to AWS -->
+<!-- **🔗 Live demo:** https://recepia.app.br · **Test login:** demo@recepia.app · `demo12345` -->
 
 ---
 
-## Pré-requisitos
+## Why it matters
 
-- **Docker Desktop** (Windows/Mac) ou Docker Engine + Compose (Linux)
-- **OpenSSL** (Git Bash no Windows já tem; ou PowerShell `[Convert]::ToHexString((1..32 | %{Get-Random -Maximum 256}))`)
-- **curl** ou Postman/Insomnia pra testar a API
+Clinics lose money on no-shows and spend hours manually confirming appointments over WhatsApp. **Recepia automates the whole loop:** a scheduled worker sends confirmation/reminder messages, the patient replies in natural language, and an LLM classifies the intent (confirm, cancel, reschedule, **book a new appointment**, opt-out, question) and updates the schedule — per clinic, with strict tenant isolation and LGPD-compliant PII handling.
 
----
+## Features
 
-## Passo 1 — Configurar `.env`
+- **Multi-tenant by design** — three auth modes (user JWT, clinic API key, master admin key); every query is scoped by `clinica_id`, with isolation covered by automated tests (two clinics, no data bleed).
+- **AI intent classification** — Groq / Llama 3.3 70B classifies patient replies; a deterministic regex engine is the automatic fallback, so the bot never goes silent if the LLM is down or rate-limited.
+- **WhatsApp integration** via self-hosted [Evolution API](https://github.com/EvolutionAPI/evolution-api) — QR-code pairing, send/receive, per-clinic instances.
+- **LGPD / privacy first** — PII (phone, CPF, email, ZIP) is **masked before it ever reaches the LLM** (which runs on US servers); patient data export and message opt-out (LGPD Art. 8 §5) are built in.
+- **PDF generation** (WeasyPrint) — medical certificates, attendance declarations, records, receipts, consent forms.
+- **Production hardening** — rate limiting (SlowAPI), security headers + HSTS, restricted CORS, non-root Docker image with healthcheck, and **boot-time secret validation** that refuses to start with weak/default keys.
+- **Scheduling worker** (APScheduler) — timezone-aware confirmation and reminder windows.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Patient([Patient on WhatsApp]) <--> Evo[Evolution API]
+    Evo -- webhook (HMAC) --> API[FastAPI - Recepia]
+    Worker[APScheduler worker] -- "send confirmations/reminders" --> Evo
+    API -- "mask PII then classify" --> Groq[Groq LLM<br/>Llama 3.3 70B]
+    Groq -- intent --> API
+    API <--> DB[(PostgreSQL<br/>multi-tenant)]
+    API -- PDFs --> WP[WeasyPrint]
+    Staff([Clinic staff]) <--> Dash[Dashboard / Landing]
+    Dash <--> API
+```
+
+## Tech stack
+
+| Layer | Tech |
+|---|---|
+| API | FastAPI · Pydantic v2 · Uvicorn |
+| Data | PostgreSQL · SQLAlchemy 2.0 · Alembic |
+| AI | Groq (Llama 3.3 70B) + regex fallback |
+| Messaging | Evolution API (WhatsApp) |
+| Auth | JWT (python-jose) · bcrypt · API keys |
+| Docs | WeasyPrint + Jinja2 (PDF) |
+| Jobs | APScheduler |
+| Infra | Docker Compose (api · worker · postgres · evolution) |
+
+## AI pipeline (how a reply becomes an action)
+
+1. Patient sends a free-text WhatsApp message → Evolution delivers it to `/api/webhook/evolution`.
+2. **PII is masked** (`mascara_pii`) so phone/CPF/email/ZIP never leave the country in plaintext.
+3. The masked text is sent to Groq with a constrained prompt (`temperature=0`, `max_tokens=10`) returning a single category.
+4. Intents are mapped with careful ordering (e.g. `OPT_OUT` and `REAGENDAR` are checked before `CANCELADO`/`AGENDAR` to avoid substring collisions).
+5. If Groq errors or is rate-limited, a deterministic **regex classifier** takes over — same categories, zero downtime.
+6. The schedule is updated and the patient gets the appropriate reply.
+
+## Quickstart (Docker)
 
 ```bash
 cp .env.example .env
-```
-
-Gera as keys (Git Bash / Linux / Mac):
-
-```bash
+# generate secrets (Git Bash / Linux / macOS):
 echo "JWT_SECRET=$(openssl rand -hex 32)"
 echo "ADMIN_API_KEY=$(openssl rand -hex 32)"
 echo "EVOLUTION_API_KEY=$(openssl rand -hex 32)"
-echo "EVOLUTION_WEBHOOK_SECRET=$(openssl rand -hex 32)"
 echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
-```
+# add a free GROQ_API_KEY from https://console.groq.com
 
-Cola no `.env`. Adiciona também `GROQ_API_KEY` (gera grátis em https://console.groq.com).
-
----
-
-## Passo 2 — Subir tudo
-
-```bash
 docker compose up -d
+curl http://localhost:8000/health   # -> {"status":"ok","db":"ok"}
 ```
 
-Aguarda ~30s. Verifica:
+Create your first clinic, log in, add a patient and connect WhatsApp — the full step-by-step (including the QR-code flow and triggering confirmations manually) is in **[README.pt-BR.md](README.pt-BR.md)**.
+
+> Boot will **fail fast** if any secret is missing or left as a placeholder — that's intentional.
+
+## Running the tests
 
 ```bash
-docker compose ps
-docker compose logs -f api
+pip install -r requirements.txt pytest
+pytest -q          # 109 tests, SQLite in-memory, WhatsApp/LLM mocked — no external services needed
 ```
 
-Health check: http://localhost:8000/health
+CI runs lint (ruff) + the full suite on every push via [GitHub Actions](.github/workflows/ci.yml).
 
----
+## Key API endpoints
 
-## Passo 3 — Criar 1ª clínica de teste (admin)
-
-```bash
-curl -X POST http://localhost:8000/admin/clinicas \
-  -H "X-Admin-Key: SEU_ADMIN_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nome": "Clínica Teste",
-    "admin_email": "voce@email.com",
-    "admin_senha": "senha_teste_12345",
-    "admin_nome": "Você"
-  }'
-```
-
-Resposta tem `id`, `api_key`, `evolution_instance_name`. Guarda.
-
----
-
-## Passo 4 — Login
-
-```bash
-curl -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"voce@email.com","senha":"senha_teste_12345"}'
-```
-
-`access_token` retornado é o JWT. Use como `Authorization: Bearer <token>` daqui em diante.
-
----
-
-## Passo 5 — Cadastrar paciente
-
-```bash
-TOKEN="cola_o_jwt"
-
-curl -X POST http://localhost:8000/api/pacientes \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"nome":"Maria","telefone":"+55 11 99999-9999"}'
-```
-
-Telefone volta normalizado: `5511999999999`.
-
----
-
-## Passo 6 — Criar agendamento
-
-```bash
-curl -X POST http://localhost:8000/api/agendamentos \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "paciente_id":"ID_PACIENTE",
-    "data_hora":"2026-05-17T15:00:00",
-    "servico":"Limpeza de pele"
-  }'
-```
-
----
-
-## Passo 7 — Conectar WhatsApp da clínica
-
-```bash
-curl -X POST http://localhost:8000/api/whatsapp/conectar \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Resposta tem `qrcode_base64`. Abra no browser:
-```
-data:image/png;base64,<o_base64_inteiro>
-```
-Escaneia com WhatsApp do celular. Status:
-```bash
-curl http://localhost:8000/api/whatsapp/status -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## Passo 8 — Disparar confirmação na mão (sem esperar cron)
-
-```bash
-docker compose exec worker python -c "
-from database import get_db
-from services.scheduler import SchedulerService
-with get_db() as db:
-    s = SchedulerService(db)
-    for a in s.buscar_agendamentos_pra_confirmar():
-        print(a.id, s.enviar_confirmacao(a))
-"
-```
-
-Paciente recebe no WhatsApp dela. Quando responder, Evolution chama `/api/webhook/evolution` → Recepia classifica via Groq → atualiza status.
-
----
-
-## Passo 9 — Ver conversa da IA
-
-```bash
-curl http://localhost:8000/api/agendamentos/ID_AG/interacoes \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## Endpoints principais
-
-| Método | Rota | O que faz |
+| Method | Route | Purpose |
 |---|---|---|
-| POST | `/admin/clinicas` | Cria clínica (X-Admin-Key) |
-| GET | `/admin/clinicas` | Lista (sem api_key) |
-| POST | `/admin/clinicas/{id}/rotate-api-key` | Gera nova api_key |
-| POST | `/auth/login` | Login JWT (rate limit 5/min) |
-| GET/POST/PUT/DELETE | `/api/pacientes` | CRUD pacientes |
-| GET | `/api/pacientes/{id}/historico` | Histórico paciente |
-| GET | `/api/pacientes/{id}/exportar` | LGPD export |
-| GET/POST/PUT/DELETE | `/api/agendamentos` | CRUD agendamentos |
-| GET | `/api/agendamentos/{id}/interacoes` | Conversa da IA |
-| GET/PUT | `/api/configuracoes` | Templates de mensagem |
-| GET/PUT | `/api/horarios` | Horário funcionamento (7 dias) |
-| POST | `/api/whatsapp/conectar` | Cria instância + QR Code |
-| GET | `/api/whatsapp/status` | Conectado? |
-| POST | `/api/whatsapp/desconectar` | Logout |
-| POST | `/api/webhook/evolution` | Callback Evolution (HMAC) |
-| GET | `/api/relatorios/dashboard` | Métricas do dia |
-| GET | `/health` | Health (pinga DB) |
+| POST | `/admin/clinicas` | Create a clinic (master admin key) |
+| POST | `/auth/login` | User login → JWT (rate-limited 5/min) |
+| GET/POST/PUT/DELETE | `/api/pacientes` | Patients CRUD |
+| GET | `/api/pacientes/{id}/exportar` | LGPD data export |
+| GET/POST/PUT/DELETE | `/api/agendamentos` | Appointments CRUD |
+| GET | `/api/agendamentos/{id}/interacoes` | AI conversation log |
+| POST | `/api/whatsapp/conectar` | Create instance + QR code |
+| POST | `/api/webhook/evolution` | Evolution callback (intent classification) |
+| GET | `/api/relatorios/dashboard` | Daily metrics |
+| GET | `/health` | Liveness (pings DB) |
 
----
+## Security & compliance
 
-## Como expor publicamente (Cloudflare Tunnel — grátis)
+- Secrets validated at boot (rejects `change-me`, short keys); no insecure defaults.
+- Tenant isolation enforced in data access and verified by tests.
+- PII masking before any external LLM call; opt-out + data export for LGPD.
+- Security headers, HSTS (prod), restricted CORS, SlowAPI rate limiting, non-root container.
 
-```bash
-docker run -d --name cloudflared --network=host \
-  cloudflare/cloudflared:latest tunnel --url http://localhost:8000
-docker logs cloudflared | grep trycloudflare.com
-```
+## Roadmap
 
-Pega a URL e atualiza `PUBLIC_WEBHOOK_URL` no `.env`. Rebuild:
-```bash
-docker compose up -d --build api
-```
+- [ ] Public live demo on AWS (HTTPS + seeded test credentials)
+- [ ] Structured LLM output (JSON mode) instead of free-text parsing
+- [ ] Cost/latency observability for LLM calls (e.g. Langfuse)
+- [ ] Explicit prompt-injection guardrails (OWASP LLM Top 10)
 
----
+## License
 
-## Comandos úteis
-
-```bash
-docker compose ps                       # status
-docker compose logs -f api worker       # logs em tempo real
-docker compose restart api              # reinicia API
-docker compose down                     # para tudo (mantém dados)
-docker compose down -v                  # para + APAGA banco (cuidado)
-docker compose exec postgres psql -U recepia recepia  # SQL direto
-docker compose exec api pytest          # roda testes
-```
-
----
-
-## Troubleshooting
-
-| Sintoma | Causa | Fix |
-|---|---|---|
-| `JWT_SECRET` validation error no boot | `.env` faltando ou usa "change-me" | Passo 1 |
-| `postgres: connection refused` | Postgres ainda subindo | `sleep 15 && docker compose up -d api` |
-| Evolution 401 | `EVOLUTION_API_KEY` diferente entre `.env` e compose | Sincroniza ambos |
-| WhatsApp desconecta sozinho | Comportamento normal | `POST /api/whatsapp/conectar` de novo |
-| Groq 429 (rate limit) | Free tier | Aguarda 1min |
-| Cron não dispara | `Clinica.evolution_conectado = False` | Conectar WhatsApp primeiro |
-| Webhook não recebe nada | `PUBLIC_WEBHOOK_URL` errada ou Evolution sem internet | Verifica URL pública via curl |
+MIT © Ewerton Silva — [github.com/Ewertonslv](https://github.com/Ewertonslv)
