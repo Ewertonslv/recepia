@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
 ![Tests](https://img.shields.io/badge/tests-109%20passing-success)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-lightgrey)
 
 <!-- TODO: add live demo URL + screenshot/GIF once deployed to AWS -->
 <!-- **🔗 Live demo:** https://recepia.app.br · **Test login:** demo@recepia.app · `demo12345` -->
@@ -123,4 +123,6 @@ CI runs lint (ruff) + the full suite on every push via [GitHub Actions](.github/
 
 ## License
 
-MIT © Ewerton Silva — [github.com/Ewertonslv](https://github.com/Ewertonslv)
+© Ewerton Silva — [github.com/Ewertonslv](https://github.com/Ewertonslv). All rights reserved.
+Recepia is a commercial product; the source is public for portfolio/demo purposes and is **not**
+licensed for redistribution, resale, or production use by third parties.
