@@ -7,7 +7,6 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from weasyprint import HTML, CSS
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "pdfs"
 
@@ -59,4 +58,7 @@ def gerar_pdf(tipo: str, contexto: dict[str, Any]) -> bytes:
     template = _env.get_template(f"{tipo}.html")
     contexto.setdefault("gerado_em", datetime.utcnow())
     html_str = template.render(**contexto)
+    # Import tardio: WeasyPrint exige libs nativas (Pango/Cairo). Importar só aqui
+    # mantém o resto do app (e os testes) importáveis sem essas libs instaladas.
+    from weasyprint import HTML
     return HTML(string=html_str, base_url=str(TEMPLATES_DIR)).write_pdf()
