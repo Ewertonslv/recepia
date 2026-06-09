@@ -139,6 +139,7 @@ def criar(
         profissional_id=prof_id,
     )
     db.add(agendamento)
+    db.flush()  # popula agendamento.id ANTES do audit (senão recurso_id fica None — gap LGPD)
     audit.log(db, **ctx, acao=AcaoAudit.CREATE, recurso="agendamento", recurso_id=agendamento.id,
               detalhes={"paciente_id": payload.paciente_id, "data_hora": payload.data_hora.isoformat()})
     db.commit()
