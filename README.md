@@ -8,10 +8,11 @@
 ![Tests](https://img.shields.io/badge/tests-109%20passing-success)
 ![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-lightgrey)
 
-**🔗 Live demo:** https://recepia.app.br
+**🔗 Live demo:** https://recepia.app.br — **test login:** `demo@recepia.app.br` / `demo123456`
 
 > Deployed on Render (free tier) with a Neon PostgreSQL database, served over HTTPS on a custom domain.
-> The free instance sleeps when idle, so the first request may take ~50s to wake.
+> The free instance sleeps when idle, so the first request may take ~50s to wake. The demo account is a
+> sandbox — feel free to click around.
 
 ---
 
