@@ -139,7 +139,7 @@ class TestAuditViaRotas:
         p = client.post(
             "/api/pacientes",
             headers=auth_headers_a,
-            json={"nome": "P", "telefone": "5511900000066"},
+            json={"nome": "Paciente Audit", "telefone": "5511900000066"},
         ).json()
         ag = client.post(
             "/api/agendamentos",

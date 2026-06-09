@@ -48,17 +48,20 @@ class TestCriarClinica:
         )
         assert resp.status_code == 401
 
-    def test_criar_clinica_email_duplicado(self, client, admin_headers, clinica_fake):
+    def test_mesmo_email_admin_pode_repetir_entre_clinicas(self, client, admin_headers, clinica_fake):
+        # Multi-tenant: a unicidade do email do admin é POR CLÍNICA, não global
+        # (api/clinicas.criar_clinica checa Usuario.clinica_id == nova_clinica.id).
+        # Reusar o email de outra clínica ao criar uma nova é permitido.
         resp = client.post(
             "/admin/clinicas",
             headers=admin_headers,
             json={
                 "nome": "Outra",
-                "admin_email": "admin@clinicaa.com",  # email da clinica_fake
+                "admin_email": "admin@clinicaa.com",  # mesmo email da clinica_fake
                 "admin_senha": "senha-1234",
             },
         )
-        assert resp.status_code == 409
+        assert resp.status_code == 201
 
     def test_criar_clinica_senha_curta_rejeita(self, client, admin_headers):
         resp = client.post(
