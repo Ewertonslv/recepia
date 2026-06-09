@@ -8,8 +8,10 @@
 ![Tests](https://img.shields.io/badge/tests-109%20passing-success)
 ![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-lightgrey)
 
-<!-- TODO: add live demo URL + screenshot/GIF once deployed to AWS -->
-<!-- **🔗 Live demo:** https://recepia.app.br · **Test login:** demo@recepia.app · `demo12345` -->
+**🔗 Live demo:** https://recepia.onrender.com
+
+> Deployed on Render (free tier) with a Neon PostgreSQL database. The free instance sleeps when idle, so
+> the first request may take ~50s to wake. Custom domain (recepia.app.br) coming soon.
 
 ---
 
