@@ -228,28 +228,33 @@ class TestProcessarResposta:
         resultado = sched.processar_resposta_paciente(c, "5511955555557", "outro horário")
         assert resultado["novo_status"] == Status.REAGENDADO
 
-    def test_telefone_sem_agendamento_ignora(self, db_session, clinica_fake, monkeypatch):
+    def test_telefone_sem_agendamento_responde_boas_vindas(self, db_session, clinica_fake, monkeypatch):
+        """Número novo (sem agendamento pendente) → fluxo de boas-vindas/convite a
+        marcar, em vez de ser ignorado (feature: IA agenda consultas novas)."""
         c = clinica_fake["clinica"]
         sched, _ = _make_scheduler_with_fake_ws(db_session, monkeypatch)
         resultado = sched.processar_resposta_paciente(c, "5511999999999", "sim")
-        assert resultado["status"] == "ignored"
-        assert resultado["reason"] == "no_pending_appointment"
+        assert resultado["status"] == "boas_vindas"
 
-    def test_nao_busca_agendamento_de_outra_clinica(
+    def test_nao_confirma_agendamento_de_outra_clinica(
         self, db_session, clinica_fake, clinica_fake_b, monkeypatch
     ):
-        """Crítico: paciente da B com mesmo telefone NÃO pode confirmar agendamento da A."""
+        """Crítico (isolamento multi-tenant): paciente da B com mesmo telefone NÃO
+        pode confirmar o agendamento da A. A B não encontra agendamento desse número
+        e trata como contato novo (boas-vindas); o agendamento da A fica intacto."""
         ca = clinica_fake["clinica"]
         cb = clinica_fake_b["clinica"]
 
         # Mesma pessoa cadastrada em A com agendamento pendente
         pa = _criar_paciente(db_session, ca.id, telefone="5511966666666")
-        _criar_agendamento(db_session, ca.id, pa.id, confirmacao_enviada=True)
+        ag_a = _criar_agendamento(db_session, ca.id, pa.id, confirmacao_enviada=True)
         db_session.commit()
 
         # Webhook chega na instância da CLINICA B com o mesmo telefone
         sched, _ = _make_scheduler_with_fake_ws(db_session, monkeypatch)
         resultado = sched.processar_resposta_paciente(cb, "5511966666666", "sim")
 
-        assert resultado["status"] == "ignored"
-        assert resultado["reason"] == "no_pending_appointment"
+        assert resultado["status"] == "boas_vindas"
+        # O agendamento da CLÍNICA A continua PENDENTE — a B não tocou nele.
+        db_session.refresh(ag_a)
+        assert ag_a.status == Status.PENDENTE

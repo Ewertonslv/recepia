@@ -39,7 +39,10 @@ class TestAuditLogHelper:
         """Helper NÃO comita — quem chama é responsável."""
         audit.log(db_session, clinica_id="c1", usuario_id=None,
                   acao=AcaoAudit.READ, recurso="x")
-        # sem commit ainda → outra sessão não veria, mas mesma sessão sim
+        # Helper NÃO comita. A fixture usa autoflush=False (igual ao app), então
+        # forçamos o flush pra confirmar que o registro fica PENDENTE na transação
+        # (escrito, mas ainda não commitado).
+        db_session.flush()
         assert db_session.query(AuditLog).count() == 1
 
 
