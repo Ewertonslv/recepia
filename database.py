@@ -43,7 +43,12 @@ def init_db():
     """Cria todas as tabelas + aplica migrations idempotentes. Use Alembic em produção."""
     import models  # noqa: F401 — registra as classes no Base
     Base.metadata.create_all(bind=engine)
-    _aplicar_migracoes_idempotentes()
+    # As migrations idempotentes usam sintaxe PostgreSQL (ADD COLUMN IF NOT EXISTS,
+    # NOW() AT TIME ZONE, UPDATE...FROM). Num banco novo de SQLite (testes), o
+    # create_all acima já cria o schema completo a partir dos models — então
+    # pulamos os ALTERs, que só fazem sentido pra evoluir um Postgres existente.
+    if not engine.url.get_backend_name().startswith("sqlite"):
+        _aplicar_migracoes_idempotentes()
 
 
 def _aplicar_migracoes_idempotentes() -> None:
