@@ -1,0 +1,5 @@
+# Server-rendered templates and static pages are views, not the project's
+# source language. Exclude them from GitHub's language stats so the bar reflects
+# the actual backend (Python / FastAPI) instead of HTML.
+*.html linguist-detectable=false
+*.css linguist-detectable=false
