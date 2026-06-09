@@ -4,12 +4,13 @@ from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
 from config import settings
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
+# pool_size/max_overflow só valem pro QueuePool (Postgres). O SQLite usado nos
+# testes (sqlite:///:memory:) usa SingletonThreadPool, que não aceita max_overflow.
+_engine_kwargs = {"pool_pre_ping": True}
+if not settings.DATABASE_URL.startswith("sqlite"):
+    _engine_kwargs.update(pool_size=10, max_overflow=20)
+
+engine = create_engine(settings.DATABASE_URL, **_engine_kwargs)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
