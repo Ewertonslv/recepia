@@ -67,6 +67,27 @@ flowchart LR
 5. If Groq errors or is rate-limited, a deterministic **regex classifier** takes over — same categories, zero downtime.
 6. The schedule is updated and the patient gets the appropriate reply.
 
+## 📊 AI observability
+
+Every classification call is measured — latency, token usage and estimated cost are tracked in-process and exposed at **`GET /api/relatorios/ia`** (authenticated):
+
+```json
+{
+  "chamadas": 1284,
+  "fallbacks_regex": 37,
+  "injecoes_bloqueadas": 5,
+  "tokens_prompt": 192600,
+  "tokens_completion": 12840,
+  "latencia_ms_total": 398553.6,
+  "custo_usd_total": 0.124,
+  "latencia_ms_media": 310.4
+}
+```
+
+- **Cost & latency are first-class** — you can see exactly what the LLM layer costs and how fast it responds, per process. No guessing the bill.
+- **`fallbacks_regex`** counts how often the deterministic classifier took over (Groq down or rate-limited) — the bot never goes silent.
+- **`injecoes_bloqueadas`** counts prompt-injection attempts routed straight to the safe deterministic path (OWASP LLM01 guardrail) — the LLM never even sees a crafted message.
+
 ## Quickstart (Docker)
 
 ```bash
