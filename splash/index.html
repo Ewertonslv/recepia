@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Recepia — abrindo…</title>
+<meta name="robots" content="noindex" />
+<meta name="theme-color" content="#E8B4B8" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23E8B4B8'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-family='Georgia' font-size='40' fill='%23fff'%3Er%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<!-- ===================================================================
+     CONFIG — ajuste se os domínios mudarem
+      informações: este splash deve ser hospedado num host SEMPRE ONLINE
+     (ex.: Render Static Site, grátis) na frente do app que hiberna.
+     ==================================================================== -->
+<script>
+  window.RECEPIA_SPLASH = {
+    // Endpoint leve do backend que confirma que o app acordou (e o banco respondeu).
+    healthUrl: "https://app.recepia.app.br/health",
+    // Para onde redirecionar quando o app estiver no ar.
+    targetUrl: "https://app.recepia.app.br/",
+    // De quanto em quanto tempo tentar (ms).
+    pollMs: 2000,
+    // A partir de quantos segundos mostrar a mensagem de "estava em repouso".
+    explainAfterSec: 7,
+    // Tempo total estimado pra barra de progresso (free tier costuma acordar em ~50s).
+    estimateSec: 50
+  };
+</script>
+
+<style>
+  :root {
+    --rose: #E8B4B8;
+    --rose-deep: #D89195;
+    --rose-soft: #F5DDDE;
+    --ink: #2b2426;
+    --muted: #8a7e80;
+    --bg: #fbf7f7;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 600px at 50% -10%, var(--rose-soft), transparent 60%),
+      var(--bg);
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    animation: rise .6s cubic-bezier(.2,.7,.3,1) both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* Marca: círculo rosa com "r", respirando */
+  .mark {
+    width: 84px; height: 84px; margin: 0 auto 22px;
+    border-radius: 50%;
+    background: linear-gradient(150deg, var(--rose), var(--rose-deep));
+    display: grid; place-items: center;
+    color: #fff;
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 700;
+    font-size: 42px;
+    line-height: 1;
+    box-shadow: 0 10px 30px rgba(216,145,149,.35);
+    position: relative;
+  }
+  .mark span { transform: translateY(2px); }
+  .mark::after {
+    content: ""; position: absolute; inset: -10px;
+    border-radius: 50%;
+    border: 2px solid var(--rose);
+    opacity: 0;
+    animation: pulse 2.4s ease-out infinite;
+  }
+  @keyframes pulse {
+    0%   { transform: scale(.85); opacity: .55; }
+    70%  { opacity: 0; }
+    100% { transform: scale(1.25); opacity: 0; }
+  }
+
+  h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    font-size: 25px;
+    margin: 0 0 8px;
+    letter-spacing: -.01em;
+  }
+  p.sub { margin: 0 0 26px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+  /* Barra de progresso */
+  .bar {
+    height: 8px; width: 100%;
+    background: var(--rose-soft);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .bar > i {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--rose), var(--rose-deep));
+    border-radius: 999px;
+    transition: width .5s ease;
+  }
+  /* brilho deslizante enquanto carrega */
+  .bar.indeterminate > i {
+    width: 40% !important;
+    animation: slide 1.3s ease-in-out infinite;
+  }
+  @keyframes slide {
+    0%   { transform: translateX(-110%); }
+    100% { transform: translateX(290%); }
+  }
+
+  .status { font-size: 14px; color: var(--muted); min-height: 20px; }
+  .status b { color: var(--ink); font-weight: 600; }
+
+  .explain {
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.55;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity .5s ease, max-height .5s ease;
+  }
+  .explain.show { opacity: 1; max-height: 120px; }
+
+  .retry {
+    margin-top: 18px;
+    display: none;
+  }
+  .retry a {
+    color: var(--rose-deep);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 14px;
+    border-bottom: 1px solid var(--rose);
+    padding-bottom: 1px;
+  }
+
+  /* Fade-out ao redirecionar */
+  body.leaving .card { opacity: 0; transform: translateY(-6px); transition: all .4s ease; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mark::after, .bar.indeterminate > i { animation: none; }
+    .card { animation: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="card" role="status" aria-live="polite">
+    <div class="mark" aria-hidden="true"><span>r</span></div>
+    <h1>Abrindo a Recepia</h1>
+    <p class="sub">Preparando seu ambiente…</p>
+
+    <div class="bar indeterminate" id="bar"><i></i></div>
+    <div class="status" id="status">Conectando ao servidor…</div>
+
+    <div class="explain" id="explain">
+      Esta é uma demonstração hospedada em servidor gratuito — ele entra em
+      repouso quando ninguém está usando e leva alguns segundos pra acordar.
+      Já estamos religando, é rápido. 🌱
+    </div>
+
+    <div class="retry" id="retry">
+      <a href="#" id="retryLink">Demorou demais? Tentar abrir mesmo assim →</a>
+    </div>
+  </main>
+
+<script>
+  (function () {
+    var cfg = window.RECEPIA_SPLASH;
+    var $status = document.getElementById("status");
+    var $explain = document.getElementById("explain");
+    var $bar = document.getElementById("bar");
+    var $barFill = $bar.querySelector("i");
+    var $retry = document.getElementById("retry");
+    var $retryLink = document.getElementById("retryLink");
+
+    $retryLink.href = cfg.targetUrl;
+
+    var start = Date.now();
+    var done = false;
+    var attempts = 0;
+
+    function elapsedSec() { return (Date.now() - start) / 1000; }
+
+    function tickUI() {
+      var s = elapsedSec();
+      // Barra "determinada" suave em direção a 90% até o app responder.
+      var pct = Math.min(90, (s / cfg.estimateSec) * 100);
+      if (s > 1.5) {
+        $bar.classList.remove("indeterminate");
+        $barFill.style.width = pct.toFixed(0) + "%";
+      }
+      if (s >= cfg.explainAfterSec) $explain.classList.add("show");
+      if (s >= 12) $retry.style.display = "block";
+      if (s >= cfg.explainAfterSec) {
+        $status.innerHTML = "Acordando o servidor… <b>" + Math.floor(s) + "s</b>";
+      }
+    }
+
+    function succeed() {
+      if (done) return;
+      done = true;
+      $bar.classList.remove("indeterminate");
+      $barFill.style.width = "100%";
+      $status.innerHTML = "<b>Pronto!</b> Redirecionando…";
+      document.body.classList.add("leaving");
+      setTimeout(function () { window.location.replace(cfg.targetUrl); }, 450);
+    }
+
+    // Detecta que o app acordou.
+    // Principal: fetch normal (a origem do splash está no CORS) e confirma
+    //   status:"ok" — garante que o app E o banco responderam.
+    // Fallback: se o CORS falhar, usa no-cors (resposta opaca) e exige 2
+    //   sucessos seguidos pra não redirecionar num 502 momentâneo do boot.
+    var opaqueHits = 0;
+    function probe() {
+      if (done) return;
+      attempts++;
+      var url = cfg.healthUrl + (cfg.healthUrl.indexOf("?") > -1 ? "&" : "?") + "_=" + Date.now();
+      fetch(url, { cache: "no-store" })
+        .then(function (r) {
+          if (!r.ok) throw new Error("status " + r.status);
+          return r.json();
+        })
+        .then(function (data) {
+          if (data && data.status === "ok") succeed();
+        })
+        .catch(function () {
+          // CORS bloqueado ou app ainda dormindo → tenta detectar por opaca.
+          fetch(url, { mode: "no-cors", cache: "no-store" })
+            .then(function () { if (++opaqueHits >= 2) succeed(); })
+            .catch(function () { opaqueHits = 0; /* ainda dormindo */ });
+        });
+    }
+
+    // Loop de UI + polling
+    var uiTimer = setInterval(tickUI, 250);
+    probe();
+    var pollTimer = setInterval(probe, cfg.pollMs);
+
+    // Segurança: para os timers quando concluir
+    var guard = setInterval(function () {
+      if (done) { clearInterval(uiTimer); clearInterval(pollTimer); clearInterval(guard); }
+    }, 300);
+  })();
+</script>
+</body>
+</html>
