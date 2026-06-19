@@ -467,12 +467,9 @@
 
       <div class="glass rounded-3xl p-7 mb-5 hidden slide-down" id="form-paciente">
         <h3 class="font-serif text-xl text-ink-900 mb-5">Nova paciente</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-          <div><label class="lbl" for="pac-nome">Nome</label><input id="pac-nome" required class="field"></div>
-          <div><label class="lbl" for="pac-telefone">Telefone</label><input id="pac-telefone" placeholder="+55 11 99999-9999" required class="field"></div>
-          <div><label class="lbl" for="pac-email">Email <span class="text-ink-600 font-normal">(opcional)</span></label><input id="pac-email" type="email" class="field"></div>
-          <div><label class="lbl" for="pac-notas">Notas <span class="text-ink-600 font-normal">(opcional)</span></label><input id="pac-notas" class="field"></div>
-        </div>
+        <!-- Campos renderizados dinamicamente por openNovoPaciente() conforme os
+             obrigatórios da especialidade (ex.: odonto exige CPF + nascimento). -->
+        <div id="pac-campos" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5"></div>
         <div class="flex gap-2"><button onclick="criarPaciente()" class="btn btn-primary"><i data-lucide="check"></i> Criar</button><button onclick="closeNovoPaciente()" class="btn btn-ghost">Cancelar</button></div>
       </div>
 
@@ -1976,20 +1973,64 @@ async function loadPacientes() {
   }
 }
 
-function openNovoPaciente() { $('form-paciente').classList.remove('hidden'); refreshIcons(); }
+// Campos obrigatórios da especialidade (o backend rejeita o cadastro sem eles).
+function _camposObrigatoriosEspecialidade() {
+  const cfg = especialidadeConfig?.campos || {};
+  return Object.keys(cfg).filter(k => cfg[k]?.obrigatorio && cfg[k]?.visivel !== false);
+}
+
+// Monta o input de um campo obrigatório, espelhando os tipos do drawer de edição.
+function _pacCampoHTML(k) {
+  const cfg = especialidadeConfig?.campos || {};
+  const lbl = cfg[k]?.label || CAMPOS_PACIENTE_LABELS[k] || k;
+  let input;
+  if (k === 'data_nascimento') {
+    input = `<input id="pac-${k}" type="date" class="field">`;
+  } else if (k === 'sexo') {
+    input = `<select id="pac-${k}" class="field">${SEXO_OPCOES.map(([val, lab]) => `<option value="${val}">${escapeHtml(lab)}</option>`).join('')}</select>`;
+  } else if (k === 'endereco_uf') {
+    input = `<select id="pac-${k}" class="field">${UF_OPCOES.map(u => `<option value="${u}">${u || '—'}</option>`).join('')}</select>`;
+  } else if (k === 'cpf') {
+    input = `<input id="pac-${k}" class="field" placeholder="000.000.000-00">`;
+  } else {
+    input = `<input id="pac-${k}" class="field">`;
+  }
+  return `<div><label class="lbl">${escapeHtml(lbl)} <span class="text-rose-500">*</span></label>${input}</div>`;
+}
+
+function openNovoPaciente() {
+  const obrig = _camposObrigatoriosEspecialidade();
+  let html = `
+    <div><label class="lbl" for="pac-nome">Nome <span class="text-rose-500">*</span></label><input id="pac-nome" required class="field"></div>
+    <div><label class="lbl" for="pac-telefone">Telefone <span class="text-rose-500">*</span></label><input id="pac-telefone" placeholder="+55 11 99999-9999" required class="field"></div>
+    <div><label class="lbl" for="pac-email">Email <span class="text-ink-600 font-normal">(opcional)</span></label><input id="pac-email" type="email" class="field"></div>`;
+  html += obrig.map(_pacCampoHTML).join('');
+  html += `<div class="md:col-span-2"><label class="lbl" for="pac-notas">Notas <span class="text-ink-600 font-normal">(opcional)</span></label><input id="pac-notas" class="field"></div>`;
+  $('pac-campos').innerHTML = html;       // re-render limpa os valores a cada abertura
+  $('form-paciente').classList.remove('hidden');
+  refreshIcons();
+}
 function closeNovoPaciente() { $('form-paciente').classList.add('hidden'); }
 
 async function criarPaciente() {
+  const val = (id) => { const el = $(id); return el ? el.value.trim() : ''; };
   const payload = {
-    nome: $('pac-nome').value, telefone: $('pac-telefone').value,
-    email: $('pac-email').value || null, notas: $('pac-notas').value || null,
+    nome: val('pac-nome'), telefone: val('pac-telefone'),
+    email: val('pac-email') || null, notas: val('pac-notas') || null,
   };
   if (!payload.nome || !payload.telefone) return toast('Nome e telefone obrigatórios', true);
+  // Coleta + valida os obrigatórios da especialidade antes de enviar.
+  const faltando = [];
+  for (const k of _camposObrigatoriosEspecialidade()) {
+    const v = val('pac-' + k);
+    if (!v) { faltando.push(especialidadeConfig?.campos?.[k]?.label || CAMPOS_PACIENTE_LABELS[k] || k); continue; }
+    payload[k] = v;
+  }
+  if (faltando.length) return toast('Preencha: ' + faltando.join(', '), true);
   try {
     await api('/api/pacientes', { method: 'POST', body: JSON.stringify(payload) });
     toast('Paciente criada!');
     closeNovoPaciente();
-    ['pac-nome','pac-telefone','pac-email','pac-notas'].forEach(id => $(id).value = '');
     loadPacientes();
   } catch (e) { toast(e.message, true); }
 }
