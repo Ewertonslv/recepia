@@ -1,0 +1,62 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Define o splash estático (sempre online) que mascara o cold start do app.
+# Aplicar: Render → New → Blueprint → conecte este repo → Apply.
+#
+# Fluxo: visitante → recepia.app.br (este Static Site, instantâneo)
+#        → splash acorda o app → redireciona para app.recepia.app.br.
+#
+# O Static Site é gratuito e NÃO hiberna (servido por CDN), por isso aparece
+# de imediato enquanto o web service (free tier) acorda.
+
+services:
+  - type: web
+    runtime: static
+    name: recepia-splash
+    rootDir: splash
+    # Sem etapa de build — é um único HTML estático.
+    buildCommand: ""
+    staticPublishPath: .
+    pullRequestPreviewsEnabled: false
+
+    # Domínio de entrada. Garanta que recepia.app.br NÃO esteja anexado ao
+    # web service do app ao mesmo tempo (o app fica em app.recepia.app.br).
+    domains:
+      - recepia.app.br
+
+    # Não cachear o HTML do splash, pra mudanças de texto/URL valerem na hora.
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: "no-cache, no-store, must-revalidate"
+
+    # SPA-style: qualquer rota cai no index do splash.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+# ---------------------------------------------------------------------------
+# OPCIONAL — declarar também o app FastAPI como Blueprint (Infra as Code).
+# Deixe COMENTADO se o web service já existe no painel do Render (evita criar
+# um serviço duplicado). Para adotar via Blueprint, descomente e preencha os
+# segredos no painel (sync:false faz o Render perguntar, sem versioná-los).
+#
+#  - type: web
+#    runtime: docker
+#    name: recepia-api
+#    dockerfilePath: ./Dockerfile
+#    plan: free
+#    healthCheckPath: /health
+#    domains:
+#      - app.recepia.app.br
+#    envVars:
+#      - key: DATABASE_URL      # Postgres do Neon
+#        sync: false
+#      - key: GROQ_API_KEY
+#        sync: false
+#      - key: ALLOWED_ORIGINS
+#        value: "https://recepia.app.br,https://app.recepia.app.br"
+#      - key: PORT
+#        value: "10000"
+# ---------------------------------------------------------------------------
