@@ -6,7 +6,7 @@ o app está no ar.
 
 ## Por que existe
 
-O app (`app.recepia.app.br`) roda no **free tier do Render**, que coloca a
+O app (`www.recepia.app.br`) roda no **free tier do Render**, que coloca a
 instância em repouso após ~15 min ociosa. A primeira visita espera ~50s até o
 container acordar (+ o cold start do Postgres no Neon).
 
@@ -34,7 +34,7 @@ Publique como **Render Static Site** (CDN, sempre online):
 1. Render → New → **Static Site** → conecte este repo.
 2. **Root Directory:** `splash`  ·  **Build Command:** *(vazio)*  ·  **Publish Directory:** `.`
 3. Aponte o domínio de entrada **`recepia.app.br`** (apex) para este Static Site.
-4. Mantenha o app FastAPI em **`app.recepia.app.br`** (o `targetUrl` já aponta pra lá).
+4. Mantenha o app FastAPI em **`www.recepia.app.br`** (o `targetUrl` já aponta pra lá).
 
 Assim o visitante cai primeiro no splash (instantâneo), que acorda o app e o
 encaminha. Alternativas equivalentes: Cloudflare Pages, GitHub Pages, Netlify.

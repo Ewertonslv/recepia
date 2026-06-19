@@ -4,7 +4,7 @@
 # Aplicar: Render → New → Blueprint → conecte este repo → Apply.
 #
 # Fluxo: visitante → recepia.app.br (este Static Site, instantâneo)
-#        → splash acorda o app → redireciona para app.recepia.app.br.
+#        → splash acorda o app → redireciona para www.recepia.app.br.
 #
 # O Static Site é gratuito e NÃO hiberna (servido por CDN), por isso aparece
 # de imediato enquanto o web service (free tier) acorda.
@@ -20,7 +20,7 @@ services:
     pullRequestPreviewsEnabled: false
 
     # Domínio de entrada. Garanta que recepia.app.br NÃO esteja anexado ao
-    # web service do app ao mesmo tempo (o app fica em app.recepia.app.br).
+    # web service do app ao mesmo tempo (o app fica em www.recepia.app.br).
     domains:
       - recepia.app.br
 
@@ -49,7 +49,7 @@ services:
 #    plan: free
 #    healthCheckPath: /health
 #    domains:
-#      - app.recepia.app.br
+#      - www.recepia.app.br
 #    envVars:
 #      - key: DATABASE_URL      # Postgres do Neon
 #        sync: false
