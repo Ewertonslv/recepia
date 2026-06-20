@@ -20,6 +20,7 @@ Hardenings LGPD (dado de saúde — Art. 11):
 """
 import re
 from datetime import datetime
+from core.timezones import agora_utc
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -152,7 +153,7 @@ def _aplicar_update(
     odontograma[dente] = {
         "estado": estado,
         "observacao": observacao,
-        "atualizado_em": datetime.utcnow().isoformat(),
+        "atualizado_em": agora_utc().isoformat(),
         "atualizado_por": usuario_id,
     }
     return estado_anterior, estado

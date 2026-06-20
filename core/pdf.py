@@ -5,6 +5,7 @@ LGPD: watermark com {usuario_nome} + timestamp pra rastreabilidade de vazamento.
 """
 from pathlib import Path
 from datetime import datetime
+from core.timezones import agora_utc
 from typing import Any
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -56,7 +57,7 @@ def gerar_pdf(tipo: str, contexto: dict[str, Any]) -> bytes:
                             + dados específicos do tipo.
     """
     template = _env.get_template(f"{tipo}.html")
-    contexto.setdefault("gerado_em", datetime.utcnow())
+    contexto.setdefault("gerado_em", agora_utc())
     html_str = template.render(**contexto)
     # Import tardio: WeasyPrint exige libs nativas (Pango/Cairo). Importar só aqui
     # mantém o resto do app (e os testes) importáveis sem essas libs instaladas.

@@ -11,6 +11,7 @@ Hardenings:
 - Headers privados (Cache-Control private, X-Content-Type-Options, CSP) ao servir.
 """
 from datetime import datetime
+from core.timezones import agora_utc
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -112,7 +113,7 @@ async def upload(
         "tamanho_bytes": meta.tamanho_bytes,
         "descricao": (descricao or "").strip() or None,
         "tipo": tipo,
-        "criado_em": datetime.utcnow().isoformat(),
+        "criado_em": agora_utc().isoformat(),
     }
     fotos.append(entry)
     p.fotos = fotos

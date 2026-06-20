@@ -17,6 +17,7 @@ Hardenings LGPD Art. 11/37/46 (dado sensível de saúde):
 - Listagem GET / lê do audit_log (não cria registro físico — PDF é volátil).
 """
 from datetime import date, datetime
+from core.timezones import agora_utc
 from typing import Optional
 import base64
 import logging
@@ -155,7 +156,7 @@ def _contexto_base(
             "foto_dataurl": _safe_avatar_dataurl(clinica.id, paciente),
         },
         "gerado_por": (usuario.nome or usuario.email),
-        "gerado_em": datetime.utcnow(),
+        "gerado_em": agora_utc(),
         "data_emissao": date.today(),
     }
 

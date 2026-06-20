@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from core.timezones import agora_utc
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -180,7 +181,7 @@ def processar_recall(db: Session, clinica: Clinica, hoje: datetime | None = None
     - NÃO comita por candidato — comita 1x no fim. Mais rápido + atômico por clínica.
     """
     if hoje is None:
-        hoje = datetime.utcnow()
+        hoje = agora_utc()
 
     if not clinica.recall_ativo or not clinica.ativo:
         return RecallStats(enviados=0, falhas=0, candidatos=0)
@@ -261,7 +262,7 @@ def processar_recall(db: Session, clinica: Clinica, hoje: datetime | None = None
 
 def contar_recalls_recentes(db: Session, clinica_id: str, dias: int = 30) -> int:
     """Quantos recalls foram disparados pra essa clínica nos últimos N dias."""
-    desde = datetime.utcnow() - timedelta(days=dias)
+    desde = agora_utc() - timedelta(days=dias)
     return (
         db.query(func.count(RecallEnviado.id))
         .filter(
