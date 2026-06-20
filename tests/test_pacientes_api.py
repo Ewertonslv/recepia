@@ -130,3 +130,58 @@ class TestIsolamentoMultiTenant:
         # confirma que NÃO foi apagado
         check = client.get(f"/api/pacientes/{criado_a['id']}", headers=auth_headers_a)
         assert check.status_code == 200
+
+
+# ===========================================================================
+# VALIDAÇÃO DE CAMPOS POR ESPECIALIDADE
+# Odonto exige CPF + data_nascimento (sem o override que clinica_fake aplica).
+# ===========================================================================
+
+@pytest.fixture
+def headers_odonto_estrita(db_session):
+    """Clínica odonto SEM override de config_paciente → cpf/nascimento obrigatórios."""
+    from models import Clinica, Usuario
+    from core.security import criar_token, hash_senha
+    from seeds import aplicar_configuracoes_default
+
+    clinica = Clinica(
+        nome="Odonto Estrita", cnpj="33333333000133",
+        especialidade="odonto", config_paciente={},
+    )
+    db_session.add(clinica)
+    db_session.flush()
+    clinica.evolution_instance_name = f"clinica-{clinica.id[:8]}"
+    usuario = Usuario(
+        clinica_id=clinica.id, email="admin@odontoestrita.com",
+        senha_hash=hash_senha("senha12345"), nome="Admin Odonto", role="admin",
+    )
+    db_session.add(usuario)
+    aplicar_configuracoes_default(db_session, clinica.id)
+    db_session.commit()
+    db_session.refresh(usuario)
+    return {"Authorization": f"Bearer {criar_token(usuario.id, usuario.clinica_id, usuario.role)}"}
+
+
+class TestValidacaoPorEspecialidade:
+    def test_odonto_sem_campos_obrigatorios_rejeita(self, client, headers_odonto_estrita):
+        resp = client.post(
+            "/api/pacientes", headers=headers_odonto_estrita,
+            json={"nome": "Maria Silva", "telefone": "5511999990000"},
+        )
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert "campos_faltantes" in detail
+        assert "cpf" in detail["campos_faltantes"]
+        assert "data_nascimento" in detail["campos_faltantes"]
+
+    def test_odonto_com_cpf_e_nascimento_cria(self, client, headers_odonto_estrita):
+        resp = client.post(
+            "/api/pacientes", headers=headers_odonto_estrita,
+            json={
+                "nome": "Maria Silva", "telefone": "5511999990000",
+                "cpf": "11144477735",  # CPF de teste válido (passa no dígito verificador)
+                "data_nascimento": "1990-01-01",
+            },
+        )
+        assert resp.status_code == 201
+        assert resp.json()["cpf"] == "11144477735"
