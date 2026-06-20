@@ -6,11 +6,13 @@ Hardenings:
 - Sprint 9: Google OAuth (ativado via GOOGLE_CLIENT_ID env var).
 """
 import os
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
+from config import settings
 from database import get_db_dependency
 from models import AcaoAudit, Clinica, Usuario
 from core.limiter import limiter
@@ -89,6 +91,8 @@ def google_login():
     if not _GOOGLE_ENABLED:
         raise HTTPException(501, "Google OAuth não configurado. Defina GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_REDIRECT_URI no .env.")
     import urllib.parse
+    # CSRF: state aleatório guardado em cookie httponly e conferido no callback.
+    state = secrets.token_urlsafe(24)
     params = urllib.parse.urlencode({
         "client_id": _G_CLIENT_ID,
         "redirect_uri": _G_REDIRECT_URI,
@@ -96,14 +100,21 @@ def google_login():
         "scope": "openid email profile",
         "access_type": "offline",
         "prompt": "select_account",
+        "state": state,
     })
-    return RedirectResponse(f"{_G_AUTH_URL}?{params}")
+    resp = RedirectResponse(f"{_G_AUTH_URL}?{params}")
+    resp.set_cookie(
+        "g_oauth_state", state, max_age=600, httponly=True,
+        samesite="lax", secure=not settings.DEBUG, path="/auth/google",
+    )
+    return resp
 
 
 @router.get("/google/callback")
 def google_callback(
     request: Request,
     code: str | None = None,
+    state: str | None = None,
     error: str | None = None,
     db: Session = Depends(get_db_dependency),
 ):
@@ -112,6 +123,10 @@ def google_callback(
         raise HTTPException(501, "Google OAuth não configurado.")
     if error:
         return RedirectResponse(f"/dashboard/?google_error={error}")
+    # CSRF: o state devolvido pelo Google tem que bater com o cookie do /google.
+    cookie_state = request.cookies.get("g_oauth_state")
+    if not state or not cookie_state or not secrets.compare_digest(state, cookie_state):
+        return RedirectResponse("/dashboard/?google_error=invalid_state")
     if not code:
         raise HTTPException(400, "Código de autorização ausente.")
 
