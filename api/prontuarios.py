@@ -1,6 +1,7 @@
 """CRUD de Prontuários — multi-tenant, scoped por clinica_id.
 
-Sprint 2 — D3 (sem fotos; storage de fotos vem no D4).
+Fotos de prontuário são gerenciadas em `api/fotos.py` (upload/download/delete);
+aqui o campo `fotos` expõe apenas a metadata já persistida.
 
 Hardenings LGPD Art. 11/37/46 (dado sensível de saúde):
 - Feature gate FEATURE_PRONTUARIO em TODAS as rotas (router-level).
@@ -88,7 +89,7 @@ class ProntuarioOut(BaseModel):
     procedimentos_realizados: Optional[str]
     alergias: list[str]
     proxima_acao: Optional[str]
-    fotos: list[dict]  # D3: vazio; D4 retorna metadata + URL pré-assinada
+    fotos: list[dict]  # metadata das fotos (key/sha256/mime/tipo/criado_em); arquivos servidos por api/fotos.py
     criado_em: datetime
     atualizado_em: datetime
 

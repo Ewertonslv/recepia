@@ -1,21 +1,9 @@
 <!--
   Snippet: chips de procedimentos sugeridos para o modal de prontuário.
 
-  Como integrar (futuro — NÃO aplicar agora):
-  1) Colar o HTML extra IMEDIATAMENTE ABAIXO do <textarea id="pr-proc"> dentro
-     do modal renderizado por openFormProntuario():
-
-         <div id="proc-chips" class="flex flex-wrap gap-2 mt-2"></div>
-
-  2) Colar o bloco <script> no escopo global do dashboard (uma única vez)
-     e chamar renderProcedimentosChips() dentro do openFormProntuario,
-     DEPOIS que o modal já foi inserido no DOM e o pr-proc existe:
-
-         openFormProntuario(...) {
-           // ... cria modal, insere no DOM ...
-           renderProcedimentosChips();
-           refreshIcons();
-         }
+  JÁ INTEGRADO em dashboard/index.html — este arquivo é só a referência/origem:
+    - <div id="proc-chips"> abaixo do <textarea id="pr-proc"> (index.html ~2776)
+    - renderProcedimentosChips() definido (~3746) e chamado em openFormProntuario (~2849)
 
   Depende de:
     - window.especialidadeConfig (já cacheado no init)

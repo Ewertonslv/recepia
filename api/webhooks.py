@@ -157,7 +157,9 @@ async def webhook_evolution(
         if not texto.strip():
             return {"status": "ok"}
 
-        # G9: dedup — se já processamos esta message_id, ignora
+        # G9: dedup por message_id — se já processamos esta mensagem, ignora.
+        # Nota: mensagens SEM message_id não são deduplicadas (raro na Evolution;
+        # se a Evolution reentregar sem id, pode haver reprocessamento).
         if message_id:
             ja_processada = db.query(Interacao).filter(
                 Interacao.evolution_message_id == message_id,
