@@ -15,6 +15,7 @@ Hardenings LGPD:
 - DELETE não existe — use POST /cancelar com motivo obrigatório.
 """
 from datetime import datetime
+from core.timezones import agora_utc
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -297,7 +298,7 @@ def atualizar(
 
     # Se mudou status pra concluido manualmente via PUT, seta concluido_em.
     if mudancas.get("status") == "concluido" and p.status != "concluido":
-        p.concluido_em = datetime.utcnow()
+        p.concluido_em = agora_utc()
     elif mudancas.get("status") == "ativo" and p.status != "ativo":
         # Reabriu? limpa concluido_em pra refletir realidade.
         p.concluido_em = None
@@ -328,7 +329,7 @@ def concluir(
         raise HTTPException(400, "Plano cancelado não pode ser concluído")
 
     p.status = "concluido"
-    p.concluido_em = datetime.utcnow()
+    p.concluido_em = agora_utc()
     audit.log(
         db, **ctx, acao=AcaoAudit.UPDATE, recurso="plano_tratamento",
         recurso_id=p.id, detalhes={"transicao": "concluir"},

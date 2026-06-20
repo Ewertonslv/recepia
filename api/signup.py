@@ -3,6 +3,7 @@
 Sem auth. Rate limited (3/hour/IP). LGPD: registra aceite_termos timestamp.
 """
 from datetime import datetime, date
+from core.timezones import agora_utc
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
@@ -115,7 +116,7 @@ def signup_publico(request: Request, payload: SignupIn, db: Session = Depends(ge
         nome=payload.nome_responsavel,
         senha_hash=hash_senha(payload.senha),
         telefone=telefone_norm,
-        aceitou_termos_em=datetime.utcnow(),
+        aceitou_termos_em=agora_utc(),
         role="admin",
     )
     db.add(usuario)

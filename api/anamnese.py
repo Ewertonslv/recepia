@@ -6,6 +6,7 @@ PUT salva respostas (cria ou atualiza — 1 anamnese por paciente).
 LGPD Art. 11 (dado sensível de saúde): audit READ em GET, audit UPDATE em PUT.
 """
 from datetime import datetime
+from core.timezones import agora_utc
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -105,7 +106,7 @@ def salvar(
     if anamnese:
         anamnese.respostas = respostas_filtradas
         anamnese.preenchida_por = ctx.get("usuario_id") or anamnese.preenchida_por
-        anamnese.atualizado_em = datetime.utcnow()
+        anamnese.atualizado_em = agora_utc()
         acao = AcaoAudit.UPDATE
     else:
         anamnese = Anamnese(

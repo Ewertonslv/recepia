@@ -10,6 +10,7 @@ import csv
 import io
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from core.timezones import agora_utc
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr, Field
@@ -865,8 +866,8 @@ def impersonar_clinica(
         "role": admin_user.role,
         "aud": JWT_AUD,
         "iss": JWT_ISS,
-        "exp": datetime.utcnow() + timedelta(minutes=15),
-        "iat": datetime.utcnow(),
+        "exp": agora_utc() + timedelta(minutes=15),
+        "iat": agora_utc(),
         "impersonado_por": "admin_master",
     }
     token = _jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
@@ -1275,7 +1276,7 @@ def preview_recall(
 ):
     """Lista candidatos SEM enviar. Usado pela UI pra mostrar "X pacientes serão lembrados"."""
     from core.recall import candidatos_recall
-    hoje = datetime.utcnow()
+    hoje = agora_utc()
     motivo = None
     if not clinica.recall_ativo:
         motivo = "Recall desativado"
@@ -1312,7 +1313,7 @@ def disparar_recall_manual(
     """Dispara recall AGORA (botão admin). Rate-limit 1/hora pra não virar gatilho de flood."""
     _exigir_admin_clinica(usuario)
     from core.recall import processar_recall
-    stats = processar_recall(db, clinica, hoje=datetime.utcnow())
+    stats = processar_recall(db, clinica, hoje=agora_utc())
     audit.log(
         db, **ctx,
         acao=AcaoAudit.CREATE,

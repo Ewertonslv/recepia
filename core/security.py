@@ -3,6 +3,7 @@ import secrets
 import string
 import uuid
 from datetime import datetime, timedelta
+from core.timezones import agora_utc
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 
@@ -37,8 +38,8 @@ def criar_token(usuario_id: str, clinica_id: str, role: str) -> str:
         "role": role,
         "aud": JWT_AUD,
         "iss": JWT_ISS,
-        "exp": datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRES_MINUTES),
-        "iat": datetime.utcnow(),
+        "exp": agora_utc() + timedelta(minutes=settings.JWT_EXPIRES_MINUTES),
+        "iat": agora_utc(),
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
@@ -77,8 +78,8 @@ def criar_token_admin() -> str:
         "role": "superadmin",
         "aud": JWT_AUD_ADMIN,
         "iss": JWT_ISS,
-        "exp": datetime.utcnow() + timedelta(minutes=ADMIN_TTL_MINUTES),
-        "iat": datetime.utcnow(),
+        "exp": agora_utc() + timedelta(minutes=ADMIN_TTL_MINUTES),
+        "iat": agora_utc(),
         "jti": str(uuid.uuid4()),
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
