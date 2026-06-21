@@ -19,10 +19,9 @@ services:
     staticPublishPath: .
     pullRequestPreviewsEnabled: false
 
-    # Domínio de entrada. Garanta que recepia.app.br NÃO esteja anexado ao
-    # web service do app ao mesmo tempo (o app fica em www.recepia.app.br).
-    domains:
-      - recepia.app.br
+    # Domínio de entrada (recepia.app.br) é adicionado MANUALMENTE no painel,
+    # depois do Static Site criado — declarar aqui dá conflito enquanto o apex
+    # ainda estiver no web service do app. App fica em www.recepia.app.br.
 
     # Não cachear o HTML do splash, pra mudanças de texto/URL valerem na hora.
     headers:
