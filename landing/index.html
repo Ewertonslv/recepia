@@ -55,11 +55,6 @@
     {"@type": "Offer", "name": "Pro", "price": "197.00", "priceCurrency": "BRL", "url": "https://app.recepia.app.br/cadastro"},
     {"@type": "Offer", "name": "Enterprise", "price": "497.00", "priceCurrency": "BRL", "url": "https://app.recepia.app.br/cadastro"}
   ],
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.8",
-    "reviewCount": "23"
-  },
   "provider": {
     "@type": "Organization",
     "name": "Recepia Tecnologia Ltda",
@@ -70,7 +65,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -85,7 +80,7 @@
         },
         fontFamily: {
           serif: ['Fraunces', 'Georgia', 'serif'],
-          sans: ['Inter', 'system-ui', 'sans-serif'],
+          sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
         },
       },
     },
@@ -93,7 +88,7 @@
 </script>
 <style>
   html { scroll-behavior: smooth; }
-  body { font-family: 'Inter', system-ui, sans-serif; color: #2D3142; background: #FAF7F5; -webkit-font-smoothing: antialiased; }
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #2D3142; background: #FAF7F5; -webkit-font-smoothing: antialiased; }
   .font-display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; }
   /* pingo rosé no i de "recepia" */
   .logo-dot { display: inline-block; width: 0.42em; height: 0.42em; border-radius: 999px; background: #E8B4B8; vertical-align: 0.55em; margin-left: -0.05em; margin-right: 0.02em; }
@@ -117,6 +112,8 @@
 </head>
 <body class="bg-cream text-graphite">
 
+<a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:rounded-full focus:bg-graphite focus:text-cream focus:font-medium focus:shadow-lg">Pular para o conteúdo</a>
+
 <!-- ============ NAV ============ -->
 <header class="absolute top-0 inset-x-0 z-20">
   <div class="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -135,13 +132,15 @@
         ver planos
       </a>
       <!-- CTA principal: começar grátis -->
-      <a href="/cadastro" class="plausible-event-name=CTA+Cadastro hidden sm:inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full bg-graphite text-cream hover:bg-graphite/90 transition">
+      <a href="/cadastro" class="plausible-event-name=CTA+Cadastro inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full bg-graphite text-cream hover:bg-graphite/90 transition">
         começar grátis
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
       </a>
     </nav>
   </div>
 </header>
+
+<main id="main">
 
 <!-- ============ HERO ============ -->
 <section class="relative pt-28 pb-20 sm:pt-36 sm:pb-28 overflow-hidden">
@@ -853,6 +852,8 @@
     <p class="mt-8 text-sm text-cream/60 italic">🎁 cadastra agora e ganha 7 dias grátis na hora, sem cartão. se gostar, escolhe um plano. se não, paga zero.</p>
   </div>
 </section>
+
+</main>
 
 <!-- ============ FOOTER ============ -->
 <footer class="bg-cream py-14 border-t border-graphite/10">

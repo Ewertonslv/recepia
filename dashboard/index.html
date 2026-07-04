@@ -152,7 +152,7 @@
       .agenda-week-body { overflow-y: auto; max-height: calc(100vh - 310px); }
       .agenda-week-timeline { display: flex; }
       .agenda-time-col { width: 56px; flex-shrink: 0; }
-      .agenda-time-label { height: 40px; display: flex; align-items: flex-start; padding: 3px 8px 0; font-size: 11px; color: #aaa6b8; user-select: none; }
+      .agenda-time-label { height: 40px; display: flex; align-items: flex-start; padding: 3px 8px 0; font-size: 11px; color: #5C5552; user-select: none; } /* a11y: contraste AA (>=4.5:1) no cream */
       .agenda-day-col { flex: 1; position: relative; border-left: 1px solid rgba(45,49,66,0.06); min-width: 90px; }
       .agenda-slot-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(45,49,66,0.06); pointer-events: none; }
       .agenda-slot-line.on-hour { border-top-style: solid; border-top-color: rgba(45,49,66,0.1); }
@@ -164,7 +164,7 @@
       .agenda-mini-cal-head button { color: #aaa6b8; font-weight: 700; padding: 2px 6px; border-radius: 6px; transition: background 150ms; }
       .agenda-mini-cal-head button:hover { background: rgba(45,49,66,0.06); color: #2D3142; }
       .agenda-mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
-      .agenda-mini-cal-dow { text-align: center; font-size: 9px; font-weight: 600; color: #aaa6b8; padding: 4px 0; }
+      .agenda-mini-cal-dow { text-align: center; font-size: 9px; font-weight: 600; color: #5C5552; padding: 4px 0; } /* a11y: contraste AA (>=4.5:1) no cream */
       .agenda-mini-cal-day { text-align: center; font-size: 11px; padding: 5px 0; border-radius: 6px; cursor: pointer; color: #2D3142; position: relative; transition: background 120ms; }
       .agenda-mini-cal-day:hover:not(.empty) { background: rgba(45,49,66,0.06); }
       .agenda-mini-cal-day.today { background: rgba(232,180,184,0.25); color: #c97f85; font-weight: 700; }
@@ -189,6 +189,9 @@
     </style>
 </head>
 <body class="font-sans text-ink-900 antialiased">
+
+<!-- Pular pro conteúdo (a11y): visível só ao receber foco via teclado -->
+<a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-[200] focus:px-4 focus:py-2 focus:rounded-xl focus:bg-ink-900 focus:text-white focus:shadow-lg">Pular para o conteúdo</a>
 
 <!-- ============================================================ LOGIN -->
 <div id="login-screen" class="hidden min-h-screen flex items-center justify-center px-4 py-12">
@@ -278,7 +281,7 @@
   <div id="sidebar-backdrop" onclick="toggleSidebar()" aria-hidden="true"></div>
 
   <!-- Main -->
-  <main class="flex-1 p-8 overflow-y-auto">
+  <main id="main" class="flex-1 p-8 overflow-y-auto">
     <!-- Mobile top bar -->
     <div class="lg:hidden flex items-center justify-between mb-6">
       <button id="burger" onclick="toggleSidebar()" class="p-2 rounded-xl glass" aria-label="Abrir menu">
@@ -751,7 +754,7 @@ let procedimentosCache = []; // catálogo de procedimentos da clínica
 let especialidadeConfig = null;  // carregado no init, cacheado durante a sessão
 let trialStatus = null;          // {em_trial, expirado, dias_restantes, planos_disponiveis, ...}
 
-function refreshIcons() { if (window.lucide) lucide.createIcons(); }
+function refreshIcons() { if (window.lucide) lucide.createIcons(); if (window.wireClickables) wireClickables(); }
 
 function init() {
   // Detecção early de localStorage indisponível (Safari private mode)
@@ -2304,7 +2307,7 @@ async function loadProcedimentos() {
             <td class="px-6 py-4"><span class="inline-block w-5 h-5 rounded-full border border-ink-100" style="background:${escapeHtml(p.cor)}"></span></td>
             <td class="px-6 py-4"><span class="text-[10px] px-2 py-1 rounded-full font-semibold uppercase tracking-wider ${p.ativo ? 'bg-sage-100 text-sage-600' : 'bg-ink-100 text-ink-600'}">${p.ativo ? 'ativo' : 'inativo'}</span></td>
             <td class="px-6 py-4 text-right">
-              <button onclick="openFormProcedimento(${JSON.stringify(p).replace(/"/g,'&quot;')})" class="btn btn-ghost text-xs" style="padding:6px 12px;"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+              <button onclick="openFormProcedimento(${JSON.stringify(p).replace(/"/g,'&quot;')})" class="btn btn-ghost text-xs" style="padding:6px 12px;" aria-label="Editar procedimento"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
               ${p.ativo ? `<button onclick="desativarProcedimento('${escapeHtml(p.id)}','${escapeHtml(p.nome)}')" class="btn btn-ghost text-xs" style="padding:6px 12px;" title="Desativar"><i data-lucide="archive" class="w-3.5 h-3.5 text-rose-500"></i></button>` : ''}
             </td>
           </tr>`).join('')}
@@ -4471,6 +4474,84 @@ function setupKeyboard() {
   });
   $('cmdk').addEventListener('click', e => { if (e.target.id === 'cmdk') cmdkClose(); });
 }
+
+// ============================================================ A11y: teclado em controles só-clique
+// Muitos controles (células da agenda, consultas, linhas de paciente, cards de
+// prontuário...) são <div>/<span>/<tr> com onclick + cursor-pointer, sem role,
+// tabindex ou handler de teclado — então usuários de teclado/leitor de tela não
+// conseguem alcançá-los nem ativá-los. Esta função dá role="button", tabindex e
+// ativação por Enter/Espaço a cada um. É idempotente (marca os já tratados) e
+// roda de novo a cada render via refreshIcons(). Escrita de forma defensiva pra
+// nunca lançar erro e nunca quebrar o comportamento de clique existente.
+function wireClickables() {
+  try {
+    const nativos = { BUTTON: 1, A: 1, INPUT: 1, SELECT: 1, TEXTAREA: 1, LABEL: 1, SUMMARY: 1 };
+    document.querySelectorAll('[onclick]').forEach(el => {
+      if (el.__kbdWired) return;
+      if (nativos[el.tagName]) return;
+      if (el.hasAttribute('role')) return;         // já tem semântica própria
+      if (el.getAttribute('aria-hidden') === 'true') return; // não tornar focável algo oculto p/ AT
+      el.__kbdWired = true;
+      el.setAttribute('role', 'button');
+      if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+          e.preventDefault();                       // evita rolagem no Espaço
+          el.click();
+        }
+      });
+    });
+  } catch (_) { /* a11y nunca deve derrubar a UI */ }
+}
+window.wireClickables = wireClickables;
+document.addEventListener('DOMContentLoaded', wireClickables);
+
+// ============================================================ A11y: modais (Esc + devolver foco)
+// Modais criados via JS (customConfirm, openUpgradeModal e demais overlays
+// role="dialog"/"alertdialog") não fechavam com Esc nem devolviam o foco pro
+// elemento que os abriu. Um observador central cuida disso pra todos, sem mexer
+// no visual nem no fluxo de confirmar/cancelar: ao fechar, dispara o mesmo
+// caminho (clique no [data-cancel]) e restaura o foco.
+(function () {
+  try {
+    let ultimoFoco = null; // último elemento focado FORA de overlay (alvo da restauração)
+    document.addEventListener('focusin', e => {
+      const t = e.target;
+      if (t && !(t.closest && t.closest('.overlay'))) ultimoFoco = t;
+    }, true);
+
+    const fechar = ov => {
+      const cancelar = ov.querySelector('[data-cancel]');
+      if (cancelar) cancelar.click();  // preserva resolve() das Promises e a lógica de cada modal
+      else ov.remove();
+    };
+
+    const wire = ov => {
+      if (ov.__a11yModal) return;
+      ov.__a11yModal = true;
+      const alvo = ultimoFoco;
+      const onKey = e => {
+        if (e.key === 'Escape' && document.body.contains(ov)) { e.stopPropagation(); fechar(ov); }
+      };
+      document.addEventListener('keydown', onKey, true);
+      const obs = new MutationObserver(() => {
+        if (!document.body.contains(ov)) {
+          obs.disconnect();
+          document.removeEventListener('keydown', onKey, true);
+          try { if (alvo && document.body.contains(alvo)) alvo.focus(); } catch (_) {}
+        }
+      });
+      obs.observe(document.body, { childList: true });
+    };
+
+    const isModal = n => n && n.nodeType === 1 &&
+      (n.getAttribute('role') === 'dialog' || n.getAttribute('role') === 'alertdialog');
+
+    new MutationObserver(muts => {
+      muts.forEach(m => m.addedNodes && m.addedNodes.forEach(n => { if (isModal(n)) wire(n); }));
+    }).observe(document.body, { childList: true });
+  } catch (_) { /* a11y nunca deve derrubar a UI */ }
+})();
 
 init();
 </script>

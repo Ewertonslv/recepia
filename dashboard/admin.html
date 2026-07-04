@@ -85,8 +85,8 @@
     <p class="text-white/60 text-sm mb-7">Esta área permite gerenciar todas as clínicas. Toda ação é auditada.</p>
     <div class="space-y-4">
       <div>
-        <label class="lbl">Admin Key</label>
-        <input id="adm-key" type="password" class="field" placeholder="cole sua admin key" autofocus>
+        <label class="lbl" for="adm-key">Admin Key</label>
+        <input id="adm-key" type="password" class="field" placeholder="cole sua admin key" autocomplete="current-password" autofocus>
       </div>
       <div id="adm-erro" class="text-red-400 text-xs"></div>
       <button onclick="doAdminLogin()" class="btn btn-primary w-full justify-center"><i data-lucide="log-in"></i> Entrar</button>
@@ -124,7 +124,7 @@
         <h2 class="font-serif text-3xl mb-1">Clínicas</h2>
         <p class="text-white/60 text-sm">Total: <span id="total-clinicas">—</span> ativas</p>
       </div>
-      <input id="busca" oninput="filtrarClinicas()" placeholder="Buscar por nome…" class="field max-w-xs">
+      <input id="busca" oninput="filtrarClinicas()" placeholder="Buscar por nome…" aria-label="Buscar clínicas" class="field max-w-xs">
     </div>
 
     <div class="glass-d rounded-2xl overflow-hidden">
@@ -254,7 +254,7 @@
 
 <!-- Drawer detalhes -->
 <div id="drawer-bg" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onclick="fecharDrawer()"></div>
-<aside id="drawer" class="hidden drawer glass-d border-l border-white/10 p-7"></aside>
+<aside id="drawer" class="hidden drawer glass-d border-l border-white/10 p-7" role="dialog" aria-modal="true" aria-label="Detalhes da clínica"></aside>
 
 <!-- Toast -->
 <div id="toast" class="hidden fixed top-6 right-6 px-5 py-3 rounded-xl shadow-2xl z-[100] font-medium text-sm" role="status"></div>
@@ -375,7 +375,7 @@ function filtrarClinicas() {
   }
   const nomeEspec = (s) => (ESPECIALIDADES.find(e => e.slug === s) || {}).nome || s || '—';
   $('lista-clinicas').innerHTML = filt.map(c => `
-    <tr class="glass-row border-b border-white/5 cursor-pointer" onclick="abrirDrawer('${escapeHtml(c.id)}')">
+    <tr class="glass-row border-b border-white/5 cursor-pointer" role="button" tabindex="0" onclick="abrirDrawer('${escapeHtml(c.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDrawer('${escapeHtml(c.id)}')}">
       <td class="px-5 py-4">
         <div class="font-medium text-white">${escapeHtml(c.nome)}</div>
         <div class="text-[11px] text-white/40 font-mono">${escapeHtml(c.id.slice(0, 8))}…</div>
@@ -452,23 +452,23 @@ function renderOverview(c) {
   b.innerHTML = `
     <div class="space-y-6">
       <div>
-        <label class="lbl">Trocar plano</label>
+        <label class="lbl" for="ov-plano">Trocar plano</label>
         <div class="flex gap-2 items-center">
           <select id="ov-plano" class="field flex-1">
             ${PLANOS.map(p => `<option value="${p}" ${c.plano === p ? 'selected' : ''}>${PLANO_NOMES[p]}</option>`).join('')}
           </select>
-          <input id="ov-motivo" class="field flex-1" placeholder="motivo (opcional)">
+          <input id="ov-motivo" class="field flex-1" placeholder="motivo (opcional)" aria-label="Motivo da troca de plano">
           <button onclick="trocarPlano('${c.id}')" class="btn btn-primary text-sm">Aplicar</button>
         </div>
       </div>
 
       <div class="border-t border-white/10 pt-5">
-        <label class="lbl">Trocar nicho / especialidade</label>
+        <label class="lbl" for="ov-esp">Trocar nicho / especialidade</label>
         <div class="flex gap-2 items-center">
           <select id="ov-esp" class="field flex-1">
             ${ESPECIALIDADES.map(e => `<option value="${e.slug}" ${c.especialidade === e.slug ? 'selected' : ''}>${e.nome}</option>`).join('')}
           </select>
-          <input id="ov-esp-motivo" class="field flex-1" placeholder="motivo (opcional)">
+          <input id="ov-esp-motivo" class="field flex-1" placeholder="motivo (opcional)" aria-label="Motivo da troca de nicho">
           <button onclick="trocarEspecialidade('${c.id}')" class="btn btn-primary text-sm">Aplicar</button>
         </div>
         <p class="text-[11px] text-amber-400/80 mt-2"><i data-lucide="alert-triangle" class="w-3 h-3 inline"></i> Mudar o nicho altera quais campos são obrigatórios e quais PDFs ficam disponíveis. Pacientes antigos continuam ativos.</p>
@@ -512,7 +512,7 @@ function renderOverview(c) {
       </div>
 
       <div class="border-t border-white/10 pt-5">
-        <label class="lbl">Estender trial</label>
+        <label class="lbl" for="ov-trial-dias">Estender trial</label>
         <div class="flex gap-2 items-center flex-wrap">
           <select id="ov-trial-dias" class="field" style="max-width:160px;">
             <option value="7">+ 7 dias</option>
@@ -527,7 +527,7 @@ function renderOverview(c) {
       </div>
 
       <div class="border-t border-white/10 pt-5">
-        <label class="lbl">Notas internas <span class="text-white/30 font-normal normal-case">(só você vê)</span></label>
+        <label class="lbl" for="ov-notas">Notas internas <span class="text-white/30 font-normal normal-case">(só você vê)</span></label>
         <textarea id="ov-notas" class="field" rows="3" placeholder="Ex: cliente quente, ligou dia X, pediu desconto...">${escapeHtml(c.notas_internas || '')}</textarea>
         <button onclick="salvarNotas('${c.id}')" class="btn btn-ghost text-sm mt-2"><i data-lucide="save"></i> Salvar nota</button>
       </div>
@@ -731,10 +731,10 @@ function abrirNovoUsuario(cid) {
     <div class="glass-d rounded-2xl p-7 max-w-md w-full border border-white/10">
       <h3 class="font-serif text-xl mb-5">Novo operador</h3>
       <div class="space-y-4">
-        <div><label class="lbl">Email</label><input id="nu-email" type="email" class="field"></div>
-        <div><label class="lbl">Nome (opcional)</label><input id="nu-nome" class="field"></div>
+        <div><label class="lbl" for="nu-email">Email</label><input id="nu-email" type="email" class="field"></div>
+        <div><label class="lbl" for="nu-nome">Nome (opcional)</label><input id="nu-nome" class="field"></div>
         <div>
-          <label class="lbl">Role</label>
+          <label class="lbl" for="nu-role">Role</label>
           <select id="nu-role" class="field"><option value="operador">Operador</option><option value="admin">Admin</option></select>
         </div>
       </div>
@@ -768,24 +768,24 @@ function abrirNovaClinica() {
     <div class="glass-d rounded-2xl p-7 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
       <h3 class="font-serif text-xl mb-5">Nova clínica</h3>
       <div class="space-y-4">
-        <div><label class="lbl">Nome da clínica</label><input id="nc-nome" class="field" placeholder="Ex: Clínica Bella Pelle"></div>
-        <div><label class="lbl">CNPJ (opcional)</label><input id="nc-cnpj" class="field"></div>
+        <div><label class="lbl" for="nc-nome">Nome da clínica</label><input id="nc-nome" class="field" placeholder="Ex: Clínica Bella Pelle"></div>
+        <div><label class="lbl" for="nc-cnpj">CNPJ (opcional)</label><input id="nc-cnpj" class="field"></div>
         <div>
-          <label class="lbl">Nicho / Especialidade <span class="text-red-400">*</span></label>
+          <label class="lbl" for="nc-especialidade">Nicho / Especialidade <span class="text-red-400">*</span></label>
           <select id="nc-especialidade" class="field" onchange="document.getElementById('nc-esp-hint').textContent = (ESPECIALIDADES.find(e=>e.slug===this.value)||{}).hint || ''">
             ${ESPECIALIDADES.map(e => `<option value="${e.slug}" ${e.slug === 'odonto' ? 'selected' : ''}>${e.nome}</option>`).join('')}
           </select>
           <p id="nc-esp-hint" class="text-[11px] text-white/40 mt-1">Atestado, prontuário, declaração</p>
         </div>
         <div>
-          <label class="lbl">Plano inicial</label>
+          <label class="lbl" for="nc-plano">Plano inicial</label>
           <select id="nc-plano" class="field">${PLANOS.map(p => `<option value="${p}" ${p === 'trial' ? 'selected' : ''}>${PLANO_NOMES[p]}</option>`).join('')}</select>
         </div>
         <hr class="border-white/10">
         <p class="text-xs text-white/50">Admin inicial da clínica:</p>
-        <div><label class="lbl">Email</label><input id="nc-email" type="email" class="field"></div>
-        <div><label class="lbl">Nome</label><input id="nc-anome" class="field"></div>
-        <div><label class="lbl">Senha (mínimo 8)</label><input id="nc-senha" type="text" class="field" placeholder="defina ou copie depois"></div>
+        <div><label class="lbl" for="nc-email">Email</label><input id="nc-email" type="email" class="field"></div>
+        <div><label class="lbl" for="nc-anome">Nome</label><input id="nc-anome" class="field"></div>
+        <div><label class="lbl" for="nc-senha">Senha (mínimo 8)</label><input id="nc-senha" type="text" class="field" placeholder="defina ou copie depois"></div>
       </div>
       <div class="flex gap-2 justify-end mt-6">
         <button data-cancel class="btn btn-ghost text-sm">Cancelar</button>
@@ -1026,6 +1026,11 @@ async function exportarCSV(status) {
 }
 
 // ============================================================ Boot
+// Fecha o drawer de detalhes com Escape (mesmo comportamento do clique no fundo).
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && drawerClinicaId) fecharDrawer();
+});
+
 if (token && Date.now() < tokenExp) {
   init();
 } else {
