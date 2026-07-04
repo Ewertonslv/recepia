@@ -156,6 +156,17 @@ if LANDING_DIR.exists():
         from fastapi.responses import FileResponse
         return FileResponse(LANDING_DIR / "robots.txt", media_type="text/plain")
 
+
+# CSS do Tailwind compilado (estático) — substitui o CDN de dev nas páginas
+# servidas. Referenciado por caminho absoluto (/recepia.tailwind.css) tanto na
+# landing (raiz) quanto no dashboard (mount /dashboard).
+STATIC_DIR = BASE_DIR / "static"
+
+@app.get("/recepia.tailwind.css", include_in_schema=False)
+def tailwind_css():
+    from fastapi.responses import FileResponse
+    return FileResponse(STATIC_DIR / "recepia.tailwind.css", media_type="text/css")
+
     @app.get("/sitemap.xml", include_in_schema=False)
     def sitemap():
         from fastapi.responses import FileResponse

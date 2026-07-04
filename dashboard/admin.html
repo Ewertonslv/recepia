@@ -8,68 +8,61 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="/recepia.tailwind.css">
 <script src="https://unpkg.com/lucide@latest"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        fontFamily: {
-          serif: ['Fraunces', 'Georgia', 'serif'],
-          sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-        },
-        colors: {
-          ink: { 900: '#1a1a1a', 600: '#5a5a5a', 300: '#9a9a9a', 100: '#e8e8e8' },
-          cream: '#FBF9F4',
-          rose: { 100: '#F9DEDE', 300: '#F2C0C2', 400: '#E8B4B8', 500: '#d99ca0', 600: '#c47a7e' },
-          sage: { 100: '#E0EAD9', 400: '#A8C4A2', 500: '#7FB069', 600: '#5C8A4B' },
-        },
-      },
-    },
-  };
-</script>
 <style>
-  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: #0a0a0a; color: #f5f5f5; min-height: 100vh; }
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: #FAF7F5; color: #2D3142; min-height: 100vh; position: relative; overflow-x: hidden; }
+  /* aurora — mesma linguagem visual do dashboard */
+  body::before, body::after { content: ''; position: fixed; border-radius: 50%; filter: blur(80px); z-index: 0; pointer-events: none; }
+  body::before { width: 600px; height: 600px; background: radial-gradient(circle, #E8B4B8 0%, transparent 70%); top: -200px; left: -100px; opacity: 0.40; }
+  body::after  { width: 500px; height: 500px; background: radial-gradient(circle, #7FB069 0%, transparent 70%); bottom: -150px; right: -100px; opacity: 0.22; }
+  @media (max-width: 768px) { body::before, body::after { display: none; } }
+  #login-view, #app, .drawer, #toast { position: relative; z-index: 1; }
   .font-serif { font-family: 'Fraunces', Georgia, serif; }
-  .glass-d { background: rgba(255,255,255,0.06); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
-  .glass-row { background: rgba(255,255,255,0.04); transition: background 150ms; }
-  .glass-row:hover { background: rgba(255,255,255,0.08); }
-  .field { width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; outline: none; font-size: 14px; }
-  .field:focus { border-color: rgba(232,180,184,0.6); }
+  input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus { -webkit-text-fill-color: #2D3142; -webkit-box-shadow: 0 0 0 1000px #FAF7F5 inset; transition: background-color 5000s ease-in-out 0s; }
+
+  /* cartões claros sobre o cream (equivalente ao .glass do dashboard) */
+  .glass-d { background: rgba(255,255,255,0.75); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(45,49,66,0.08); box-shadow: 0 8px 32px -14px rgba(45,49,66,0.12); }
+  .glass-row { transition: background 150ms; }
+  .glass-row:hover { background: rgba(232,180,184,0.10); }
+  .field { width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(250,247,245,0.6); border: 1px solid rgba(45,49,66,0.12); color: #2D3142; outline: none; font-size: 14px; transition: all 200ms; }
+  .field:focus { background: #fff; border-color: #E8B4B8; box-shadow: 0 0 0 4px rgba(232,180,184,0.15); }
+  .field::placeholder { color: #8b8581; }
   /* select nativo: forçar contraste nas <option> (no Windows o Chrome usa cores do OS) */
-  select.field { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
-  select.field option { background: #1a1a1a; color: white; padding: 8px; }
-  select.field option:checked, select.field option:hover { background: #E8B4B8; color: #1a1a1a; }
-  .lbl { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.7); margin-bottom: 6px; }
+  select.field { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%232D3142' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
+  select.field option { background: #FAF7F5; color: #2D3142; padding: 8px; }
+  select.field option:checked, select.field option:hover { background: #E8B4B8; color: #2D3142; }
+  .lbl { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #5C5552; margin-bottom: 6px; }
   .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 12px; font-weight: 600; font-size: 14px; transition: all 150ms; cursor: pointer; }
-  .btn-primary { background: #E8B4B8; color: #1a1a1a; }
-  .btn-primary:hover { background: #d99ca0; }
-  .btn-ghost { background: rgba(255,255,255,0.06); color: white; }
-  .btn-ghost:hover { background: rgba(255,255,255,0.12); }
-  .btn-danger { background: #b91c1c; color: white; }
-  .btn-danger:hover { background: #991b1b; }
-  .btn-success { background: #16a34a; color: white; }
-  .btn-success:hover { background: #15803d; }
+  .btn-primary { background: #E8B4B8; color: #2D3142; }
+  .btn-primary:hover { background: #d99ca0; transform: translateY(-1px); box-shadow: 0 8px 20px -6px rgba(232,180,184,0.55); }
+  .btn-ghost { background: rgba(45,49,66,0.04); color: #5C5552; }
+  .btn-ghost:hover { background: rgba(45,49,66,0.08); }
+  .btn-danger { background: #fee2e2; color: #991b1b; }
+  .btn-danger:hover { background: #fecaca; }
+  .btn-success { background: linear-gradient(135deg, #7FB069 0%, #6a9856 100%); color: #fff; }
+  .btn-success:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -6px rgba(127,176,105,0.45); }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-  .badge-trial { background: rgba(167,196,162,0.2); color: #A8C4A2; }
-  .badge-essencial { background: rgba(255,200,100,0.15); color: #fbbf24; }
-  .badge-pro { background: rgba(232,180,184,0.2); color: #E8B4B8; }
-  .badge-enterprise { background: rgba(168,196,224,0.2); color: #a8c4e0; }
-  .badge-ativo { background: rgba(127,176,105,0.2); color: #7FB069; }
-  .badge-inativo { background: rgba(220,80,80,0.2); color: #f87171; }
-  .skel { background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 100%); background-size: 200% 100%; animation: skel 1.4s infinite; border-radius: 6px; }
+  .badge-trial { background: #e0eedb; color: #4a6c3d; }
+  .badge-essencial { background: #fef3c7; color: #92400e; }
+  .badge-pro { background: #f5dde0; color: #a8666b; }
+  .badge-enterprise { background: #e0e7f5; color: #35507a; }
+  .badge-ativo { background: #e0eedb; color: #4a6c3d; }
+  .badge-inativo { background: #fee2e2; color: #991b1b; }
+  .skel { background: linear-gradient(90deg, rgba(232,180,184,0.10) 0%, rgba(232,180,184,0.25) 50%, rgba(232,180,184,0.10) 100%); background-size: 200% 100%; animation: skel 1.4s infinite; border-radius: 6px; }
   @keyframes skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
   .fade-in { animation: fadeIn 220ms ease both; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .slide-right { animation: slideRight 250ms ease both; }
   @keyframes slideRight { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
-  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 720px; z-index: 60; overflow-y: auto; }
-  .tab-btn { padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); cursor: pointer; transition: all 150ms; }
-  .tab-btn:hover { color: white; background: rgba(255,255,255,0.05); }
-  .tab-btn.active { color: white; background: rgba(232,180,184,0.15); }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 720px; z-index: 60; overflow-y: auto; box-shadow: -16px 0 64px -16px rgba(45,49,66,0.25); }
+  .tab-btn { padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #5C5552; cursor: pointer; transition: all 150ms; }
+  .tab-btn:hover { color: #2D3142; background: rgba(45,49,66,0.05); }
+  .tab-btn.active { color: #2D3142; background: rgba(232,180,184,0.22); }
+  *:focus-visible { outline: 2px solid #E8B4B8; outline-offset: 2px; border-radius: 6px; }
 </style>
 </head>
-<body>
+<body class="font-sans text-ink-900 antialiased">
 
 <!-- LOGIN -->
 <div id="login-view" class="hidden min-h-screen flex items-center justify-center p-4">
@@ -78,17 +71,17 @@
       <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-300 to-rose-400 flex items-center justify-center"><i data-lucide="shield-alert" class="w-5 h-5 text-ink-900"></i></div>
       <div>
         <h1 class="font-serif text-2xl lowercase leading-none">recepia</h1>
-        <p class="text-xs text-red-400 font-bold uppercase tracking-widest mt-1">Admin Master</p>
+        <p class="text-xs text-red-600 font-bold uppercase tracking-widest mt-1">Admin Master</p>
       </div>
     </div>
     <h2 class="font-serif text-3xl mb-2">Acesso restrito</h2>
-    <p class="text-white/60 text-sm mb-7">Esta área permite gerenciar todas as clínicas. Toda ação é auditada.</p>
+    <p class="text-ink-600 text-sm mb-7">Esta área permite gerenciar todas as clínicas. Toda ação é auditada.</p>
     <div class="space-y-4">
       <div>
         <label class="lbl" for="adm-key">Admin Key</label>
         <input id="adm-key" type="password" class="field" placeholder="cole sua admin key" autocomplete="current-password" autofocus>
       </div>
-      <div id="adm-erro" class="text-red-400 text-xs"></div>
+      <div id="adm-erro" class="text-red-600 text-xs"></div>
       <button onclick="doAdminLogin()" class="btn btn-primary w-full justify-center"><i data-lucide="log-in"></i> Entrar</button>
     </div>
   </div>
@@ -97,18 +90,18 @@
 <!-- APP -->
 <div id="app" class="hidden">
   <!-- Banner permanente -->
-  <div class="bg-red-700/40 border-b border-red-700/60 px-5 py-2 text-center text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2">
+  <div class="bg-red-100 border-b border-red-300 text-red-700 px-5 py-2 text-center text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2">
     <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
     Você está agindo como Admin Master — toda ação é registrada em audit_log
   </div>
 
   <!-- Header -->
-  <header class="glass-d border-b border-white/10 px-6 py-4 flex items-center justify-between">
+  <header class="glass-d border-b border-ink-900/10 px-6 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
       <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-300 to-rose-400 flex items-center justify-center"><i data-lucide="sparkles" class="w-4 h-4 text-ink-900"></i></div>
       <div>
         <h1 class="font-serif text-xl lowercase leading-none">recepia · admin</h1>
-        <p class="text-[10px] text-white/50 mt-1">sessão expira em <span id="ttl-restante">2h</span></p>
+        <p class="text-[10px] text-ink-600 mt-1">sessão expira em <span id="ttl-restante">2h</span></p>
       </div>
     </div>
     <div class="flex items-center gap-2">
@@ -122,7 +115,7 @@
     <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
       <div>
         <h2 class="font-serif text-3xl mb-1">Clínicas</h2>
-        <p class="text-white/60 text-sm">Total: <span id="total-clinicas">—</span> ativas</p>
+        <p class="text-ink-600 text-sm">Total: <span id="total-clinicas">—</span> ativas</p>
       </div>
       <input id="busca" oninput="filtrarClinicas()" placeholder="Buscar por nome…" aria-label="Buscar clínicas" class="field max-w-xs">
     </div>
@@ -130,7 +123,7 @@
     <div class="glass-d rounded-2xl overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
-          <thead class="border-b border-white/10 text-xs uppercase tracking-wider text-white/50">
+          <thead class="border-b border-ink-900/10 text-xs uppercase tracking-wider text-ink-600">
             <tr>
               <th class="px-5 py-3 text-left">Clínica</th>
               <th class="px-5 py-3 text-left">Nicho</th>
@@ -151,9 +144,9 @@
   <section id="funnel-view" class="hidden p-6 max-w-7xl mx-auto fade-in">
     <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
       <div>
-        <button onclick="voltarLista()" class="text-xs text-white/60 hover:text-white mb-2 inline-flex items-center gap-1"><i data-lucide="arrow-left" class="w-3 h-3"></i> voltar pra lista</button>
+        <button onclick="voltarLista()" class="text-xs text-ink-600 hover:text-ink-900 mb-2 inline-flex items-center gap-1"><i data-lucide="arrow-left" class="w-3 h-3"></i> voltar pra lista</button>
         <h2 class="font-serif text-3xl mb-1">Funil de signups</h2>
-        <p class="text-white/60 text-sm">Período: <span id="fn-periodo">—</span></p>
+        <p class="text-ink-600 text-sm">Período: <span id="fn-periodo">—</span></p>
       </div>
       <div class="flex gap-1 glass-d rounded-xl p-1" role="tablist">
         <button data-fn-range="7"  class="tab-btn fn-range-btn">7d</button>
@@ -166,24 +159,24 @@
     <!-- 4 KPIs -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
       <div class="glass-d rounded-2xl p-5">
-        <p class="text-[11px] uppercase tracking-widest text-white/50 mb-1">Total signups</p>
-        <p id="kpi-total" class="font-serif text-4xl text-white">—</p>
-        <p class="text-[11px] text-white/40 mt-1">no período</p>
+        <p class="text-[11px] uppercase tracking-widest text-ink-600 mb-1">Total signups</p>
+        <p id="kpi-total" class="font-serif text-4xl text-ink-900">—</p>
+        <p class="text-[11px] text-ink-600 mt-1">no período</p>
       </div>
       <div class="glass-d rounded-2xl p-5">
-        <p class="text-[11px] uppercase tracking-widest text-white/50 mb-1">Em trial</p>
-        <p id="kpi-trial" class="font-serif text-4xl text-amber-300">—</p>
-        <p class="text-[11px] text-white/40 mt-1">ativos hoje</p>
+        <p class="text-[11px] uppercase tracking-widest text-ink-600 mb-1">Em trial</p>
+        <p id="kpi-trial" class="font-serif text-4xl text-amber-600">—</p>
+        <p class="text-[11px] text-ink-600 mt-1">ativos hoje</p>
       </div>
       <div class="glass-d rounded-2xl p-5">
-        <p class="text-[11px] uppercase tracking-widest text-white/50 mb-1">Convertidos</p>
-        <p id="kpi-conv" class="font-serif text-4xl text-sage-500">—</p>
-        <p id="kpi-conv-taxa" class="text-[11px] text-white/40 mt-1">— de conversão</p>
+        <p class="text-[11px] uppercase tracking-widest text-ink-600 mb-1">Convertidos</p>
+        <p id="kpi-conv" class="font-serif text-4xl text-sage-700">—</p>
+        <p id="kpi-conv-taxa" class="text-[11px] text-ink-600 mt-1">— de conversão</p>
       </div>
       <div class="glass-d rounded-2xl p-5">
-        <p class="text-[11px] uppercase tracking-widest text-white/50 mb-1">WhatsApp conectado</p>
-        <p id="kpi-wa" class="font-serif text-4xl text-rose-300">—</p>
-        <p id="kpi-wa-taxa" class="text-[11px] text-white/40 mt-1">— dos signups</p>
+        <p class="text-[11px] uppercase tracking-widest text-ink-600 mb-1">WhatsApp conectado</p>
+        <p id="kpi-wa" class="font-serif text-4xl text-rose-600">—</p>
+        <p id="kpi-wa-taxa" class="text-[11px] text-ink-600 mt-1">— dos signups</p>
       </div>
     </div>
 
@@ -198,7 +191,7 @@
       <div class="glass-d rounded-2xl p-6">
         <h3 class="font-serif text-lg mb-4">Por nicho</h3>
         <table class="w-full text-sm">
-          <thead class="text-[11px] uppercase tracking-wider text-white/40">
+          <thead class="text-[11px] uppercase tracking-wider text-ink-600">
             <tr><th class="text-left py-2">Nicho</th><th class="text-right py-2">Total</th><th class="text-right py-2">Pago</th><th class="text-right py-2">Taxa</th></tr>
           </thead>
           <tbody id="fn-por-esp"></tbody>
@@ -207,7 +200,7 @@
       <div class="glass-d rounded-2xl p-6">
         <h3 class="font-serif text-lg mb-4">Por plano</h3>
         <table class="w-full text-sm">
-          <thead class="text-[11px] uppercase tracking-wider text-white/40">
+          <thead class="text-[11px] uppercase tracking-wider text-ink-600">
             <tr><th class="text-left py-2">Plano</th><th class="text-right py-2">Clínicas</th></tr>
           </thead>
           <tbody id="fn-por-plano"></tbody>
@@ -226,7 +219,7 @@
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
-          <thead class="border-b border-white/10 text-xs uppercase tracking-wider text-white/50">
+          <thead class="border-b border-ink-900/10 text-xs uppercase tracking-wider text-ink-600">
             <tr>
               <th class="px-3 py-3 text-left">Clínica</th>
               <th class="px-3 py-3 text-left">Nicho</th>
@@ -241,7 +234,7 @@
           <tbody id="fn-signups"></tbody>
         </table>
       </div>
-      <div class="flex items-center justify-between mt-4 text-xs text-white/50">
+      <div class="flex items-center justify-between mt-4 text-xs text-ink-600">
         <span id="fn-pag-info">—</span>
         <div class="flex gap-2">
           <button id="fn-pag-prev" onclick="paginarSignups(-1)" class="btn btn-ghost text-xs">‹ anterior</button>
@@ -254,7 +247,7 @@
 
 <!-- Drawer detalhes -->
 <div id="drawer-bg" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onclick="fecharDrawer()"></div>
-<aside id="drawer" class="hidden drawer glass-d border-l border-white/10 p-7" role="dialog" aria-modal="true" aria-label="Detalhes da clínica"></aside>
+<aside id="drawer" class="hidden drawer glass-d border-l border-ink-900/10 p-7" role="dialog" aria-modal="true" aria-label="Detalhes da clínica"></aside>
 
 <!-- Toast -->
 <div id="toast" class="hidden fixed top-6 right-6 px-5 py-3 rounded-xl shadow-2xl z-[100] font-medium text-sm" role="status"></div>
@@ -281,7 +274,7 @@ function refreshIcons() { if (window.lucide) lucide.createIcons(); }
 
 function toast(msg, tipo = 'ok') {
   const t = $('toast');
-  const cls = tipo === 'erro' ? 'bg-red-700 text-white' : tipo === 'aviso' ? 'bg-amber-600 text-white' : 'bg-sage-500 text-ink-900';
+  const cls = tipo === 'erro' ? 'bg-red-700 text-white' : tipo === 'aviso' ? 'bg-amber-600 text-white' : 'bg-sage-700 text-white';
   t.className = `fixed top-6 right-6 px-5 py-3 rounded-xl shadow-2xl z-[100] font-medium text-sm fade-in ${cls}`;
   t.innerHTML = `<span class="flex items-center gap-2"><i data-lucide="${tipo === 'erro' ? 'alert-circle' : 'check-circle-2'}" class="w-4 h-4"></i> ${escapeHtml(msg)}</span>`;
   t.classList.remove('hidden');
@@ -358,7 +351,7 @@ function init() {
 // ============================================================ Lista clínicas
 async function loadClinicas() {
   $('lista-clinicas').innerHTML = Array(3).fill(`
-    <tr class="border-b border-white/5"><td colspan="6" class="px-5 py-4"><div class="skel h-5 w-full"></div></td></tr>`).join('');
+    <tr class="border-b border-ink-900/5"><td colspan="6" class="px-5 py-4"><div class="skel h-5 w-full"></div></td></tr>`).join('');
   try {
     clinicasCache = await api('/admin/clinicas');
     filtrarClinicas();
@@ -370,30 +363,30 @@ function filtrarClinicas() {
   const filt = q ? clinicasCache.filter(c => (c.nome || '').toLowerCase().includes(q) || (c.admin_login_email || '').toLowerCase().includes(q)) : clinicasCache;
   $('total-clinicas').textContent = `${clinicasCache.filter(c => c.ativo).length} de ${clinicasCache.length}`;
   if (filt.length === 0) {
-    $('lista-clinicas').innerHTML = `<tr><td colspan="7" class="px-5 py-10 text-center text-white/40">Nada encontrado.</td></tr>`;
+    $('lista-clinicas').innerHTML = `<tr><td colspan="7" class="px-5 py-10 text-center text-ink-600">Nada encontrado.</td></tr>`;
     return;
   }
   const nomeEspec = (s) => (ESPECIALIDADES.find(e => e.slug === s) || {}).nome || s || '—';
   $('lista-clinicas').innerHTML = filt.map(c => `
-    <tr class="glass-row border-b border-white/5 cursor-pointer" role="button" tabindex="0" onclick="abrirDrawer('${escapeHtml(c.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDrawer('${escapeHtml(c.id)}')}">
+    <tr class="glass-row border-b border-ink-900/5 cursor-pointer" role="button" tabindex="0" onclick="abrirDrawer('${escapeHtml(c.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDrawer('${escapeHtml(c.id)}')}">
       <td class="px-5 py-4">
-        <div class="font-medium text-white">${escapeHtml(c.nome)}</div>
-        <div class="text-[11px] text-white/40 font-mono">${escapeHtml(c.id.slice(0, 8))}…</div>
+        <div class="font-medium text-ink-900">${escapeHtml(c.nome)}</div>
+        <div class="text-[11px] text-ink-600 font-mono">${escapeHtml(c.id.slice(0, 8))}…</div>
       </td>
-      <td class="px-5 py-4 text-white/80 text-xs">${escapeHtml(nomeEspec(c.especialidade))}</td>
+      <td class="px-5 py-4 text-ink-800 text-xs">${escapeHtml(nomeEspec(c.especialidade))}</td>
       <td class="px-5 py-4">
         <span class="badge badge-${escapeHtml(c.plano)}">${escapeHtml(PLANO_NOMES[c.plano] || c.plano)}</span>
         ${c.plano === 'trial' && c.trial_expira_em ? (() => {
           const dias = Math.round((new Date(c.trial_expira_em + 'T00:00:00') - new Date()) / 86400000);
-          const cor = dias <= 1 ? 'text-red-400' : dias <= 3 ? 'text-amber-400' : 'text-white/40';
+          const cor = dias <= 1 ? 'text-red-600' : dias <= 3 ? 'text-amber-600' : 'text-ink-600';
           const txt = dias < 0 ? `expirou há ${-dias}d` : dias === 0 ? 'expira hoje' : `${dias}d restantes`;
           return `<div class="text-[10px] ${cor} flex items-center gap-1 mt-0.5"><i data-lucide="clock" class="w-3 h-3"></i> ${txt}</div>`;
         })() : ''}
       </td>
       <td class="px-5 py-4"><span class="badge ${c.ativo ? 'badge-ativo' : 'badge-inativo'}">${c.ativo ? 'ativa' : 'inativa'}</span></td>
-      <td class="px-5 py-4">${c.evolution_conectado ? '<i data-lucide="check-circle-2" class="w-4 h-4 text-sage-500"></i>' : '<i data-lucide="circle" class="w-4 h-4 text-white/30"></i>'}</td>
-      <td class="px-5 py-4 text-white/70 text-xs">${escapeHtml(c.admin_login_email || '—')}</td>
-      <td class="px-5 py-4 text-right"><i data-lucide="chevron-right" class="w-4 h-4 text-white/40"></i></td>
+      <td class="px-5 py-4">${c.evolution_conectado ? '<i data-lucide="check-circle-2" class="w-4 h-4 text-sage-700"></i>' : '<i data-lucide="circle" class="w-4 h-4 text-ink-600"></i>'}</td>
+      <td class="px-5 py-4 text-ink-600 text-xs">${escapeHtml(c.admin_login_email || '—')}</td>
+      <td class="px-5 py-4 text-right"><i data-lucide="chevron-right" class="w-4 h-4 text-ink-600"></i></td>
     </tr>`).join('');
   refreshIcons();
 }
@@ -411,7 +404,7 @@ async function abrirDrawer(id, abaInicial = 'overview') {
   const d = $('drawer');
   d.classList.remove('hidden');
   d.classList.add('slide-right');
-  d.innerHTML = `<div class="text-white/50">Carregando…</div>`;
+  d.innerHTML = `<div class="text-ink-600">Carregando…</div>`;
   try {
     const [clin, uso, usuarios] = await Promise.all([
       Promise.resolve(clinicasCache.find(c => c.id === id)),
@@ -430,13 +423,13 @@ function renderDrawer(c, uso, usuarios, aba) {
   d.innerHTML = `
     <div class="flex items-start justify-between mb-6 gap-3">
       <div class="min-w-0">
-        <p class="text-[10px] uppercase tracking-widest text-white/40">clínica</p>
-        <h2 class="font-serif text-2xl text-white truncate">${escapeHtml(c.nome)}</h2>
-        <p class="text-xs text-white/50 font-mono mt-1">${escapeHtml(c.id)}</p>
+        <p class="text-[10px] uppercase tracking-widest text-ink-600">clínica</p>
+        <h2 class="font-serif text-2xl text-ink-900 truncate">${escapeHtml(c.nome)}</h2>
+        <p class="text-xs text-ink-600 font-mono mt-1">${escapeHtml(c.id)}</p>
       </div>
-      <button onclick="fecharDrawer()" class="text-white/60 hover:text-white p-2 rounded-xl hover:bg-white/10" aria-label="Fechar painel"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <button onclick="fecharDrawer()" class="text-ink-600 hover:text-ink-900 p-2 rounded-xl hover:bg-ink-900/10" aria-label="Fechar painel"><i data-lucide="x" class="w-5 h-5"></i></button>
     </div>
-    <div class="flex gap-1 mb-6 border-b border-white/10 pb-3">
+    <div class="flex gap-1 mb-6 border-b border-ink-900/10 pb-3">
       ${tabs.map(t => `<button class="tab-btn ${t === aba ? 'active' : ''}" onclick="abrirDrawer('${c.id}','${t}')">${titulos[t]}</button>`).join('')}
     </div>
     <div id="drawer-body"></div>`;
@@ -462,7 +455,7 @@ function renderOverview(c) {
         </div>
       </div>
 
-      <div class="border-t border-white/10 pt-5">
+      <div class="border-t border-ink-900/10 pt-5">
         <label class="lbl" for="ov-esp">Trocar nicho / especialidade</label>
         <div class="flex gap-2 items-center">
           <select id="ov-esp" class="field flex-1">
@@ -471,12 +464,12 @@ function renderOverview(c) {
           <input id="ov-esp-motivo" class="field flex-1" placeholder="motivo (opcional)" aria-label="Motivo da troca de nicho">
           <button onclick="trocarEspecialidade('${c.id}')" class="btn btn-primary text-sm">Aplicar</button>
         </div>
-        <p class="text-[11px] text-amber-400/80 mt-2"><i data-lucide="alert-triangle" class="w-3 h-3 inline"></i> Mudar o nicho altera quais campos são obrigatórios e quais PDFs ficam disponíveis. Pacientes antigos continuam ativos.</p>
+        <p class="text-[11px] text-amber-600 mt-2"><i data-lucide="alert-triangle" class="w-3 h-3 inline"></i> Mudar o nicho altera quais campos são obrigatórios e quais PDFs ficam disponíveis. Pacientes antigos continuam ativos.</p>
       </div>
 
-      <div class="border-t border-white/10 pt-5">
+      <div class="border-t border-ink-900/10 pt-5">
         <label class="lbl">Status da clínica</label>
-        <div class="flex items-center justify-between glass-d rounded-xl p-4 border border-white/10">
+        <div class="flex items-center justify-between glass-d rounded-xl p-4 border border-ink-900/10">
           <span class="text-sm">${c.ativo ? '<span class="badge badge-ativo">Ativa</span>' : '<span class="badge badge-inativo">Inativa</span>'}</span>
           ${c.ativo
             ? `<button onclick="desativarClinica('${c.id}')" class="btn btn-danger text-xs"><i data-lucide="power-off"></i> Desativar</button>`
@@ -484,34 +477,34 @@ function renderOverview(c) {
         </div>
       </div>
 
-      <div class="border-t border-white/10 pt-5">
+      <div class="border-t border-ink-900/10 pt-5">
         <label class="lbl">WhatsApp</label>
-        <div class="text-sm text-white/70">
-          Instance: <span class="font-mono text-white">${escapeHtml(c.evolution_instance_name || '—')}</span><br>
-          Conectado: ${c.evolution_conectado ? '<span class="text-sage-500">sim</span>' : '<span class="text-white/40">não</span>'}
+        <div class="text-sm text-ink-600">
+          Instance: <span class="font-mono text-ink-900">${escapeHtml(c.evolution_instance_name || '—')}</span><br>
+          Conectado: ${c.evolution_conectado ? '<span class="text-sage-700">sim</span>' : '<span class="text-ink-600">não</span>'}
         </div>
       </div>
 
-      <div class="border-t border-white/10 pt-5">
+      <div class="border-t border-ink-900/10 pt-5">
         <label class="lbl">Admin atual</label>
-        <p class="text-sm text-white/70">${escapeHtml(c.admin_login_email || '—')}</p>
+        <p class="text-sm text-ink-600">${escapeHtml(c.admin_login_email || '—')}</p>
       </div>
 
-      <div class="border-t border-white/10 pt-5">
-        <label class="lbl">Impersonar <span class="text-amber-400/80 font-normal normal-case text-[10px]">token 15min — auditado</span></label>
+      <div class="border-t border-ink-900/10 pt-5">
+        <label class="lbl">Impersonar <span class="text-amber-600 font-normal normal-case text-[10px]">token 15min — auditado</span></label>
         <button onclick="impersonarClinica('${c.id}', '${escapeHtml(c.nome)}')" class="btn btn-ghost text-sm">
           <i data-lucide="user-check"></i> Logar como admin desta clínica
         </button>
-        <p class="text-[11px] text-white/40 mt-2">Abre o dashboard em nova aba. Expira em 15 minutos.</p>
+        <p class="text-[11px] text-ink-600 mt-2">Abre o dashboard em nova aba. Expira em 15 minutos.</p>
       </div>
 
-      <div class="border-t border-white/10 pt-5">
+      <div class="border-t border-ink-900/10 pt-5">
         <label class="lbl">API Key (integrações)</label>
         <button onclick="rotateApiKey('${c.id}')" class="btn btn-ghost text-xs"><i data-lucide="refresh-cw"></i> Rotacionar API Key</button>
-        <p class="text-[11px] text-white/40 mt-2">Invalida a key antiga. A nova só será mostrada uma vez.</p>
+        <p class="text-[11px] text-ink-600 mt-2">Invalida a key antiga. A nova só será mostrada uma vez.</p>
       </div>
 
-      <div class="border-t border-white/10 pt-5">
+      <div class="border-t border-ink-900/10 pt-5">
         <label class="lbl" for="ov-trial-dias">Estender trial</label>
         <div class="flex gap-2 items-center flex-wrap">
           <select id="ov-trial-dias" class="field" style="max-width:160px;">
@@ -523,11 +516,11 @@ function renderOverview(c) {
             <i data-lucide="calendar-plus"></i> Estender
           </button>
         </div>
-        ${c.trial_expira_em ? `<p class="text-[11px] text-white/40 mt-2">Expira em: ${escapeHtml(c.trial_expira_em || '—')}</p>` : ''}
+        ${c.trial_expira_em ? `<p class="text-[11px] text-ink-600 mt-2">Expira em: ${escapeHtml(c.trial_expira_em || '—')}</p>` : ''}
       </div>
 
-      <div class="border-t border-white/10 pt-5">
-        <label class="lbl" for="ov-notas">Notas internas <span class="text-white/30 font-normal normal-case">(só você vê)</span></label>
+      <div class="border-t border-ink-900/10 pt-5">
+        <label class="lbl" for="ov-notas">Notas internas <span class="text-ink-600 font-normal normal-case">(só você vê)</span></label>
         <textarea id="ov-notas" class="field" rows="3" placeholder="Ex: cliente quente, ligou dia X, pediu desconto...">${escapeHtml(c.notas_internas || '')}</textarea>
         <button onclick="salvarNotas('${c.id}')" class="btn btn-ghost text-sm mt-2"><i data-lucide="save"></i> Salvar nota</button>
       </div>
@@ -537,7 +530,7 @@ function renderOverview(c) {
 
 function renderUso(uso) {
   const b = $('drawer-body');
-  if (!uso) { b.innerHTML = '<p class="text-white/50">Sem dados de uso.</p>'; return; }
+  if (!uso) { b.innerHTML = '<p class="text-ink-600">Sem dados de uso.</p>'; return; }
   const fmtL = (l) => l == null ? '∞' : l;
   const bar = (a, l) => {
     if (l == null) return `<div class="h-2 bg-sage-400/40 rounded-full" style="width:8%"></div>`;
@@ -547,23 +540,23 @@ function renderUso(uso) {
   };
   b.innerHTML = `
     <div class="space-y-5">
-      <div class="glass-d rounded-xl p-5 border border-white/10">
-        <div class="flex justify-between mb-1"><span class="text-xs uppercase tracking-wider text-white/50">Plano</span></div>
+      <div class="glass-d rounded-xl p-5 border border-ink-900/10">
+        <div class="flex justify-between mb-1"><span class="text-xs uppercase tracking-wider text-ink-600">Plano</span></div>
         <div class="font-serif text-2xl">${escapeHtml(uso.plano_nome)}</div>
-        <div class="text-xs text-white/50">R$ ${(uso.preco_mensal / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mês</div>
+        <div class="text-xs text-ink-600">R$ ${(uso.preco_mensal / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mês</div>
       </div>
       ${Object.entries(uso.uso).map(([k, info]) => {
         const lbl = k === 'profissionais' ? 'Profissionais' : k === 'pacientes_ativos' ? 'Pacientes ativos' : k;
         return `
         <div>
-          <div class="flex justify-between text-sm mb-2"><span class="text-white">${lbl}</span><span class="text-white/60">${info.atual} / ${fmtL(info.limite)}</span></div>
-          <div class="h-2 bg-white/10 rounded-full overflow-hidden">${bar(info.atual, info.limite)}</div>
+          <div class="flex justify-between text-sm mb-2"><span class="text-ink-900">${lbl}</span><span class="text-ink-600">${info.atual} / ${fmtL(info.limite)}</span></div>
+          <div class="h-2 bg-ink-900/10 rounded-full overflow-hidden">${bar(info.atual, info.limite)}</div>
         </div>`;
       }).join('')}
-      <div class="border-t border-white/10 pt-5">
+      <div class="border-t border-ink-900/10 pt-5">
         <label class="lbl">Features liberadas</label>
         <div class="flex flex-wrap gap-2">
-          ${uso.features.map(f => `<span class="text-[11px] px-2 py-1 rounded bg-white/5 text-white/70">${escapeHtml(f.replace('_', ' '))}</span>`).join('')}
+          ${uso.features.map(f => `<span class="text-[11px] px-2 py-1 rounded bg-ink-900/5 text-ink-600">${escapeHtml(f.replace('_', ' '))}</span>`).join('')}
         </div>
       </div>
     </div>`;
@@ -577,21 +570,21 @@ function renderUsuarios(c, usuarios) {
         <button onclick="abrirNovoUsuario('${c.id}')" class="btn btn-primary text-xs"><i data-lucide="user-plus"></i> Novo operador</button>
       </div>
       ${usuarios.length === 0
-        ? '<p class="text-white/50 text-center py-6">Nenhum usuário cadastrado.</p>'
+        ? '<p class="text-ink-600 text-center py-6">Nenhum usuário cadastrado.</p>'
         : usuarios.map(u => `
-          <div class="glass-d rounded-xl p-4 border border-white/10">
+          <div class="glass-d rounded-xl p-4 border border-ink-900/10">
             <div class="flex justify-between items-start gap-3">
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2 mb-1">
-                  <span class="font-medium text-white truncate">${escapeHtml(u.nome || u.email)}</span>
+                  <span class="font-medium text-ink-900 truncate">${escapeHtml(u.nome || u.email)}</span>
                   <span class="badge ${u.role === 'admin' ? 'badge-pro' : 'badge-trial'}">${escapeHtml(u.role)}</span>
                   ${u.ativo ? '' : '<span class="badge badge-inativo">inativo</span>'}
                 </div>
-                <div class="text-xs text-white/50 truncate">${escapeHtml(u.email)}</div>
+                <div class="text-xs text-ink-600 truncate">${escapeHtml(u.email)}</div>
               </div>
               <div class="flex gap-1 flex-shrink-0">
                 <button onclick="resetSenha('${c.id}','${u.id}','${escapeHtml(u.email).replace(/'/g,"\\'")}')" class="btn btn-ghost text-[11px]" style="padding:6px 10px;"><i data-lucide="key" class="w-3 h-3"></i> Reset senha</button>
-                ${u.ativo ? `<button onclick="desativarUsuario('${c.id}','${u.id}')" class="btn btn-ghost text-[11px]" style="padding:6px 10px;" aria-label="Desativar usuário"><i data-lucide="user-x" class="w-3 h-3 text-red-400"></i></button>` : ''}
+                ${u.ativo ? `<button onclick="desativarUsuario('${c.id}','${u.id}')" class="btn btn-ghost text-[11px]" style="padding:6px 10px;" aria-label="Desativar usuário"><i data-lucide="user-x" class="w-3 h-3 text-red-600"></i></button>` : ''}
               </div>
             </div>
           </div>`).join('')}
@@ -604,20 +597,20 @@ async function renderAudit(c) {
   b.innerHTML = `<div class="skel h-4 w-2/3 mb-3"></div><div class="skel h-4 w-1/2 mb-3"></div><div class="skel h-4 w-3/4"></div>`;
   try {
     const rows = await api(`/admin/clinicas/${c.id}/audit?limit=100`);
-    if (rows.length === 0) { b.innerHTML = '<p class="text-white/50 text-center py-6">Sem registros.</p>'; return; }
+    if (rows.length === 0) { b.innerHTML = '<p class="text-ink-600 text-center py-6">Sem registros.</p>'; return; }
     b.innerHTML = `
       <div class="space-y-2 max-h-[60vh] overflow-y-auto">
         ${rows.map(r => `
-          <div class="glass-d rounded-lg p-3 border border-white/5 text-xs">
+          <div class="glass-d rounded-lg p-3 border border-ink-900/5 text-xs">
             <div class="flex justify-between mb-1">
-              <span class="font-mono"><span class="text-rose-400">${escapeHtml(r.acao)}</span> <span class="text-white">${escapeHtml(r.recurso)}</span></span>
-              <span class="text-white/40">${new Date(r.quando).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>
+              <span class="font-mono"><span class="text-rose-600">${escapeHtml(r.acao)}</span> <span class="text-ink-900">${escapeHtml(r.recurso)}</span></span>
+              <span class="text-ink-600">${new Date(r.quando).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>
             </div>
-            ${r.recurso_id ? `<div class="text-white/40 font-mono">id: ${escapeHtml(r.recurso_id.slice(0, 16))}…</div>` : ''}
-            ${r.detalhes ? `<pre class="text-white/50 mt-1 font-mono whitespace-pre-wrap break-all text-[10px]">${escapeHtml(JSON.stringify(r.detalhes))}</pre>` : ''}
+            ${r.recurso_id ? `<div class="text-ink-600 font-mono">id: ${escapeHtml(r.recurso_id.slice(0, 16))}…</div>` : ''}
+            ${r.detalhes ? `<pre class="text-ink-600 mt-1 font-mono whitespace-pre-wrap break-all text-[10px]">${escapeHtml(JSON.stringify(r.detalhes))}</pre>` : ''}
           </div>`).join('')}
       </div>`;
-  } catch (e) { b.innerHTML = `<p class="text-red-400">${escapeHtml(e.message)}</p>`; }
+  } catch (e) { b.innerHTML = `<p class="text-red-600">${escapeHtml(e.message)}</p>`; }
 }
 
 // ============================================================ Ações
@@ -728,7 +721,7 @@ function abrirNovoUsuario(cid) {
   const ov = document.createElement('div');
   ov.className = 'fixed inset-0 bg-black/70 z-[80] flex items-center justify-center p-4 fade-in';
   ov.innerHTML = `
-    <div class="glass-d rounded-2xl p-7 max-w-md w-full border border-white/10">
+    <div class="glass-d rounded-2xl p-7 max-w-md w-full border border-ink-900/10">
       <h3 class="font-serif text-xl mb-5">Novo operador</h3>
       <div class="space-y-4">
         <div><label class="lbl" for="nu-email">Email</label><input id="nu-email" type="email" class="field"></div>
@@ -765,24 +758,24 @@ function abrirNovaClinica() {
   const ov = document.createElement('div');
   ov.className = 'fixed inset-0 bg-black/70 z-[80] flex items-center justify-center p-4 fade-in';
   ov.innerHTML = `
-    <div class="glass-d rounded-2xl p-7 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+    <div class="glass-d rounded-2xl p-7 max-w-md w-full border border-ink-900/10 max-h-[90vh] overflow-y-auto">
       <h3 class="font-serif text-xl mb-5">Nova clínica</h3>
       <div class="space-y-4">
         <div><label class="lbl" for="nc-nome">Nome da clínica</label><input id="nc-nome" class="field" placeholder="Ex: Clínica Bella Pelle"></div>
         <div><label class="lbl" for="nc-cnpj">CNPJ (opcional)</label><input id="nc-cnpj" class="field"></div>
         <div>
-          <label class="lbl" for="nc-especialidade">Nicho / Especialidade <span class="text-red-400">*</span></label>
+          <label class="lbl" for="nc-especialidade">Nicho / Especialidade <span class="text-red-600">*</span></label>
           <select id="nc-especialidade" class="field" onchange="document.getElementById('nc-esp-hint').textContent = (ESPECIALIDADES.find(e=>e.slug===this.value)||{}).hint || ''">
             ${ESPECIALIDADES.map(e => `<option value="${e.slug}" ${e.slug === 'odonto' ? 'selected' : ''}>${e.nome}</option>`).join('')}
           </select>
-          <p id="nc-esp-hint" class="text-[11px] text-white/40 mt-1">Atestado, prontuário, declaração</p>
+          <p id="nc-esp-hint" class="text-[11px] text-ink-600 mt-1">Atestado, prontuário, declaração</p>
         </div>
         <div>
           <label class="lbl" for="nc-plano">Plano inicial</label>
           <select id="nc-plano" class="field">${PLANOS.map(p => `<option value="${p}" ${p === 'trial' ? 'selected' : ''}>${PLANO_NOMES[p]}</option>`).join('')}</select>
         </div>
-        <hr class="border-white/10">
-        <p class="text-xs text-white/50">Admin inicial da clínica:</p>
+        <hr class="border-ink-900/10">
+        <p class="text-xs text-ink-600">Admin inicial da clínica:</p>
         <div><label class="lbl" for="nc-email">Email</label><input id="nc-email" type="email" class="field"></div>
         <div><label class="lbl" for="nc-anome">Nome</label><input id="nc-anome" class="field"></div>
         <div><label class="lbl" for="nc-senha">Senha (mínimo 8)</label><input id="nc-senha" type="text" class="field" placeholder="defina ou copie depois"></div>
@@ -823,13 +816,13 @@ function mostrarSegredo(titulo, segredo) {
   ov.innerHTML = `
     <div class="glass-d rounded-2xl p-7 max-w-lg w-full border border-amber-500/40">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center"><i data-lucide="key" class="w-5 h-5 text-amber-400"></i></div>
+        <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center"><i data-lucide="key" class="w-5 h-5 text-amber-600"></i></div>
         <div>
           <h3 class="font-serif text-xl">${escapeHtml(titulo)}</h3>
-          <p class="text-[11px] text-amber-400 uppercase tracking-wider font-bold">copie agora — não será mostrada de novo</p>
+          <p class="text-[11px] text-amber-600 uppercase tracking-wider font-bold">copie agora — não será mostrada de novo</p>
         </div>
       </div>
-      <div class="bg-black/40 rounded-xl p-4 font-mono text-sm break-all select-all mb-4 text-white">${escapeHtml(segredo)}</div>
+      <div class="bg-ink-900 rounded-xl p-4 font-mono text-sm break-all select-all mb-4 text-white">${escapeHtml(segredo)}</div>
       <div class="flex gap-2 justify-end">
         <button data-copy class="btn btn-ghost text-sm"><i data-lucide="copy"></i> Copiar</button>
         <button data-close class="btn btn-primary text-sm">Já copiei</button>
@@ -846,10 +839,10 @@ function mostrarSegredo(titulo, segredo) {
 
 // ============================================================ Funil
 const STATUS_BADGE = {
-  em_trial: 'bg-amber-500/20 text-amber-300',
-  expirado: 'bg-red-500/20 text-red-300',
-  pago:     'bg-sage-400/20 text-sage-500',
-  inativo:  'bg-white/10 text-white/50',
+  em_trial: 'bg-amber-100 text-amber-700',
+  expirado: 'bg-red-100 text-red-700',
+  pago:     'bg-sage-100 text-sage-700',
+  inativo:  'bg-ink-100 text-ink-600',
 };
 const STATUS_LABEL = { em_trial: 'em trial', expirado: 'expirado', pago: 'pago', inativo: 'inativo' };
 
@@ -924,11 +917,11 @@ function renderStages(f) {
     const pct = total > 0 ? Math.round((s.n / total) * 100) : 0;
     return `
       <li>
-        <div class="flex justify-between text-xs text-white/70 mb-1">
+        <div class="flex justify-between text-xs text-ink-600 mb-1">
           <span class="font-semibold">${i + 1}. ${escapeHtml(s.label)}</span>
-          <span><span class="text-white">${s.n}</span> <span class="text-white/40">· ${pct}%</span></span>
+          <span><span class="text-ink-900">${s.n}</span> <span class="text-ink-600">· ${pct}%</span></span>
         </div>
-        <div class="h-3 bg-white/5 rounded-full overflow-hidden">
+        <div class="h-3 bg-ink-900/5 rounded-full overflow-hidden">
           <div class="h-full bg-gradient-to-r from-rose-500 to-rose-300 rounded-full transition-all" style="width:${pct}%"></div>
         </div>
       </li>`;
@@ -938,20 +931,20 @@ function renderStages(f) {
 function renderBreakdown(f) {
   const nomeEspec = (s) => (ESPECIALIDADES.find(e => e.slug === s) || {}).nome || s;
   $('fn-por-esp').innerHTML = (f.por_especialidade || []).length === 0
-    ? `<tr><td colspan="4" class="py-4 text-center text-white/40">Sem dados</td></tr>`
+    ? `<tr><td colspan="4" class="py-4 text-center text-ink-600">Sem dados</td></tr>`
     : f.por_especialidade.map(e => `
-      <tr class="border-t border-white/5">
-        <td class="py-2 text-white">${escapeHtml(nomeEspec(e.slug))}</td>
-        <td class="py-2 text-right text-white/70">${e.total}</td>
-        <td class="py-2 text-right text-sage-500">${e.convertidos}</td>
-        <td class="py-2 text-right text-white/70">${e.taxa_percent}%</td>
+      <tr class="border-t border-ink-900/5">
+        <td class="py-2 text-ink-900">${escapeHtml(nomeEspec(e.slug))}</td>
+        <td class="py-2 text-right text-ink-600">${e.total}</td>
+        <td class="py-2 text-right text-sage-700">${e.convertidos}</td>
+        <td class="py-2 text-right text-ink-600">${e.taxa_percent}%</td>
       </tr>`).join('');
   $('fn-por-plano').innerHTML = (f.por_plano || []).length === 0
-    ? `<tr><td colspan="2" class="py-4 text-center text-white/40">Sem dados</td></tr>`
+    ? `<tr><td colspan="2" class="py-4 text-center text-ink-600">Sem dados</td></tr>`
     : f.por_plano.map(p => `
-      <tr class="border-t border-white/5">
+      <tr class="border-t border-ink-900/5">
         <td class="py-2"><span class="badge badge-${escapeHtml(p.plano)}">${escapeHtml(PLANO_NOMES[p.plano] || p.plano)}</span></td>
-        <td class="py-2 text-right text-white/70">${p.count}</td>
+        <td class="py-2 text-right text-ink-600">${p.count}</td>
       </tr>`).join('');
 }
 
@@ -964,7 +957,7 @@ function renderSignupsTable() {
   $('fn-pag-prev').disabled = funnelPag === 0;
   $('fn-pag-next').disabled = start + FUNNEL_PAG_SIZE >= total;
   if (page.length === 0) {
-    $('fn-signups').innerHTML = `<tr><td colspan="8" class="px-3 py-8 text-center text-white/40">Nenhum signup no período.</td></tr>`;
+    $('fn-signups').innerHTML = `<tr><td colspan="8" class="px-3 py-8 text-center text-ink-600">Nenhum signup no período.</td></tr>`;
     refreshIcons();
     return;
   }
@@ -977,19 +970,19 @@ function renderSignupsTable() {
       diasTrial = diff >= 0 ? `${diff}d restantes` : `expirou há ${-diff}d`;
     }
     const criado = new Date(c.criado_em).toLocaleDateString('pt-BR');
-    const badgeCls = STATUS_BADGE[c.status_calculado] || 'bg-white/10 text-white/60';
+    const badgeCls = STATUS_BADGE[c.status_calculado] || 'bg-ink-900/10 text-ink-600';
     return `
-      <tr class="glass-row border-b border-white/5">
+      <tr class="glass-row border-b border-ink-900/5">
         <td class="px-3 py-3">
-          <div class="font-medium text-white">${escapeHtml(c.nome)}</div>
-          <div class="text-[10px] text-white/40 font-mono">${escapeHtml((c.id || '').slice(0, 8))}…</div>
+          <div class="font-medium text-ink-900">${escapeHtml(c.nome)}</div>
+          <div class="text-[10px] text-ink-600 font-mono">${escapeHtml((c.id || '').slice(0, 8))}…</div>
         </td>
-        <td class="px-3 py-3 text-white/70 text-xs">${escapeHtml(nomeEspec(c.especialidade))}</td>
+        <td class="px-3 py-3 text-ink-600 text-xs">${escapeHtml(nomeEspec(c.especialidade))}</td>
         <td class="px-3 py-3"><span class="badge ${badgeCls}">${escapeHtml(STATUS_LABEL[c.status_calculado] || c.status_calculado)}</span></td>
-        <td class="px-3 py-3 text-white/60 text-xs">${escapeHtml(criado)}</td>
-        <td class="px-3 py-3 text-white/60 text-xs">${escapeHtml(diasTrial)}</td>
-        <td class="px-3 py-3 text-white/70 text-xs">${escapeHtml(c.admin_email || '—')}</td>
-        <td class="px-3 py-3 text-white/60 text-xs">${escapeHtml(c.admin_telefone || '—')}</td>
+        <td class="px-3 py-3 text-ink-600 text-xs">${escapeHtml(criado)}</td>
+        <td class="px-3 py-3 text-ink-600 text-xs">${escapeHtml(diasTrial)}</td>
+        <td class="px-3 py-3 text-ink-600 text-xs">${escapeHtml(c.admin_email || '—')}</td>
+        <td class="px-3 py-3 text-ink-600 text-xs">${escapeHtml(c.admin_telefone || '—')}</td>
         <td class="px-3 py-3 text-right"><button onclick="abrirDrawer('${escapeHtml(c.id)}')" class="btn btn-ghost text-[11px]" style="padding:5px 10px;">detalhes</button></td>
       </tr>`;
   }).join('');
