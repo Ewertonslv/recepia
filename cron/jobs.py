@@ -55,21 +55,37 @@ def job_marcar_no_show():
 
     - PENDENTE + 30min passado → NO_SHOW (não respondeu, não veio)
     - CONFIRMADO + 30min passado → REALIZADO (confirmou, presumimos que veio)
+
+    Só mexe em agendamentos de clínicas ATIVAS: uma clínica desativada/em churn
+    não deve continuar tendo status (e comissão/financeiro derivados) promovidos
+    automaticamente com base numa presunção de presença.
     """
     with get_db() as db:
         threshold = agora_utc() - timedelta(minutes=30)
 
-        pendentes = db.query(Agendamento).filter(
-            Agendamento.status == Status.PENDENTE,
-            Agendamento.data_hora < threshold,
-        ).all()
+        pendentes = (
+            db.query(Agendamento)
+            .join(Clinica, Agendamento.clinica_id == Clinica.id)
+            .filter(
+                Clinica.ativo.is_(True),
+                Agendamento.status == Status.PENDENTE,
+                Agendamento.data_hora < threshold,
+            )
+            .all()
+        )
         for a in pendentes:
             a.status = Status.NO_SHOW
 
-        confirmados = db.query(Agendamento).filter(
-            Agendamento.status == Status.CONFIRMADO,
-            Agendamento.data_hora < threshold,
-        ).all()
+        confirmados = (
+            db.query(Agendamento)
+            .join(Clinica, Agendamento.clinica_id == Clinica.id)
+            .filter(
+                Clinica.ativo.is_(True),
+                Agendamento.status == Status.CONFIRMADO,
+                Agendamento.data_hora < threshold,
+            )
+            .all()
+        )
         for a in confirmados:
             a.status = Status.REALIZADO
 
