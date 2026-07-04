@@ -49,6 +49,33 @@ def init_db():
     # pulamos os ALTERs, que só fazem sentido pra evoluir um Postgres existente.
     if not engine.url.get_backend_name().startswith("sqlite"):
         _aplicar_migracoes_idempotentes()
+        _criar_indices_defensivos()
+
+
+def _criar_indices_defensivos() -> None:
+    """Índices que podem FALHAR ao criar sobre dados legados (ex: unique sobre
+    linhas que já violam a regra). Rodam cada um em sua própria transação e
+    engolem o erro — nunca derrubam o boot; só logam pra limpeza manual.
+    """
+    import logging
+    from sqlalchemy import text
+    _log = logging.getLogger(__name__)
+
+    indices = [
+        # TOCTOU: 2 pacientes confirmando o MESMO slot oferecido pelo bot criavam 2
+        # agendamentos. Agenda do bot é sem profissional (profissional_id NULL), então
+        # unicidade em (clinica, data_hora) ativos + sem profissional serializa o insert.
+        ("uq_agendamento_slot_bot",
+         "CREATE UNIQUE INDEX IF NOT EXISTS uq_agendamento_slot_bot "
+         "ON agendamentos (clinica_id, data_hora) "
+         "WHERE profissional_id IS NULL AND status IN ('pendente', 'confirmado')"),
+    ]
+    for nome, ddl in indices:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(ddl))
+        except Exception as e:  # noqa: BLE001 — dados legados podem violar; não bloqueia boot
+            _log.warning("Índice %s não criado (dados legados?): %s", nome, e)
 
 
 def _aplicar_migracoes_idempotentes() -> None:
@@ -226,3 +253,19 @@ def _aplicar_migracoes_idempotentes() -> None:
         conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS google_id VARCHAR(128) UNIQUE"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_usuarios_google_id ON usuarios(google_id) WHERE google_id IS NOT NULL"))
         conn.execute(text("ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS notas_internas TEXT"))
+
+        # LGPD — interacoes.paciente_id: liga mensagens fora de fluxo (agendamento_id
+        # NULL) diretamente ao paciente pra que apareçam no timeline e no export.
+        conn.execute(text(
+            "ALTER TABLE interacoes ADD COLUMN IF NOT EXISTS paciente_id VARCHAR "
+            "REFERENCES pacientes(id) ON DELETE CASCADE"
+        ))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_interacoes_paciente_id ON interacoes(paciente_id)"))
+        # Backfill: interações que têm agendamento herdam o paciente daquele agendamento.
+        conn.execute(text("""
+            UPDATE interacoes i
+            SET paciente_id = a.paciente_id
+            FROM agendamentos a
+            WHERE i.paciente_id IS NULL
+              AND i.agendamento_id = a.id
+        """))

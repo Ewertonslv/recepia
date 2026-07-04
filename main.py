@@ -24,7 +24,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from config import origens_cors
-from core.deps import clinica_atual
+from core.deps import clinica_atual, verificar_admin
 from core.limiter import limiter
 from core.timezones import agora_utc, from_utc_to_br
 from database import get_db_dependency, init_db
@@ -196,9 +196,13 @@ def relatorios_dashboard(
 
 
 @app.get("/api/relatorios/ia")
-def relatorios_ia(clinica: Clinica = Depends(clinica_atual)):
+def relatorios_ia(_: None = Depends(verificar_admin)):
     """Observabilidade do classificador LLM neste processo: chamadas, tokens,
-    custo estimado (USD), latência média e quantos caíram no fallback/guardrail."""
+    custo estimado (USD), latência média e quantos caíram no fallback/guardrail.
+
+    Admin-only: `metricas_llm.snapshot()` é um acumulador GLOBAL do processo
+    (agregado de todas as clínicas do worker), então não pode ser exposto a um
+    tenant — vazaria custo/volume da plataforma inteira."""
     from services.processor import metricas_llm
     return metricas_llm.snapshot()
 

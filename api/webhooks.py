@@ -68,12 +68,18 @@ def _extrair_telefone(remote_jid: str) -> str:
 def _validar_assinatura_hmac(body_bytes: bytes, signature_header: str | None) -> bool:
     """F2: valida assinatura HMAC-SHA256 do body com EVOLUTION_WEBHOOK_SECRET.
 
-    Se secret não configurado (dev/teste), permite — mas loga warning.
-    Em produção, EVOLUTION_WEBHOOK_SECRET é obrigatório (config valida no boot).
+    Em produção o secret é obrigatório (config.py falha no boot sem ele quando
+    DEBUG=false). Só é permitido rodar sem assinatura em DEBUG — e mesmo assim
+    apenas quando o secret está de fato vazio.
     """
     if not settings.EVOLUTION_WEBHOOK_SECRET:
-        # Modo dev: aceita sem assinatura. Em prod, secret é setado.
-        return True
+        # Sem secret só acontece em DEBUG (o boot bloqueia em prod). Aceita local.
+        if settings.DEBUG:
+            return True
+        # Cinto e suspensório: se por algum motivo chegou aqui sem secret fora
+        # de DEBUG, rejeita em vez de abrir o endpoint.
+        log.error("Webhook sem EVOLUTION_WEBHOOK_SECRET fora de DEBUG — rejeitando.")
+        return False
     if not signature_header:
         return False
     expected = hmac.new(
