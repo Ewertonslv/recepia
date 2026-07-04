@@ -168,7 +168,197 @@
       .agenda-view-btn { padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #5C5552; transition: all 150ms; }
       .agenda-view-btn.active { background: linear-gradient(135deg, rgba(232,180,184,0.95) 0%, rgba(217,156,160,0.95) 100%); color: #2D3142; }
       .agenda-view-btn:not(.active):hover { background: rgba(45,49,66,0.06); }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         DARK MODE — override contido (Tailwind é pré-compilado, sem recompilar)
+         Ativado por html.dark (toggle na sidebar + script no <head>).
+         Paleta ink-navy profunda; rosa (#E8B4B8) e sálvia (#7FB069) mantidos.
+         ═══════════════════════════════════════════════════════════════════ */
+      html.dark { color-scheme: dark; }
+      html.dark body { background: #14161f; color: #ECEDF2; }
+      /* aurora: mantém, porém sutil no escuro */
+      html.dark body::before { opacity: 0.10; }
+      html.dark body::after  { opacity: 0.10; }
+
+      /* superfícies vidro */
+      html.dark .glass { background: rgba(32,36,50,0.72); border-color: rgba(255,255,255,0.08); }
+      html.dark .glass-dark { background: rgba(18,20,29,0.92); }
+
+      /* autofill */
+      html.dark input:-webkit-autofill,
+      html.dark input:-webkit-autofill:hover,
+      html.dark input:-webkit-autofill:focus {
+        -webkit-text-fill-color: #ECEDF2;
+        -webkit-box-shadow: 0 0 0 1000px #1c2030 inset;
+      }
+
+      /* scrollbar */
+      html.dark ::-webkit-scrollbar-thumb { background: rgba(232,180,184,0.30); }
+      html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(232,180,184,0.55); }
+
+      /* botões */
+      html.dark .btn-ghost { background: rgba(255,255,255,0.06); color: #C2C6D2; }
+      html.dark .btn-ghost:hover { background: rgba(255,255,255,0.12); }
+      html.dark .btn-google { background: #232838; color: #ECEDF2; border-color: rgba(255,255,255,0.14); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+      html.dark .btn-google:hover { background: #2a3042; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+      html.dark .btn-danger { background: rgba(248,113,113,0.16); color: #fca5a5; }
+      html.dark .btn-danger:hover { background: rgba(248,113,113,0.26); }
+
+      /* inputs */
+      html.dark .field { background: rgba(255,255,255,0.05); color: #ECEDF2; }
+      html.dark .field:focus { background: rgba(255,255,255,0.08); border-color: #E8B4B8; box-shadow: 0 0 0 4px rgba(232,180,184,0.18); }
+      html.dark .field::placeholder { color: #7f8492; }
+      html.dark label.lbl { color: #ECEDF2; }
+      html.dark select.field { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ECEDF2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); }
+      html.dark select.field option { background: #1c2030; color: #ECEDF2; }
+      html.dark select.field option:checked, html.dark select.field option:hover { background: #E8B4B8; color: #2D3142; }
+
+      /* badges — pastel escurecido, texto claro pra AA */
+      html.dark .badge-pendente   { background: rgba(251,191,36,0.18);  color: #fcd34d; }
+      html.dark .badge-confirmado { background: rgba(127,176,105,0.22); color: #a7d08c; }
+      html.dark .badge-cancelado  { background: rgba(248,113,113,0.18); color: #fca5a5; }
+      html.dark .badge-reagendado { background: rgba(232,180,184,0.20); color: #ecbcc0; }
+      html.dark .badge-no_show    { background: rgba(192,132,252,0.20); color: #d8b4fe; }
+      html.dark .badge-realizado  { background: rgba(127,176,105,0.22); color: #a7d08c; }
+
+      /* chips de plano de tratamento */
+      html.dark .pt-badge.ativo     { background: rgba(232,180,184,0.18); color: #ecbcc0; }
+      html.dark .pt-badge.concluido { background: rgba(127,176,105,0.22); color: #a7d08c; }
+      html.dark .pt-badge.cancelado { background: rgba(255,255,255,0.10); color: #b8bcc8; }
+
+      /* progress / skeleton / drawer / card */
+      html.dark .pt-progress { background: rgba(255,255,255,0.10); }
+      html.dark .skel { background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.04) 100%); background-size: 200% 100%; }
+      html.dark .drawer { box-shadow: -16px 0 64px -16px rgba(0,0,0,0.6); }
+      html.dark .card-hover:hover { box-shadow: 0 12px 32px -8px rgba(0,0,0,0.5); }
+
+      /* ── Agenda no escuro (grades/bordas dark-on-light → light-on-dark) ── */
+      html.dark .agenda-week-header { background: rgba(18,20,29,0.96); border-bottom-color: rgba(255,255,255,0.10); }
+      html.dark .agenda-day-head { border-left-color: rgba(255,255,255,0.07); }
+      html.dark .agenda-day-head.today { background: rgba(232,180,184,0.14); }
+      html.dark .agenda-time-label { color: #9CA0AD; }
+      html.dark .agenda-day-col { border-left-color: rgba(255,255,255,0.07); }
+      html.dark .agenda-slot-line { border-top-color: rgba(255,255,255,0.06); }
+      html.dark .agenda-slot-line.on-hour { border-top-color: rgba(255,255,255,0.13); }
+      html.dark .agenda-appt:hover { box-shadow: 0 4px 12px -2px rgba(0,0,0,0.5); }
+      html.dark .agenda-appt-status-dot { box-shadow: 0 0 0 1.5px rgba(18,20,29,0.85); }
+      html.dark .agenda-mini-cal-head button { color: #9CA0AD; }
+      html.dark .agenda-mini-cal-head button:hover { background: rgba(255,255,255,0.08); color: #ECEDF2; }
+      html.dark .agenda-mini-cal-dow { color: #9CA0AD; }
+      html.dark .agenda-mini-cal-day { color: #ECEDF2; }
+      html.dark .agenda-mini-cal-day:hover:not(.empty) { background: rgba(255,255,255,0.08); }
+      html.dark .agenda-mini-cal-day.today { background: rgba(232,180,184,0.22); color: #f0c4c8; }
+      html.dark .agenda-legend { color: #9CA0AD; }
+      html.dark .agenda-month-cell { border-right-color: rgba(255,255,255,0.08); border-bottom-color: rgba(255,255,255,0.08); }
+      html.dark .agenda-month-cell:hover:not(.empty) { background: rgba(232,180,184,0.10); }
+      html.dark .agenda-month-cell.today { background: rgba(232,180,184,0.14); }
+      html.dark .agenda-month-cell.empty { background: rgba(255,255,255,0.02); }
+      html.dark .agenda-month-appt { background: rgba(232,180,184,0.28); color: #ECEDF2; }
+      html.dark .agenda-month-appt:hover { background: rgba(232,180,184,0.45); }
+      html.dark .agenda-view-btn { color: #9CA0AD; }
+      html.dark .agenda-view-btn:not(.active):hover { background: rgba(255,255,255,0.08); }
+
+      /* ── Sidebar: já é grafite no claro; aprofunda no escuro pra casar a paleta ── */
+      html.dark #sidebar.glass-dark { background: rgba(16,18,26,0.94); }
+
+      /* ═══════ Override das UTILITY classes do Tailwind (hex fixos no CSS externo) ═══════
+         Precisam de !important + escape da barra (\/) nas variantes de opacidade. */
+      /* superfícies claras → superfícies escuras */
+      html.dark .bg-white { background-color: #1c2030 !important; }
+      html.dark .bg-white\/80 { background-color: rgba(32,36,50,0.85) !important; }
+      html.dark .bg-white\/70 { background-color: rgba(32,36,50,0.78) !important; }
+      html.dark .bg-white\/60 { background-color: rgba(32,36,50,0.68) !important; }
+      html.dark .bg-white\/50 { background-color: rgba(32,36,50,0.55) !important; }
+      html.dark .bg-white\/40 { background-color: rgba(255,255,255,0.05) !important; }
+      html.dark .bg-white\/30 { background-color: rgba(255,255,255,0.05) !important; }
+      html.dark .bg-white\/20 { background-color: rgba(255,255,255,0.05) !important; }
+      html.dark .hover\:bg-white\/60:hover { background-color: rgba(255,255,255,0.10) !important; }
+      html.dark .hover\:bg-white\/40:hover { background-color: rgba(255,255,255,0.08) !important; }
+      html.dark .hover\:bg-white\/30:hover { background-color: rgba(255,255,255,0.07) !important; }
+      html.dark .bg-cream { background-color: #1c2030 !important; }
+      html.dark .bg-cream\/60 { background-color: rgba(28,32,48,0.6) !important; }
+      html.dark .bg-ink-50 { background-color: #232838 !important; }
+      html.dark .bg-ink-50\/50 { background-color: rgba(35,40,56,0.5) !important; }
+      html.dark .bg-ink-100 { background-color: #232838 !important; }
+      html.dark .bg-ink-100\/60 { background-color: rgba(35,40,56,0.6) !important; }
+      html.dark .bg-ink-100\/40 { background-color: rgba(35,40,56,0.4) !important; }
+      html.dark .bg-ink-100\/20 { background-color: rgba(35,40,56,0.28) !important; }
+
+      /* texto */
+      html.dark .text-ink-900 { color: #ECEDF2 !important; }
+      html.dark .text-ink-900\/80 { color: rgba(236,237,242,0.80) !important; }
+      html.dark .text-ink-800 { color: #E4E6EC !important; }
+      html.dark .text-ink-700 { color: #DDE0E8 !important; }
+      html.dark .text-ink-600 { color: #C2C6D2 !important; }
+      html.dark .text-ink-300 { color: #9CA0AD !important; }
+      html.dark .placeholder-ink-300::placeholder { color: #7f8492 !important; }
+
+      /* bordas */
+      html.dark .border-ink-100 { border-color: rgba(255,255,255,0.08) !important; }
+      html.dark .border-ink-100\/60 { border-color: rgba(255,255,255,0.07) !important; }
+      html.dark .border-ink-100\/50 { border-color: rgba(255,255,255,0.06) !important; }
+      html.dark .border-ink-100\/40 { border-color: rgba(255,255,255,0.05) !important; }
+      html.dark .border-ink-900 { border-color: rgba(255,255,255,0.16) !important; }
+      html.dark .divide-ink-100 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.08) !important; }
+      html.dark .divide-ink-100\/50 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.06) !important; }
+      html.dark .border-rose-100 { border-color: rgba(232,180,184,0.30) !important; }
+      html.dark .border-amber-200 { border-color: rgba(251,191,36,0.30) !important; }
+      html.dark .border-red-200 { border-color: rgba(248,113,113,0.30) !important; }
+
+      /* acentos rosa (texto → tons mais claros pra passar AA no fundo escuro) */
+      html.dark .text-rose-700 { color: #de9aa1 !important; }
+      html.dark .text-rose-600 { color: #e2a5ab !important; }
+      html.dark .text-rose-500 { color: #e6aeb3 !important; }
+      html.dark .text-rose-400 { color: #ecbfc3 !important; }
+      html.dark .bg-rose-50 { background-color: rgba(232,180,184,0.10) !important; }
+      html.dark .bg-rose-50\/50 { background-color: rgba(232,180,184,0.07) !important; }
+      html.dark .bg-rose-100 { background-color: rgba(232,180,184,0.16) !important; }
+      html.dark .hover\:bg-rose-100\/50:hover { background-color: rgba(232,180,184,0.12) !important; }
+      html.dark .from-rose-50 { --tw-gradient-from: rgba(232,180,184,0.12) !important; }
+      html.dark .from-rose-50\/60 { --tw-gradient-from: rgba(232,180,184,0.10) !important; }
+
+      /* sálvia */
+      html.dark .text-sage-700 { color: #a7d08c !important; }
+      html.dark .text-sage-700\/70 { color: rgba(167,208,140,0.75) !important; }
+      html.dark .text-sage-600 { color: #9ecb82 !important; }
+      html.dark .text-sage-500 { color: #9ece82 !important; }
+      html.dark .text-sage-400 { color: #92c578 !important; }
+      html.dark .bg-sage-100 { background-color: rgba(127,176,105,0.16) !important; }
+      html.dark .bg-sage-100\/50 { background-color: rgba(127,176,105,0.12) !important; }
+
+      /* esmeralda */
+      html.dark .text-emerald-700 { color: #6ee7b7 !important; }
+      html.dark .text-emerald-600 { color: #6ee7b7 !important; }
+      html.dark .bg-emerald-100 { background-color: rgba(52,211,153,0.16) !important; }
+      html.dark .bg-emerald-200 { background-color: rgba(52,211,153,0.22) !important; }
+
+      /* vermelho */
+      html.dark .text-red-800 { color: #fca5a5 !important; }
+      html.dark .text-red-700 { color: #fca5a5 !important; }
+      html.dark .text-red-700\/70 { color: rgba(252,165,165,0.75) !important; }
+      html.dark .text-red-600 { color: #f87171 !important; }
+      html.dark .bg-red-50 { background-color: rgba(248,113,113,0.14) !important; }
+
+      /* âmbar */
+      html.dark .text-amber-900 { color: #fde68a !important; }
+      html.dark .text-amber-800 { color: #fcd34d !important; }
+      html.dark .text-amber-700 { color: #fcd34d !important; }
+      html.dark .text-amber-600 { color: #fbbf24 !important; }
+      html.dark .text-amber-500 { color: #fbbf24 !important; }
+      html.dark .bg-amber-50 { background-color: rgba(251,191,36,0.12) !important; }
+      html.dark .bg-amber-100 { background-color: rgba(251,191,36,0.16) !important; }
     </style>
+    <script>
+      /* Aplica o tema o mais cedo possível (antes do body pintar) pra evitar flash.
+         localStorage 'recepia-theme' tem prioridade; senão segue a preferência do SO. */
+      (function () {
+        try {
+          var t = localStorage.getItem('recepia-theme');
+          var dark = t === 'dark' || (t == null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (_) { /* tema nunca deve derrubar a UI */ }
+      })();
+    </script>
 </head>
 <body class="font-sans text-ink-900 antialiased">
 
@@ -255,6 +445,9 @@
       <button onclick="showTab('whatsapp')" data-tab="whatsapp" role="tab" aria-controls="tab-whatsapp" class="tab-link w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3"><i data-lucide="message-circle"></i> WhatsApp</button>
     </nav>
     <div class="border-t border-white/10 pt-3 mt-3">
+      <button id="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Alternar tema claro/escuro" class="w-full text-left px-4 py-2.5 mb-1 rounded-xl text-xs text-white/70 hover:text-white hover:bg-white/5 transition flex items-center gap-2">
+        <span id="theme-toggle-icon" class="inline-flex"><i data-lucide="moon" class="w-4 h-4"></i></span> <span id="theme-toggle-label">Tema escuro</span>
+      </button>
       <button onclick="doLogout()" class="w-full text-left px-4 py-2.5 rounded-xl text-xs text-white/70 hover:text-white hover:bg-white/5 transition flex items-center gap-2">
         <i data-lucide="log-out" class="w-4 h-4"></i> Sair
       </button>
@@ -4534,6 +4727,32 @@ document.addEventListener('DOMContentLoaded', wireClickables);
     }).observe(document.body, { childList: true });
   } catch (_) { /* a11y nunca deve derrubar a UI */ }
 })();
+
+// ============================================================ Tema (dark mode)
+// Toggle claro/escuro. Aplica a classe .dark no <html>, persiste no localStorage,
+// troca o ícone (moon/sun) + rótulo e re-renderiza os ícones lucide. Defensivo:
+// nunca lança. O tema inicial já foi aplicado pelo script inline no <head>.
+function applyTheme(isDark) {
+  try {
+    document.documentElement.classList.toggle('dark', !!isDark);
+    // recria um placeholder lucide fresco a cada troca (robusto p/ qualquer versão do lucide)
+    var iconWrap = document.getElementById('theme-toggle-icon');
+    if (iconWrap) iconWrap.innerHTML = '<i data-lucide="' + (isDark ? 'sun' : 'moon') + '" class="w-4 h-4"></i>';
+    var label = document.getElementById('theme-toggle-label');
+    if (label) label.textContent = isDark ? 'Tema claro' : 'Tema escuro';
+    if (window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons();
+  } catch (_) { /* tema nunca deve derrubar a UI */ }
+}
+function toggleTheme() {
+  try {
+    var isDark = !document.documentElement.classList.contains('dark');
+    applyTheme(isDark);
+    try { localStorage.setItem('recepia-theme', isDark ? 'dark' : 'light'); } catch (_) {}
+  } catch (_) {}
+}
+window.toggleTheme = toggleTheme;
+// sincroniza ícone/rótulo com o estado já aplicado no <head>
+(function () { try { applyTheme(document.documentElement.classList.contains('dark')); } catch (_) {} })();
 
 init();
 </script>
