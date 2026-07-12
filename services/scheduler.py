@@ -21,8 +21,7 @@ from models import (
     Interacao, Paciente, Status, TipoInteracao,
 )
 from services.processor import (
-    IAProcessor, INTENCAO_AGENDAR, INTENCAO_REAGENDAR, INTENCAO_NAO_ENTENDIDO,
-    INTENCAO_OPT_OUT,
+    IAProcessor, INTENCAO_AGENDAR, INTENCAO_REAGENDAR, INTENCAO_OPT_OUT,
 )
 from services.slots import (
     extrair_numero_resposta, formatar_opcoes_pra_mensagem, sugerir_slots,
@@ -221,13 +220,15 @@ class SchedulerService:
             self.db.commit()
             return {"status": "boas_vindas"}
 
-        # ── Paciente conhecido: busca agendamento pendente futuro ──────────
+        # ── Paciente conhecido: busca agendamento ativo futuro ─────────────
+        # Inclui CONFIRMADO: paciente que já confirmou precisa conseguir
+        # cancelar/reagendar depois ("confirmei de manhã, preciso cancelar").
         agendamento_q = (
             self.db.query(Agendamento)
             .filter(
                 Agendamento.paciente_id == paciente.id,
                 Agendamento.clinica_id == clinica.id,
-                Agendamento.status == Status.PENDENTE,
+                Agendamento.status.in_([Status.PENDENTE, Status.CONFIRMADO]),
                 Agendamento.data_hora > agora_utc(),
             )
             .order_by(Agendamento.data_hora.asc())
@@ -335,11 +336,10 @@ class SchedulerService:
             self.db.commit()
             return {"status": "agendamento_sem_slots", "paciente_id": paciente.id}
 
-        # 1 estado ativo por paciente — substitui se já existir
-        existente = self._estado_ativo(clinica.id, paciente.id)
-        if existente:
-            self.db.delete(existente)
-            self.db.flush()
+        # 1 estado por paciente — remove QUALQUER linha anterior (ativa ou
+        # expirada). Estado expirado ainda não varrido pelo cron ocuparia a
+        # UNIQUE e o insert abaixo estouraria IntegrityError em loop de retry.
+        self._limpar_estado(clinica.id, paciente.id)
 
         estado = EstadoConversa(
             clinica_id=clinica.id,
@@ -493,19 +493,20 @@ class SchedulerService:
         )
 
         if not slots:
+            # Status NÃO muda: se virasse REAGENDADO, a próxima resposta do
+            # paciente não encontraria mais o agendamento e o pedido se perderia.
+            # A Interacao registrada dá visibilidade pra recepção fazer o encaixe.
             self._enviar_msg(
                 clinica, paciente.telefone,
                 f"Oi {paciente.nome}! Infelizmente não tenho horários livres nos próximos 7 dias. "
-                "Vamos achar um juntas? Me responde com 1-2 horários que funcionam pra você."
+                "Vou avisar a recepção pra te chamar e combinar um encaixe, tá? "
+                "Enquanto isso sua consulta atual continua reservada 💛",
+                agendamento_id=agendamento.id, tipo=TipoInteracao.REAGENDAMENTO,
             )
-            agendamento.status = Status.REAGENDADO
             return
 
-        # Cria estado de conversa (substitui se já existir)
-        existente = self._estado_ativo(clinica.id, paciente.id)
-        if existente:
-            self.db.delete(existente)
-            self.db.flush()
+        # Cria estado de conversa (remove qualquer anterior, ativo ou expirado)
+        self._limpar_estado(clinica.id, paciente.id)
 
         estado = EstadoConversa(
             clinica_id=clinica.id,
@@ -601,16 +602,62 @@ class SchedulerService:
             self.db.commit()
             return {"status": "agendamento_removido"}
 
+        # O agendamento pode ter mudado desde a oferta (estado vive 24h):
+        # cancelado pelo dashboard, marcado realizado/no_show pelo cron etc.
+        # Não ressuscitar — avisa e encerra o fluxo.
+        if agendamento.status not in (Status.PENDENTE, Status.CONFIRMADO):
+            self.db.delete(estado)
+            self._enviar_msg(
+                clinica, paciente.telefone,
+                f"Oi {paciente.nome}! Essa consulta não está mais ativa, então não "
+                "consegui reagendar. Se quiser marcar um novo horário, é só me dizer "
+                "\"quero marcar\" 💛",
+                agendamento_id=agendamento.id, tipo=TipoInteracao.REAGENDAMENTO,
+            )
+            self.db.commit()
+            return {"status": "agendamento_inativo"}
+
         nova_data_utc = datetime.fromisoformat(escolhido["data_hora_utc"])
+
+        # Corrida: o slot pode ter sido tomado desde a oferta (estado vive 24h).
+        ja_ocupado = (
+            self.db.query(Agendamento)
+            .filter(
+                Agendamento.clinica_id == clinica.id,
+                Agendamento.id != agendamento.id,
+                Agendamento.data_hora == nova_data_utc,
+                Agendamento.status.in_([Status.PENDENTE, Status.CONFIRMADO]),
+            )
+            .first()
+        )
+        if ja_ocupado:
+            # Reabre o fluxo com horários frescos (substitui o estado atual).
+            self._iniciar_fluxo_reagendamento(clinica, paciente, agendamento)
+            self.db.commit()
+            return {"status": "slot_ocupado_reoferta"}
+
         agendamento.data_hora = nova_data_utc
         agendamento.status = Status.PENDENTE
         agendamento.confirmacao_enviada = False
         agendamento.segunda_confirmacao = False
-
-        # Limpa estado
         self.db.delete(estado)
 
-        # Confirma pra paciente
+        # Persiste ANTES de dizer "reagendei" — se o commit falhar (ex: índice
+        # único de slot), o paciente não pode ter recebido a confirmação.
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            agendamento = self.db.query(Agendamento).filter(
+                Agendamento.id == agendamento_id,
+                Agendamento.clinica_id == clinica.id,
+            ).first()
+            if agendamento:
+                self._iniciar_fluxo_reagendamento(clinica, paciente, agendamento)
+                self.db.commit()
+            return {"status": "slot_ocupado_reoferta"}
+
+        # Confirma pra paciente (após o commit)
         nova_data_br = from_utc_to_br(nova_data_utc).strftime("%d/%m às %H:%M")
         msg = (
             f"Pronto, {paciente.nome}! Reagendei sua consulta pra {nova_data_br}. "
@@ -618,7 +665,6 @@ class SchedulerService:
         )
         self._enviar_msg(clinica, paciente.telefone, msg,
                          agendamento_id=agendamento.id, tipo=TipoInteracao.REAGENDAMENTO)
-
         self.db.commit()
         log.info("reagendamento_concluido: cli=%s pac=%s ag=%s -> %s",
                  clinica.id, paciente.id, agendamento.id, nova_data_utc.isoformat())
@@ -634,18 +680,20 @@ class SchedulerService:
 
     def _processar_opt_out(self, clinica: Clinica, paciente: Paciente,
                            mensagem: str, evolution_message_id: Optional[str]) -> dict:
-        paciente.opt_out = True
-        paciente.opt_out_em = agora_utc()
-        self._safe_add_interacao(
+        # Dedup ANTES de qualquer efeito: webhook reentregue não pode reenviar
+        # a confirmação de opt-out pra quem pediu pra não receber mensagens.
+        log_ok = self._safe_add_interacao(
             clinica_id=clinica.id, agendamento_id=None, paciente_id=paciente.id,
             tipo=TipoInteracao.OPT_OUT,
             mensagem_recebida=mensagem,
             evolution_message_id=evolution_message_id,
         )
-        # Limpa estado de conversa também (se tiver)
-        estado = self._estado_ativo(clinica.id, paciente.id)
-        if estado:
-            self.db.delete(estado)
+        if not log_ok:
+            return {"status": "dedup"}
+        paciente.opt_out = True
+        paciente.opt_out_em = agora_utc()
+        # Limpa estado de conversa também (se tiver, ativo ou expirado)
+        self._limpar_estado(clinica.id, paciente.id)
 
         self.whatsapp.enviar_mensagem(
             instance_name=clinica.evolution_instance_name,
@@ -659,6 +707,19 @@ class SchedulerService:
     # ========================================================================
     # HELPERS
     # ========================================================================
+
+    def _limpar_estado(self, clinica_id: str, paciente_id: str) -> None:
+        """Remove qualquer EstadoConversa do paciente — ativo OU expirado.
+
+        A UNIQUE(clinica_id, paciente_id) vale pra linha expirada também; sem
+        este delete, criar fluxo novo entre a expiração e a varredura horária
+        do cron estoura IntegrityError.
+        """
+        self.db.query(EstadoConversa).filter(
+            EstadoConversa.clinica_id == clinica_id,
+            EstadoConversa.paciente_id == paciente_id,
+        ).delete(synchronize_session=False)
+        self.db.flush()
 
     def _estado_ativo(self, clinica_id: str, paciente_id: str) -> Optional[EstadoConversa]:
         return (
@@ -706,8 +767,9 @@ class SchedulerService:
             mensagem=mensagem,
         )
         if not result.get("success"):
-            log.warning("falha envio whatsapp: cli=%s tel=%s err=%s",
-                        clinica.id, telefone, result.get("error"))
+            # PII: nunca logar o telefone — só ids e o erro.
+            log.warning("falha envio whatsapp: cli=%s pac=%s err=%s",
+                        clinica.id, paciente_id, result.get("error"))
             return False
         self.db.add(Interacao(
             clinica_id=clinica.id,

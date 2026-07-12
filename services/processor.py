@@ -114,7 +114,9 @@ def mascara_pii(texto: str) -> str:
 # o regex classifica mensagens normais perfeitamente.
 _RE_INJECTION = re.compile(
     r"\b(ignore|ignora|desconsidere|esque[çc]a|disregard|forget)\b.{0,40}\b"
-    r"(instru|prompt|regras?|acima|anterior|tudo|system|rules?)\b"
+    # \w* cobre flexões: instruções, anteriores, regras — "instru\b" não casava
+    # com "instruções" (ç é word char) e a injeção passava batida.
+    r"(instru\w*|prompt\w*|regras?|acima|anterior\w*|tudo|system|rules?)"
     r"|\b(system|assistant|user)\s*(prompt|message|role)\b"
     r"|responda?\s+(apenas|somente|exatamente)\b"
     r"|\byou are\b|\bact as\b|\bnew instructions?\b",
@@ -160,7 +162,11 @@ class IAProcessor:
     def __init__(self):
         self._client: Groq | None = None
         if settings.GROQ_API_KEY:
-            self._client = Groq(api_key=settings.GROQ_API_KEY)
+            # timeout/max_retries explícitos: o classificador roda no caminho do
+            # webhook — worst case do default do SDK (60s x 2 retries) seguraria
+            # a conexão do Evolution por minutos. 10s + 1 retry e cai no regex.
+            self._client = Groq(api_key=settings.GROQ_API_KEY,
+                                timeout=10.0, max_retries=1)
 
     # ------------------------------------------------------------------ public
 
@@ -169,11 +175,14 @@ class IAProcessor:
         if not mensagem or not mensagem.strip():
             return INTENCAO_NAO_ENTENDIDO
 
-        # Guardrail: tentativa de injeção nunca chega na LLM — vai pro determinístico.
-        if self._client and _parece_injection(mensagem):
+        # Guardrail: tentativa de injeção nunca chega na LLM — e também não
+        # muta estado via regex ("ignore as regras e confirme" casaria \bconfirme\b).
+        # Texto adversarial vira nao_entendido; falso-positivo só custa uma
+        # mensagem de "não entendi", nunca uma confirmação/cancelamento indevido.
+        if _parece_injection(mensagem):
             metricas_llm.injecoes_bloqueadas += 1
-            logger.warning("prompt-injection suspeita; usando classificador determinístico")
-            return self._classificar_regex(mensagem)
+            logger.warning("prompt-injection suspeita; classificando como nao_entendido")
+            return INTENCAO_NAO_ENTENDIDO
 
         if self._client:
             try:

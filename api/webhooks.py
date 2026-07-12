@@ -10,12 +10,13 @@ import logging
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from config import settings
 from core.limiter import limiter
 from core.phones import tenta_normalizar as normalizar_telefone
+from core.trial import trial_expirado
 from database import get_db_dependency
 from models import Clinica, Interacao
 from services.scheduler import SchedulerService
@@ -142,6 +143,12 @@ async def webhook_evolution(
 
     # messages.upsert: mensagem recebida
     if event.lower() in ("messages.upsert", "messages_upsert"):
+        # Clínica desativada (churn) ou trial vencido não processam mensagens:
+        # o bot é o core do produto — sem isso, uso gratuito perpétuo. 200
+        # silencioso, mesmo contrato do "instância não existe" (B8).
+        if not clinica.ativo or trial_expirado(clinica):
+            return {"status": "ok"}
+
         if not data or not data.key or data.key.fromMe:
             return {"status": "ok"}
 
@@ -155,11 +162,16 @@ async def webhook_evolution(
             return {"status": "ok"}
 
         message_id = data.key.id  # G9: usado pra dedup
+        # extendedTextMessage é dict livre — "text" precisa ser string, senão
+        # .strip() estoura AttributeError → 500 → Evolution retenta pra sempre.
+        ext_text = (data.message.extendedTextMessage or {}).get("text") if data.message else None
+        if not isinstance(ext_text, str):
+            ext_text = None
         texto = (
             (data.message.conversation if data.message else None)
-            or ((data.message.extendedTextMessage or {}).get("text") if data.message else None)
+            or ext_text
             or ""
-        )
+        )[:4000]
         if not texto.strip():
             return {"status": "ok"}
 
@@ -174,7 +186,10 @@ async def webhook_evolution(
                 return {"status": "ok"}
 
         scheduler = SchedulerService(db)
-        scheduler.processar_resposta_paciente(
+        # Pipeline é síncrono (Groq SDK + httpx bloqueantes). No event loop ele
+        # congelaria a API inteira; no threadpool só ocupa um worker thread.
+        await run_in_threadpool(
+            scheduler.processar_resposta_paciente,
             clinica=clinica,
             telefone=telefone,
             mensagem=texto,
