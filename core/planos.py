@@ -174,6 +174,27 @@ class FeatureBloqueada(HTTPException):
         )
 
 
+def verificar_limite(db: Session, clinica: Clinica, recurso: str) -> None:
+    """Levanta LimiteExcedido (402) se criar/reativar +1 do recurso estoura o plano.
+
+    Enforcement usa contagem FRESCA (sem o cache de 60s): o cache serve pro
+    snapshot de uso no dashboard; pra bloquear cobrança, a janela de TTL
+    permitia passar do teto com requests em sequência.
+    """
+    plano = clinica.plano
+    limites = limites_de(plano)
+    max_attr = f"max_{recurso}" if recurso != "pacientes_ativos" else "max_pacientes_ativos"
+    limite = getattr(limites, max_attr, None)
+    if limite is None:
+        return  # ilimitado
+
+    invalidar_cache_contagem(clinica.id, recurso)
+    usado = _contar_recurso(db, clinica.id, recurso)
+    if usado >= limite:
+        sugerido = _proximo_plano(plano)
+        raise LimiteExcedido(recurso, limite, plano, sugerido)
+
+
 def requer_limite(recurso: str):
     """Dependency factory: bloqueia criação se limite atingido.
 
@@ -184,17 +205,7 @@ def requer_limite(recurso: str):
         clinica: Clinica = Depends(clinica_atual),
         db: Session = Depends(get_db_dependency),
     ) -> None:
-        plano = clinica.plano
-        limites = limites_de(plano)
-        max_attr = f"max_{recurso}" if recurso != "pacientes_ativos" else "max_pacientes_ativos"
-        limite = getattr(limites, max_attr, None)
-        if limite is None:
-            return  # ilimitado
-
-        usado = _contar_recurso(db, clinica.id, recurso)
-        if usado >= limite:
-            sugerido = _proximo_plano(plano)
-            raise LimiteExcedido(recurso, limite, plano, sugerido)
+        verificar_limite(db, clinica, recurso)
 
     return _checker
 

@@ -352,3 +352,119 @@ class TestWebhookBloqueios:
         }
         resp = _post_webhook(client, payload)
         assert resp.status_code == 200
+
+
+# ===========================================================================
+# Batch 2 — segurança, LGPD e limites de plano
+# ===========================================================================
+
+class TestPacienteEsquecido:
+    def test_get_de_paciente_soft_deleted_retorna_404(self, client, db_session,
+                                                      clinica_fake, auth_headers_a):
+        """Achado LGPD: direito ao esquecimento exercido, mas o GET direto do id
+        continuava devolvendo o dossiê clínico completo."""
+        c = clinica_fake["clinica"]
+        p = _pac(db_session, c, telefone="5511977770020")
+        p.deletado_em = datetime.utcnow()
+        db_session.commit()
+
+        r = client.get(f"/api/pacientes/{p.id}", headers=auth_headers_a)
+        assert r.status_code == 404
+
+
+class TestLimitesDePlano:
+    def test_reativar_profissional_acima_do_teto_retorna_402(
+        self, client, db_session, clinica_fake, auth_headers_a
+    ):
+        """Achado: PUT com ativo=true era um bypass do limite do plano."""
+        from models import Plano, Profissional
+        c = clinica_fake["clinica"]
+        c.plano = Plano.ESSENCIAL  # máx 2 profissionais
+        db_session.add_all([
+            Profissional(clinica_id=c.id, nome="P1", ativo=True),
+            Profissional(clinica_id=c.id, nome="P2", ativo=True),
+        ])
+        inativo = Profissional(clinica_id=c.id, nome="P3", ativo=False)
+        db_session.add(inativo)
+        db_session.commit()
+
+        r = client.put(f"/api/profissionais/{inativo.id}", headers=auth_headers_a,
+                       json={"nome": "P3", "ativo": True})
+        assert r.status_code == 402
+        db_session.refresh(inativo)
+        assert inativo.ativo is False
+
+    def test_limite_de_pacientes_do_essencial_e_aplicado(
+        self, client, db_session, clinica_fake, auth_headers_a
+    ):
+        """Achado: o teto de 100 pacientes do Essencial nunca era checado."""
+        from models import Plano
+        c = clinica_fake["clinica"]
+        c.plano = Plano.ESSENCIAL
+        db_session.add_all([
+            Paciente(clinica_id=c.id, nome=f"P{i}", telefone=f"55119{70000000 + i}")
+            for i in range(100)
+        ])
+        db_session.commit()
+
+        r = client.post("/api/pacientes", headers=auth_headers_a,
+                        json={"nome": "Paciente 101", "telefone": "(11) 98888-0101"})
+        assert r.status_code == 402
+        assert r.json()["detail"]["erro"] == "limite_excedido"
+
+
+class TestAdminLogin:
+    def test_admin_login_audita(self, client, db_session):
+        from models import AuditLog
+        r = client.post("/admin/login", json={"admin_key": settings.ADMIN_API_KEY})
+        assert r.status_code == 200
+        row = db_session.query(AuditLog).filter_by(recurso="admin_master").first()
+        assert row is not None
+        assert row.acao == "LOGIN" or row.acao.lower() == "login"
+
+    def test_admin_login_chave_errada_401(self, client):
+        r = client.post("/admin/login", json={"admin_key": "chave-errada"})
+        assert r.status_code == 401
+
+
+class TestHorarioInvertido:
+    def test_hora_inicio_depois_do_fim_retorna_422(self, client, auth_headers_a):
+        """Achado: horário invertido era salvo e o dia zerava os slots sem erro."""
+        r = client.put("/api/horarios/0", headers=auth_headers_a,
+                       json={"hora_inicio": "18:00", "hora_fim": "09:00"})
+        assert r.status_code == 422
+
+
+class TestPhonesDDD:
+    def test_ddd_inexistente_rejeitado(self):
+        from core.phones import TelefoneInvalido, normalizar
+        with pytest.raises(TelefoneInvalido):
+            normalizar("(20) 99999-9999")  # DDD 20 não existe na Anatel
+
+    def test_13_digitos_sem_nono_digito_rejeitado(self):
+        from core.phones import TelefoneInvalido, normalizar
+        with pytest.raises(TelefoneInvalido):
+            normalizar("5511812345678")  # 13 dígitos, 5º dígito != 9
+
+    def test_ddd_valido_continua_ok(self):
+        from core.phones import normalizar
+        assert normalizar("(84) 99999-8888") == "5584999998888"
+
+
+class TestAgendamentoTimezone:
+    def test_listagem_expoe_data_hora_utc_com_sufixo_z(
+        self, client, db_session, clinica_fake, auth_headers_a
+    ):
+        """Achado crítico: sem o "Z", o JS parseava UTC-naive como horário local
+        e a agenda inteira aparecia 3h adiantada no Brasil."""
+        c = clinica_fake["clinica"]
+        p = _pac(db_session, c, telefone="5511977770021")
+        _ag(db_session, c, p)
+        db_session.commit()
+
+        r = client.get("/api/agendamentos", headers=auth_headers_a)
+        assert r.status_code == 200
+        item = r.json()[0]
+        assert "data_hora_utc" in item
+        assert item["data_hora_utc"].endswith("Z")
+        assert item["data_hora_utc"].startswith(item["data_hora"][:16])

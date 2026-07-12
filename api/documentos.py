@@ -24,7 +24,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from core import audit
@@ -35,7 +35,7 @@ from core.limiter import limiter
 from core.pdf import gerar_pdf
 from database import get_db_dependency
 from models import (
-    AcaoAudit, Agendamento, AuditLog, Clinica,
+    AcaoAudit, AuditLog, Clinica,
     Paciente, Profissional, Prontuario, Usuario,
 )
 

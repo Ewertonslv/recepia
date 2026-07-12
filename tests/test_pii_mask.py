@@ -3,7 +3,6 @@
 Antes de qualquer texto ir pra Groq (servidores EUA), PII brasileiro
 DEVE ser substituído por placeholders.
 """
-import pytest
 
 from services.processor import mascara_pii
 

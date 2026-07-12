@@ -1,5 +1,4 @@
 """Testes de /admin/clinicas — criar/listar/desativar (requer ADMIN_API_KEY)."""
-import pytest
 
 
 class TestCriarClinica:

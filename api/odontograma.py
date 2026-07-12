@@ -19,7 +19,6 @@ Hardenings LGPD (dado de saúde — Art. 11):
 - `flag_modified` no JSON pra SQLAlchemy detectar mutação in-place.
 """
 import re
-from datetime import datetime
 from core.timezones import agora_utc
 from typing import Optional
 

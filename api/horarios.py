@@ -2,8 +2,8 @@
 
 7 entradas possíveis por clínica (uma por dia da semana).
 """
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, field_validator
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from core.deps import audit_context, clinica_atual, requer_clinica_ativa
@@ -28,6 +28,14 @@ class HorarioIn(BaseModel):
         if not (0 <= int(h) <= 23 and 0 <= int(m) <= 59):
             raise ValueError("hora inválida")
         return v
+
+    @model_validator(mode="after")
+    def valida_ordem(self):
+        # Horário invertido era salvo sem erro e o dia simplesmente não gerava
+        # slot nenhum — o bot respondia "sem horários" sem pista da causa.
+        if self.hora_inicio >= self.hora_fim:
+            raise ValueError("hora_inicio deve ser antes de hora_fim")
+        return self
 
 
 class HorarioOut(BaseModel):

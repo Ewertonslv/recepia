@@ -1,5 +1,4 @@
 """Testes de profissionais — CRUD, RBAC de comissão e limite por plano."""
-import pytest
 
 from models import Plano, Usuario
 from core.security import criar_token, hash_senha

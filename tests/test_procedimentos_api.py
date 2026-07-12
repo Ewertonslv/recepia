@@ -3,7 +3,6 @@
 Cobre: CRUD, unicidade case-insensitive por clínica, soft-deactivate +
 filtro apenas_ativos, validações e isolamento multi-tenant.
 """
-import pytest
 
 
 def _criar(client, headers, nome="Limpeza", duracao=30, cor="#E8B4B8"):

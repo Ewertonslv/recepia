@@ -5,7 +5,6 @@ clinica_id, acao e recurso preenchidos.
 """
 from datetime import datetime, timedelta
 
-import pytest
 
 from core import audit
 from models import AcaoAudit, AuditLog
