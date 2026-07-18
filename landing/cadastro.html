@@ -392,7 +392,11 @@
           const j = await resp.json();
           if (j && j.detail) detail = typeof j.detail === 'string' ? j.detail : detail;
         } catch (_) {}
-        mostrarErro(detail);
+        // mostrarErro usa innerHTML (um caller injeta link) — texto vindo do
+        // servidor entra escapado.
+        const esc = document.createElement('span');
+        esc.textContent = detail;
+        mostrarErro(esc.innerHTML);
       } else if (resp.status === 429) {
         mostrarErro('muitas tentativas, aguarde 1h e tente de novo.');
       } else {

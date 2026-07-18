@@ -160,6 +160,7 @@ def google_callback(
 
     google_id = info.get("sub")
     email = info.get("email")
+    email_verificado = info.get("email_verified") is True
     nome = info.get("name") or info.get("given_name") or ""
 
     if not google_id or not email:
@@ -171,8 +172,10 @@ def google_callback(
         Usuario.ativo == True,
     ).first()
 
-    if not usuario:
-        # Tenta por email (vincula google_id a conta existente)
+    if not usuario and email_verificado:
+        # Vincula google_id a conta existente SÓ com email verificado pelo
+        # Google — vincular por match de email não-verificado permitiria
+        # assumir a conta de outra pessoa (account takeover).
         usuario = db.query(Usuario).filter(
             Usuario.email == email,
             Usuario.ativo == True,
@@ -184,7 +187,8 @@ def google_callback(
             db.commit()
 
     if not usuario:
-        return RedirectResponse("/dashboard/?google_error=usuario_nao_encontrado&email=" + email)
+        # PII: nunca colocar o email na URL — cai em access log e Referer.
+        return RedirectResponse("/dashboard/?google_error=usuario_nao_encontrado")
 
     jwt_token = criar_token(usuario.id, usuario.clinica_id, usuario.role)
 

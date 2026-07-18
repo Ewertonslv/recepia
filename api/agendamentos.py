@@ -1,7 +1,8 @@
 """CRUD de agendamentos — multi-tenant, scoped por clinica_id."""
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, computed_field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import get_db_dependency
@@ -68,6 +69,15 @@ class AgendamentoOut(BaseModel):
     confirmacao_enviada: bool
     segunda_confirmacao: bool
     criado_em: datetime
+
+    @computed_field
+    @property
+    def data_hora_utc(self) -> str:
+        """data_hora com sufixo Z explícito — o banco guarda UTC naive e sem o
+        "Z" o JS parseia como horário LOCAL, exibindo a agenda +3h no BR. Os
+        demais endpoints já mandam isoformat()+"Z"; o front prefere este campo
+        (a.data_hora_utc || a.data_hora)."""
+        return self.data_hora.isoformat() + "Z"
 
     class Config:
         from_attributes = True
@@ -139,7 +149,14 @@ def criar(
         profissional_id=prof_id,
     )
     db.add(agendamento)
-    db.flush()  # popula agendamento.id ANTES do audit (senão recurso_id fica None — gap LGPD)
+    try:
+        db.flush()  # popula agendamento.id ANTES do audit (senão recurso_id fica None — gap LGPD)
+    except IntegrityError:
+        # uq_agendamento_slot_bot: horário sem profissional já ocupado (ex: o
+        # bot marcou enquanto a recepção digitava). 409 amigável, não 500.
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Já existe um agendamento nesse horário. Escolha outro.")
     audit.log(db, **ctx, acao=AcaoAudit.CREATE, recurso="agendamento", recurso_id=agendamento.id,
               detalhes={"paciente_id": payload.paciente_id, "data_hora": payload.data_hora.isoformat()})
     db.commit()
@@ -238,7 +255,12 @@ def atualizar(
         a.profissional = prof_nome
     audit.log(db, **ctx, acao=AcaoAudit.UPDATE, recurso="agendamento", recurso_id=a.id,
               detalhes=payload.model_dump(exclude_none=True, mode="json"))
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Já existe um agendamento nesse horário. Escolha outro.")
     db.refresh(a)
     return a
 

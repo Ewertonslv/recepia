@@ -4,7 +4,6 @@ Templates em `/app/templates/pdfs/`. Cabeçalho com logo da clínica + dados.
 LGPD: watermark com {usuario_nome} + timestamp pra rastreabilidade de vazamento.
 """
 from pathlib import Path
-from datetime import datetime
 from core.timezones import agora_utc
 from typing import Any
 from jinja2 import Environment, FileSystemLoader, select_autoescape

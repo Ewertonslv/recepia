@@ -3,7 +3,7 @@
 O 'agora' é fixado (monkeypatch de agora_br/agora_utc) pra tornar determinístico:
 segunda-feira 2026-07-06 08:00 BR == 11:00 UTC.
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 

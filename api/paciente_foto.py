@@ -6,9 +6,11 @@ o avatar é dado de UX — recepcionista reconhecer rápido. Logo:
 - Audit só em CREATE/DELETE (não em READ — exagero pra avatar)
 - 1 foto por paciente; upload novo sobrescreve atomicamente
 """
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
+
+from core.limiter import limiter
 
 from core import audit
 from core.deps import audit_context, clinica_atual, requer_clinica_ativa
@@ -37,7 +39,9 @@ def _carregar_paciente(db: Session, paciente_id: str, clinica_id: str) -> Pacien
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")  # decode+reencode Pillow é caro — mesma lógica dos PDFs
 async def upload_foto(
+    request: Request,
     paciente_id: str,
     arquivo: UploadFile = File(...),
     clinica: Clinica = Depends(requer_clinica_ativa),

@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from config import settings
 from database import get_db_dependency
-from models import AcaoAudit, AdminTokenRevogado, AuditLog, Clinica, Plano, Profissional, Paciente, Usuario
+from models import AcaoAudit, AdminTokenRevogado, AuditLog, Clinica, Plano, Usuario
 from core.deps import audit_context, audit_context_admin, clinica_atual, requer_clinica_ativa, usuario_atual, verificar_admin
 from core.especialidades import config_efetiva, get_especialidade, listar_slugs, to_dict as especialidade_to_dict
 from core.foto_storage import MAX_UPLOAD_BYTES, FotoError, deletar_logo, ler_logo, salvar_logo
@@ -221,10 +221,24 @@ class AdminTokenOut(BaseModel):
 
 @router_login.post("/login", response_model=AdminTokenOut)
 @limiter.limit("5/minute")
-def login_admin(request: Request, payload: AdminLoginIn):
+def login_admin(request: Request, payload: AdminLoginIn,
+                db: Session = Depends(get_db_dependency)):
     """Valida X-Admin-Key e retorna JWT (TTL 2h) pra UI admin usar via Bearer."""
-    if payload.admin_key != settings.ADMIN_API_KEY:
+    import hmac as _hmac
+    # compare_digest: comparação com != vaza timing byte-a-byte da chave mestra.
+    if not _hmac.compare_digest(
+        (payload.admin_key or "").encode(), settings.ADMIN_API_KEY.encode()
+    ):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Admin key inválida")
+    # Login com a credencial de maior privilégio precisa de trilha de auditoria.
+    audit.log(
+        db, clinica_id=None, usuario_id=None,
+        acao=AcaoAudit.LOGIN, recurso="admin_master", recurso_id=None,
+        ip=request.client.host if request.client else None,
+        user_agent=(request.headers.get("user-agent") or "")[:200] or None,
+        detalhes={"metodo": "admin_key"},
+    )
+    db.commit()
     return AdminTokenOut(access_token=criar_token_admin())
 
 
@@ -856,7 +870,6 @@ def impersonar_clinica(
     if not admin_user:
         raise HTTPException(404, "Nenhum admin ativo nesta clínica")
     # Token de curta duração (15 min) para impersonação
-    from datetime import timezone
     from jose import jwt as _jwt
     from config import settings
     from core.security import JWT_AUD, JWT_ISS
@@ -1068,7 +1081,9 @@ def atualizar_clinica_me(
 
 
 @router_me.post("/logo")
+@limiter.limit("20/minute")  # decode+reencode Pillow é caro — mesma lógica dos PDFs
 async def upload_logo_clinica(
+    request: Request,
     arquivo: UploadFile = File(...),
     db: Session = Depends(get_db_dependency),
     usuario: Usuario = Depends(usuario_atual),

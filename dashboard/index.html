@@ -1061,6 +1061,34 @@ async function api(path, opts = {}) {
   return r.status === 204 ? null : r.json();
 }
 
+// fetch autenticado pra respostas binárias (fotos, PDFs) e FormData: mesmo
+// tratamento de sessão do api() — 401 desloga, 402 abre upgrade — mas devolve
+// a Response crua pro caller ler blob()/json(). Sem isso, token expirado
+// virava imagem quebrada ou toast "HTTP 401" com o usuário preso na tela.
+// Anti double-click: desabilita o botão enquanto o handler roda — dois
+// cliques rápidos disparavam dois POSTs e duplicavam o registro.
+function guardSave(btn, fn) {
+  btn.onclick = async (ev) => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try { await fn(ev); } finally { btn.disabled = false; }
+  };
+}
+
+async function authFetch(path, opts = {}) {
+  const headers = { ...(opts.headers || {}) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const r = await fetch(path, { ...opts, headers });
+  if (r.status === 401) { doLogout(); throw new Error('Sessão expirada'); }
+  if (r.status === 402) {
+    let detail = {};
+    try { detail = (await r.json()).detail || {}; } catch {}
+    if (detail.erro === 'trial_expirado') abrirTrialOverlay(); else openUpgradeModal(detail);
+    throw new Error(detail.mensagem || 'Upgrade necessário');
+  }
+  return r;
+}
+
 // ============================================================ Modal de upgrade (HTTP 402)
 const PLANO_LABEL = { trial: 'Trial', essencial: 'Essencial', pro: 'Pro', enterprise: 'Enterprise' };
 function openUpgradeModal(detail) {
@@ -2533,7 +2561,7 @@ function openFormProcedimento(proc) {
       overlay.querySelector('#pc-cor').value = btn.dataset.cor;
     };
   });
-  overlay.querySelector('[data-save]').onclick = async () => {
+  guardSave(overlay.querySelector('[data-save]'), async () => {
     const payload = {
       nome: overlay.querySelector('#pc-nome').value.trim(),
       duracao_minutos: parseInt(overlay.querySelector('#pc-dur').value,10)||30,
@@ -2548,7 +2576,7 @@ function openFormProcedimento(proc) {
       toast(isEdit ? 'Procedimento atualizado' : 'Procedimento criado');
       loadProcedimentos();
     } catch(e) { toast(e.message,true); }
-  };
+  });
   refreshIcons();
   overlay.querySelector('#pc-nome').focus();
 }
@@ -2593,7 +2621,7 @@ function openModalBloqueio() {
   const close = () => overlay.remove();
   overlay.querySelector('[data-cancel]').onclick = close;
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-  overlay.querySelector('[data-save]').onclick = async () => {
+  guardSave(overlay.querySelector('[data-save]'), async () => {
     const payload = {
       inicio: overlay.querySelector('#blq-ini').value + ':00',
       fim: overlay.querySelector('#blq-fim').value + ':00',
@@ -2607,7 +2635,7 @@ function openModalBloqueio() {
       toast('Horário bloqueado');
       loadAgendamentos();
     } catch(e) { toast(e.message,true); }
-  };
+  });
   refreshIcons();
 }
 
@@ -2792,7 +2820,7 @@ function openFormProfissional(prof) {
       overlay.querySelector('#pf-cor').value = btn.dataset.cor;
     };
   });
-  overlay.querySelector('[data-save]').onclick = async () => {
+  guardSave(overlay.querySelector('[data-save]'), async () => {
     const payload = {
       nome: overlay.querySelector('#pf-nome').value.trim(),
       especialidade: overlay.querySelector('#pf-esp').value.trim() || null,
@@ -2812,7 +2840,7 @@ function openFormProfissional(prof) {
       // 402 já abre modal de upgrade pelo interceptor; outros erros mostram toast
       if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
     }
-  };
+  });
   refreshIcons();
   overlay.querySelector('#pf-nome').focus();
 }
@@ -3027,7 +3055,7 @@ async function openFormProntuario(prontuario) {
   if (typeof window.renderProcedimentosChips === 'function') window.renderProcedimentosChips();
 
   // ----- Save
-  overlay.querySelector('[data-save]').onclick = async () => {
+  guardSave(overlay.querySelector('[data-save]'), async () => {
     const inpRest = overlay.querySelector('#pr-alergias-input').value.trim();
     if (inpRest && alergiasState.length < 50 && inpRest.length <= 80) alergiasState.push(inpRest);
     const payload = {
@@ -3049,7 +3077,7 @@ async function openFormProntuario(prontuario) {
     } catch (e) {
       if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
     }
-  };
+  });
 
   // ----- Delete (admin)
   const btnDel = overlay.querySelector('[data-delete]');
@@ -3076,16 +3104,10 @@ async function openFormProntuario(prontuario) {
       const fd = new FormData();
       fd.append('arquivo', f);
       try {
-        const r = await fetch('/api/prontuarios/' + prontuario.id + '/fotos', {
+        const r = await authFetch('/api/prontuarios/' + prontuario.id + '/fotos', {
           method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + token },
           body: fd,
         });
-        if (r.status === 402) {
-          const j = await r.json();
-          openUpgradeModal(j.detail || {});
-          return;
-        }
         if (!r.ok) {
           const j = await r.json().catch(() => ({}));
           throw new Error(j.detail || ('HTTP ' + r.status));
@@ -3122,9 +3144,7 @@ function renderFotosGrid(overlay, prontuario) {
   // carrega cada thumb via fetch (Authorization header → blob URL)
   grid.querySelectorAll('img[data-foto-key]').forEach(async (img) => {
     try {
-      const r = await fetch('/api/prontuarios/' + prontuario.id + '/fotos/' + img.dataset.fotoKey, {
-        headers: { Authorization: 'Bearer ' + token },
-      });
+      const r = await authFetch('/api/prontuarios/' + prontuario.id + '/fotos/' + img.dataset.fotoKey);
       if (!r.ok) return;
       const url = URL.createObjectURL(await r.blob());
       img.src = url;
@@ -3157,7 +3177,7 @@ async function abrirFotoLightbox(prontuarioId, key) {
   document.body.appendChild(overlay);
   let blobUrl;
   try {
-    const r = await fetch('/api/prontuarios/' + prontuarioId + '/fotos/' + key, { headers: { Authorization: 'Bearer ' + token } });
+    const r = await authFetch('/api/prontuarios/' + prontuarioId + '/fotos/' + key);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     blobUrl = URL.createObjectURL(await r.blob());
     overlay.innerHTML = `<img src="${blobUrl}" class="max-w-full max-h-full rounded-2xl shadow-2xl" alt="">`;
@@ -3252,7 +3272,7 @@ async function renderOdontograma(pacienteId) {
   _odoRenderLegenda();
   document.getElementById('odo-dentes-group').innerHTML = '';
   try {
-    const r = await fetch(`/api/pacientes/${encodeURIComponent(pacienteId)}/odontograma`, { headers: { Authorization: 'Bearer ' + token } });
+    const r = await authFetch(`/api/pacientes/${encodeURIComponent(pacienteId)}/odontograma`);
     if (r.status === 422) {
       document.getElementById('odo-svg').innerHTML = `<text x="350" y="100" text-anchor="middle" fill="rgba(45,49,66,0.5)" font-size="14">Odontograma só pra clínicas odontológicas.</text>`;
       return;
@@ -3281,9 +3301,9 @@ async function salvarDenteDoPopover() {
   const estado = $('odo-popover-estado').value;
   const obs = $('odo-popover-obs').value.trim();
   try {
-    const r = await fetch(`/api/pacientes/${encodeURIComponent(_odoPacienteIdAtual)}/odontograma`, {
+    const r = await authFetch(`/api/pacientes/${encodeURIComponent(_odoPacienteIdAtual)}/odontograma`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dente: _odoDenteSelecionado, estado, observacao: obs || null }),
     });
     if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(t || 'HTTP ' + r.status); }
@@ -3346,7 +3366,9 @@ function _odoDenteSvg(fdi, x, y, flipped) {
   const estado = entry?.estado || 'hígido';
   const def = ODO_ESTADOS[estado] || ODO_ESTADOS['hígido'];
   const temObs = !!entry?.observacao;
-  const tooltipObs = temObs ? `\n${entry.observacao}` : '';
+  // escapeHtml: a observação vai crua pra dentro do <title> via innerHTML —
+  // único ponto do odontograma que faltava escapar.
+  const tooltipObs = temObs ? `\n${escapeHtml(entry.observacao)}` : '';
   const tipo = _odoTipoFDI(fdi);
   const W = ODO_DENTE_W, H = ODO_DENTE_H;
   const CROWN = 34, ROOT = 22; // crown taller than root
@@ -3809,7 +3831,7 @@ function openFormPlano(plano) {
   overlay.querySelector('[data-cancel]').onclick = close;
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 
-  overlay.querySelector('[data-save]').onclick = async () => {
+  guardSave(overlay.querySelector('[data-save]'), async () => {
     const nome = overlay.querySelector('#pt-nome').value.trim();
     const descricao = overlay.querySelector('#pt-desc').value.trim() || null;
     const sessoes = parseInt(overlay.querySelector('#pt-sessoes').value, 10) || 1;
@@ -3841,7 +3863,7 @@ function openFormPlano(plano) {
     } catch (e) {
       if (!String(e.message || '').toLowerCase().includes('upgrade')) toast(e.message, true);
     }
-  };
+  });
 
   refreshIcons();
   overlay.querySelector('#pt-nome').focus();
@@ -3959,7 +3981,7 @@ async function carregarAvatarPaciente(pacienteId) {
   const el = document.querySelector(`[data-avatar-pac="${pacienteId}"]`);
   if (!el) return;
   try {
-    const r = await fetch(`/api/pacientes/${pacienteId}/foto`, { headers: { Authorization: 'Bearer ' + token } });
+    const r = await authFetch(`/api/pacientes/${pacienteId}/foto`);
     if (!r.ok) return;
     const url = URL.createObjectURL(await r.blob());
     el.innerHTML = `<img src="${url}" class="w-full h-full object-cover" alt="">`;
@@ -4203,7 +4225,7 @@ async function carregarAvatarDrawer() {
   const el = $('dp-avatar');
   if (!el || !drawerPacienteId) return;
   try {
-    const r = await fetch(`/api/pacientes/${drawerPacienteId}/foto`, { headers: { Authorization: 'Bearer ' + token } });
+    const r = await authFetch(`/api/pacientes/${drawerPacienteId}/foto`);
     if (!r.ok) return;
     const url = URL.createObjectURL(await r.blob());
     el.innerHTML = `<img src="${url}" class="w-full h-full object-cover" alt="">`;
@@ -4402,7 +4424,7 @@ async function uploadFotoPaciente(file) {
   if (file.size > 10 * 1024 * 1024) return toast('Arquivo maior que 10MB', true);
   const fd = new FormData(); fd.append('arquivo', file);
   try {
-    const r = await fetch(`/api/pacientes/${drawerPacienteId}/foto`, { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: fd });
+    const r = await authFetch(`/api/pacientes/${drawerPacienteId}/foto`, { method: 'POST', body: fd });
     if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.detail || 'HTTP ' + r.status); }
     const j = await r.json();
     drawerPacienteData.foto_key = j.foto_key;
@@ -4590,7 +4612,7 @@ function abrirGerarDocumento(tipo) {
       params.set('prontuario_id', pid);
     }
     try {
-      const r = await fetch(`/api/pacientes/${drawerPacienteId}/documentos/${tipo}.pdf?${params}`, { headers: { Authorization: 'Bearer ' + token } });
+      const r = await authFetch(`/api/pacientes/${drawerPacienteId}/documentos/${tipo}.pdf?${params}`);
       if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.detail || 'HTTP ' + r.status); }
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);

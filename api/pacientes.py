@@ -12,12 +12,13 @@ Sprint 2:
 - /timeline merge agendamentos + prontuarios + interacoes (audit READ — LGPD).
 """
 from datetime import date, datetime
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import case, func, literal, or_, select, union_all
 from sqlalchemy.orm import Session
 
 from core.deps import audit_context, clinica_atual, requer_clinica_ativa
+from core.planos import invalidar_cache_contagem, requer_limite
 from core.documentos import sanitizar_cep, sanitizar_cpf, validar_cpf
 from core.especialidades import config_efetiva, validar_paciente_para_especialidade
 from core.phones import TelefoneInvalido, normalizar as normalizar_telefone
@@ -227,7 +228,10 @@ def _to_out_completo(paciente: Paciente, db: Session) -> PacienteOutCompleto:
     )
 
 
-@router.post("", response_model=PacienteOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=PacienteOut, status_code=status.HTTP_201_CREATED,
+             # Essencial tem teto de 100 pacientes ativos — sem esta dependency
+             # o limite comercial do plano não existia na prática.
+             dependencies=[Depends(requer_limite("pacientes_ativos"))])
 def criar(
     payload: PacienteIn,
     clinica: Clinica = Depends(requer_clinica_ativa),
@@ -258,6 +262,7 @@ def criar(
     audit.log(db, **ctx, acao=AcaoAudit.CREATE, recurso="paciente",
               recurso_id=paciente.id, detalhes={"nome": payload.nome})
     db.commit()
+    invalidar_cache_contagem(clinica.id, "pacientes_ativos")
     db.refresh(paciente)
     return paciente
 
@@ -280,9 +285,16 @@ def obter(
     clinica: Clinica = Depends(clinica_atual),
     db: Session = Depends(get_db_dependency),
 ):
+    # deletado_em: soft delete é o direito ao esquecimento (LGPD) — o registro
+    # não pode continuar recuperável pelo GET direto do id (listar/timeline/
+    # anamnese já filtram; este endpoint era o furo).
     paciente = (
         db.query(Paciente)
-        .filter(Paciente.id == paciente_id, Paciente.clinica_id == clinica.id)
+        .filter(
+            Paciente.id == paciente_id,
+            Paciente.clinica_id == clinica.id,
+            Paciente.deletado_em.is_(None),
+        )
         .first()
     )
     if not paciente:
@@ -373,6 +385,7 @@ def excluir_soft(
         detalhes={"tipo": "soft_delete", "motivo": "lgpd_direito_esquecimento"},
     )
     db.commit()
+    invalidar_cache_contagem(clinica.id, "pacientes_ativos")
 
 
 @router.get("/{paciente_id}/timeline")

@@ -3,7 +3,6 @@
 Cobre: CRUD, validação de FK, isolamento multi-tenant (404, nunca 403/200),
 audit obrigatório, DELETE só admin + motivo, e o feature-gate por plano.
 """
-import pytest
 
 from models import AcaoAudit, AuditLog, Plano, Usuario
 from core.security import criar_token, hash_senha

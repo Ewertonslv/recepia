@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from core.deps import audit_context, clinica_atual, requer_clinica_ativa, usuario_atual
 from core import audit
-from core.planos import invalidar_cache_contagem, requer_limite
+from core.planos import invalidar_cache_contagem, requer_limite, verificar_limite
 from database import get_db_dependency
 from models import AcaoAudit, Clinica, Profissional, Usuario
 
@@ -152,6 +152,11 @@ def atualizar(
     comissao_mudou = payload.comissao_percentual != prof.comissao_percentual
     if comissao_mudou and usuario.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Só admin altera comissão")
+
+    # Reativar conta contra o teto do plano igual a criar — sem isso o PUT
+    # era um bypass do limite (desativa, cria outro, reativa).
+    if payload.ativo and not prof.ativo:
+        verificar_limite(db, clinica, "profissionais")
 
     prof.nome = payload.nome
     prof.email = payload.email

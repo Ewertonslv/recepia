@@ -1,8 +1,6 @@
 """Testes de hash de senha e JWT (core/security.py)."""
-import time
 from datetime import datetime, timedelta
 
-import pytest
 
 from core.security import (
     criar_token,
@@ -84,7 +82,6 @@ class TestJWT:
 
     def test_token_expirado_retorna_none(self, monkeypatch):
         """Cria token com expiração negativa e verifica que decodifica retorna None."""
-        from core import security
         # força exp no passado
         from jose import jwt
         from config import settings

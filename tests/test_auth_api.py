@@ -1,5 +1,4 @@
 """Testes da rota /auth/login + validação de JWT pelas dependências."""
-import pytest
 
 
 class TestLogin:

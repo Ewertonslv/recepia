@@ -5,7 +5,6 @@ e processar_resposta_paciente com mock de WhatsApp.
 """
 from datetime import datetime, timedelta
 
-import pytest
 
 from models import Agendamento, Interacao, Paciente, Status
 from services.scheduler import SchedulerService
@@ -218,15 +217,21 @@ class TestProcessarResposta:
         resultado = sched.processar_resposta_paciente(c, "5511955555556", "não posso")
         assert resultado["novo_status"] == Status.CANCELADO
 
-    def test_resposta_reagendar(self, db_session, clinica_fake, monkeypatch):
+    def test_resposta_reagendar_sem_slots_mantem_agendamento(self, db_session, clinica_fake, monkeypatch):
+        """Sem horários livres, o agendamento NÃO pode virar REAGENDADO: a próxima
+        resposta do paciente não o encontraria mais e o pedido se perderia. Ele
+        continua PENDENTE (reservado) e o bot avisa que a recepção vai encaixar."""
         c = clinica_fake["clinica"]
         p = _criar_paciente(db_session, c.id, telefone="5511955555557")
-        _criar_agendamento(db_session, c.id, p.id, confirmacao_enviada=True)
+        ag = _criar_agendamento(db_session, c.id, p.id, confirmacao_enviada=True)
         db_session.commit()
 
-        sched, _ = _make_scheduler_with_fake_ws(db_session, monkeypatch)
+        sched, sent = _make_scheduler_with_fake_ws(db_session, monkeypatch)
         resultado = sched.processar_resposta_paciente(c, "5511955555557", "outro horário")
-        assert resultado["novo_status"] == Status.REAGENDADO
+        assert resultado["novo_status"] == Status.PENDENTE
+        db_session.refresh(ag)
+        assert ag.status == Status.PENDENTE
+        assert any("encaixe" in m["msg"] for m in sent)
 
     def test_telefone_sem_agendamento_responde_boas_vindas(self, db_session, clinica_fake, monkeypatch):
         """Número novo (sem agendamento pendente) → fluxo de boas-vindas/convite a

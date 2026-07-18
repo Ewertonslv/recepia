@@ -1,7 +1,6 @@
 """Testes CRUD de agendamentos + ISOLAMENTO MULTI-TENANT."""
 from datetime import datetime, timedelta
 
-import pytest
 
 
 def _criar_paciente(client, headers, nome="Paciente X", telefone="5511977777777"):

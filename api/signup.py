@@ -2,7 +2,7 @@
 
 Sem auth. Rate limited (3/hour/IP). LGPD: registra aceite_termos timestamp.
 """
-from datetime import datetime, date
+from datetime import date
 from core.timezones import agora_utc
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
