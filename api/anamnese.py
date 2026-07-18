@@ -5,10 +5,9 @@ PUT salva respostas (cria ou atualiza — 1 anamnese por paciente).
 
 LGPD Art. 11 (dado sensível de saúde): audit READ em GET, audit UPDATE em PUT.
 """
-from datetime import datetime
 from core.timezones import agora_utc
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 

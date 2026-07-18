@@ -225,9 +225,15 @@ def listar(
     paciente_id: str = Query(..., description="Obrigatório — listagem só por paciente"),
     status_filtro: Optional[str] = Query(None, alias="status"),
     clinica: Clinica = Depends(clinica_atual),
+    ctx: dict = Depends(audit_context),
     db: Session = Depends(get_db_dependency),
 ):
     _validar_paciente(db, clinica.id, paciente_id)
+    # Plano de tratamento é dado clínico (LGPD Art. 11) — leitura audita como
+    # nos demais módulos de prontuário.
+    audit.log(db, **ctx, acao=AcaoAudit.READ, recurso="plano_tratamento",
+              recurso_id=None, detalhes={"paciente_id": paciente_id})
+    db.commit()
 
     q = db.query(PlanoTratamento).filter(
         PlanoTratamento.clinica_id == clinica.id,
@@ -257,9 +263,13 @@ def listar(
 def obter(
     plano_id: str,
     clinica: Clinica = Depends(clinica_atual),
+    ctx: dict = Depends(audit_context),
     db: Session = Depends(get_db_dependency),
 ):
     p = _buscar_ou_404(db, plano_id, clinica.id)
+    audit.log(db, **ctx, acao=AcaoAudit.READ, recurso="plano_tratamento",
+              recurso_id=p.id, detalhes={"paciente_id": p.paciente_id})
+    db.commit()
     prontuarios = (
         db.query(Prontuario)
         .filter(

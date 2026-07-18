@@ -10,13 +10,14 @@ Hardenings:
 - Audit READ/CREATE/DELETE individual por foto.
 - Headers privados (Cache-Control private, X-Content-Type-Options, CSP) ao servir.
 """
-from datetime import datetime
 from core.timezones import agora_utc
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+from core.limiter import limiter
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -74,7 +75,9 @@ def _carregar_prontuario_lock(db: Session, prontuario_id: str, clinica_id: str) 
 
 
 @router.post("", response_model=UploadResposta, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")  # decode+reencode Pillow é caro — mesma lógica dos PDFs
 async def upload(
+    request: Request,
     prontuario_id: str,
     arquivo: UploadFile = File(...),
     descricao: Optional[str] = Form(None, max_length=200),

@@ -10,7 +10,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from core.timezones import TZ_BR, agora_br, agora_utc, from_utc_to_br
+from core.timezones import TZ_BR, agora_br, agora_utc
 from models import Agendamento, BloqueioAgenda, Clinica, HorarioFuncionamento, Status
 
 
@@ -55,18 +55,24 @@ def sugerir_slots(
     agora = agora_br()
     minimo_disponivel = agora + timedelta(hours=ANTECEDENCIA_MINIMA_HORAS)
 
-    # Pré-busca agendamentos do range pra evitar N queries no loop
+    # Pré-busca agendamentos do range pra evitar N queries no loop.
+    # Ocupação é por INTERVALO (data_hora + duracao), não por igualdade exata —
+    # um agendamento fora da grade (14:30) ou mais longo que o slot também
+    # bloqueia os slots que ele atravessa. O range começa 1 dia antes pra
+    # capturar agendamentos longos que começaram antes da janela.
     inicio_range_utc = agora_utc()
     fim_range_utc = inicio_range_utc + timedelta(days=dias_a_frente + 1)
-    q = db.query(Agendamento.data_hora).filter(
+    q = db.query(Agendamento.data_hora, Agendamento.duracao_minutos).filter(
         Agendamento.clinica_id == clinica.id,
         Agendamento.status.in_([Status.PENDENTE, Status.CONFIRMADO]),
-        Agendamento.data_hora >= inicio_range_utc,
+        Agendamento.data_hora >= inicio_range_utc - timedelta(days=1),
         Agendamento.data_hora <= fim_range_utc,
     )
     if excluir_agendamento_id:
         q = q.filter(Agendamento.id != excluir_agendamento_id)
-    ocupados_utc = {row[0] for row in q.all()}
+    ocupados_utc = [
+        (dh, dh + timedelta(minutes=dur or 30)) for dh, dur in q.all()
+    ]
 
     # Sprint 9: períodos bloqueados (almoço, férias, feriado). Conservador —
     # qualquer bloqueio que cruze a janela invalida o slot, mesmo se for de
@@ -97,19 +103,22 @@ def sugerir_slots(
 
         while atual + delta <= fim_dia:
             slot_utc_naive = atual.astimezone(timezone.utc).replace(tzinfo=None)
+            slot_fim_utc = slot_utc_naive + delta
 
             # Filtra: antecedência mínima
             if atual < minimo_disponivel:
                 atual += delta
                 continue
 
-            # Filtra: já ocupado
-            if slot_utc_naive in ocupados_utc:
+            # Filtra: já ocupado (sobreposição de intervalos, não igualdade)
+            if any(o_ini < slot_fim_utc and slot_utc_naive < o_fim
+                   for o_ini, o_fim in ocupados_utc):
                 atual += delta
                 continue
 
-            # Filtra: dentro de um bloqueio de agenda
-            if any(b_ini <= slot_utc_naive < b_fim for b_ini, b_fim in bloqueios):
+            # Filtra: cruza um bloqueio de agenda (qualquer sobreposição)
+            if any(b_ini < slot_fim_utc and slot_utc_naive < b_fim
+                   for b_ini, b_fim in bloqueios):
                 atual += delta
                 continue
 
