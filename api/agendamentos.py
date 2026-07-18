@@ -1,5 +1,5 @@
 """CRUD de agendamentos — multi-tenant, scoped por clinica_id."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -159,26 +159,31 @@ def listar(
     q = db.query(Agendamento).filter(Agendamento.clinica_id == clinica.id)
     if status_filtro:
         q = q.filter(Agendamento.status == status_filtro)
+    # Os filtros de data representam DIAS do calendário BR. Como data_hora é
+    # armazenado em UTC naive, convertemos a janela [00:00 BR, 00:00 BR +1) pra
+    # UTC antes de comparar — senão consultas perto da meia-noite caem no dia errado.
     if data:
         try:
-            data_dt = datetime.fromisoformat(data)
-            q = q.filter(
-                Agendamento.data_hora >= data_dt.replace(hour=0, minute=0, second=0),
-                Agendamento.data_hora < data_dt.replace(hour=23, minute=59, second=59),
-            )
+            dia = datetime.fromisoformat(data).replace(hour=0, minute=0, second=0, microsecond=0)
         except ValueError:
             raise HTTPException(400, "Data inválida (use YYYY-MM-DD)")
+        q = q.filter(
+            Agendamento.data_hora >= to_utc_naive(dia),
+            Agendamento.data_hora < to_utc_naive(dia + timedelta(days=1)),
+        )
     if data_inicio:
         try:
-            q = q.filter(Agendamento.data_hora >= datetime.fromisoformat(data_inicio))
+            ini = datetime.fromisoformat(data_inicio).replace(hour=0, minute=0, second=0, microsecond=0)
         except ValueError:
             raise HTTPException(400, "data_inicio inválida (use YYYY-MM-DD)")
+        q = q.filter(Agendamento.data_hora >= to_utc_naive(ini))
     if data_fim:
         try:
-            fim_dt = datetime.fromisoformat(data_fim)
-            q = q.filter(Agendamento.data_hora <= fim_dt.replace(hour=23, minute=59, second=59))
+            fim = datetime.fromisoformat(data_fim).replace(hour=0, minute=0, second=0, microsecond=0)
         except ValueError:
             raise HTTPException(400, "data_fim inválida (use YYYY-MM-DD)")
+        # fim é inclusivo (dia inteiro) → limite exterior é o começo do dia seguinte.
+        q = q.filter(Agendamento.data_hora < to_utc_naive(fim + timedelta(days=1)))
     return q.order_by(Agendamento.data_hora).all()
 
 

@@ -24,7 +24,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from config import origens_cors
-from core.deps import clinica_atual
+from core.deps import clinica_atual, verificar_admin
 from core.limiter import limiter
 from core.timezones import agora_utc, from_utc_to_br
 from database import get_db_dependency, init_db
@@ -156,6 +156,17 @@ if LANDING_DIR.exists():
         from fastapi.responses import FileResponse
         return FileResponse(LANDING_DIR / "robots.txt", media_type="text/plain")
 
+
+# CSS do Tailwind compilado (estático) — substitui o CDN de dev nas páginas
+# servidas. Referenciado por caminho absoluto (/recepia.tailwind.css) tanto na
+# landing (raiz) quanto no dashboard (mount /dashboard).
+STATIC_DIR = BASE_DIR / "static"
+
+@app.get("/recepia.tailwind.css", include_in_schema=False)
+def tailwind_css():
+    from fastapi.responses import FileResponse
+    return FileResponse(STATIC_DIR / "recepia.tailwind.css", media_type="text/css")
+
     @app.get("/sitemap.xml", include_in_schema=False)
     def sitemap():
         from fastapi.responses import FileResponse
@@ -196,9 +207,13 @@ def relatorios_dashboard(
 
 
 @app.get("/api/relatorios/ia")
-def relatorios_ia(clinica: Clinica = Depends(clinica_atual)):
+def relatorios_ia(_: None = Depends(verificar_admin)):
     """Observabilidade do classificador LLM neste processo: chamadas, tokens,
-    custo estimado (USD), latência média e quantos caíram no fallback/guardrail."""
+    custo estimado (USD), latência média e quantos caíram no fallback/guardrail.
+
+    Admin-only: `metricas_llm.snapshot()` é um acumulador GLOBAL do processo
+    (agregado de todas as clínicas do worker), então não pode ser exposto a um
+    tenant — vazaria custo/volume da plataforma inteira."""
     from services.processor import metricas_llm
     return metricas_llm.snapshot()
 

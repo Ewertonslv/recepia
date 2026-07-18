@@ -4,6 +4,8 @@ Mudanças vs versão anterior:
 - audit_context: extrai IP/UA/usuario pra logs LGPD (F9).
 - usuario_atual: valida claim clinica_id no JWT contra valor atual do banco (F10/B5).
 """
+import hmac
+
 from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
@@ -27,7 +29,9 @@ def verificar_admin(
     Sprint 6: Bearer JWT também é checado contra blacklist (admin_tokens_revogados).
     Tokens legados sem `jti` passam (compat).
     """
-    if x_admin_key and x_admin_key == settings.ADMIN_API_KEY:
+    # compare_digest: comparação em tempo constante (evita timing side-channel),
+    # consistente com os paths de JWT.
+    if x_admin_key and hmac.compare_digest(x_admin_key, settings.ADMIN_API_KEY):
         return
     if authorization and authorization.startswith("Bearer "):
         token = authorization.removeprefix("Bearer ").strip()

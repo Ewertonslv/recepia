@@ -1,9 +1,9 @@
 <!-- Vai dentro do else-if do abrirGerarDocumento(tipo) quando tipo==='termo_consentimento' -->
 <!-- Bloco de campos (substitua <HOJE> em tempo de render pelo new Date().toISOString().slice(0,10)) -->
-<div><label class="lbl">Procedimento <span class="text-rose-500">*</span></label><input id="gd-proc" placeholder="Ex: extração do siso 48" class="field" required></div>
-<div><label class="lbl">Riscos (opcional)</label><textarea id="gd-riscos" rows="2" class="field" placeholder="Sangramento, edema..."></textarea></div>
-<div><label class="lbl">Cuidados pós (opcional)</label><textarea id="gd-cuidados" rows="2" class="field" placeholder="Gelo nas primeiras 24h..."></textarea></div>
-<div><label class="lbl">Data</label><input id="gd-data" type="date" value="<HOJE>" class="field"></div>
+<div><label class="lbl" for="gd-proc">Procedimento <span class="text-rose-500">*</span></label><input id="gd-proc" placeholder="Ex: extração do siso 48" class="field" required></div>
+<div><label class="lbl" for="gd-riscos">Riscos (opcional)</label><textarea id="gd-riscos" rows="2" class="field" placeholder="Sangramento, edema..."></textarea></div>
+<div><label class="lbl" for="gd-cuidados">Cuidados pós (opcional)</label><textarea id="gd-cuidados" rows="2" class="field" placeholder="Gelo nas primeiras 24h..."></textarea></div>
+<div><label class="lbl" for="gd-data">Data</label><input id="gd-data" type="date" value="<HOJE>" class="field"></div>
 
 <!--
   No botão Gerar (handler de submit do modal "Gerar documento"), quando tipo==='termo_consentimento':

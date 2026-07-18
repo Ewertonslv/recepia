@@ -1,4 +1,4 @@
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -55,6 +55,21 @@ class Settings(BaseSettings):
                 "Gere com `openssl rand -hex 32`."
             )
         return v
+
+    @model_validator(mode="after")
+    def exigir_webhook_secret_em_producao(self):
+        """F2: fora de DEBUG o webhook do Evolution NÃO pode ficar sem HMAC.
+
+        Sem esse guard, `_validar_assinatura_hmac` aceitaria qualquer body e o
+        endpoint de mutação (confirmar/cancelar/remarcar) ficaria aberto.
+        """
+        if not self.DEBUG and not self.EVOLUTION_WEBHOOK_SECRET:
+            raise ValueError(
+                "EVOLUTION_WEBHOOK_SECRET é obrigatório em produção (DEBUG=false). "
+                "Gere com `openssl rand -hex 32` e configure no .env — sem ele o "
+                "webhook /api/webhook/evolution ficaria sem autenticação."
+            )
+        return self
 
     class Config:
         env_file = ".env"

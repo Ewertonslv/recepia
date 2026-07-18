@@ -30,8 +30,11 @@ def from_utc_to_br(dt: datetime) -> datetime:
 
 
 def agora_utc() -> datetime:
-    """Now em UTC naive (mesmo formato salvo no banco)."""
-    return datetime.utcnow()
+    """Now em UTC naive (mesmo formato salvo no banco).
+
+    datetime.now(UTC) (aware) + strip do tzinfo — utcnow() está deprecado.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def agora_br() -> datetime:

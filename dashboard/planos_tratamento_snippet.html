@@ -174,26 +174,26 @@ function openFormPlano(plano) {
       <h3 class="font-serif text-2xl text-ink-900 mb-5">${isEdit ? 'Editar plano de tratamento' : 'Novo plano de tratamento'}</h3>
       <div class="space-y-4">
         <div>
-          <label class="lbl">Nome do plano <span class="text-rose-500">*</span></label>
+          <label class="lbl" for="pt-nome">Nome do plano <span class="text-rose-500">*</span></label>
           <input id="pt-nome" class="field" maxlength="120" placeholder="Ex: Tratamento de canal dente 36" value="${escapeHtml(plano?.nome || '')}" required>
         </div>
         <div>
-          <label class="lbl">Descrição</label>
+          <label class="lbl" for="pt-desc">Descrição</label>
           <textarea id="pt-desc" class="field" rows="3" maxlength="5000" placeholder="Detalhe o que será feito (opcional)">${escapeHtml(plano?.descricao || '')}</textarea>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="lbl">Sessões previstas <span class="text-rose-500">*</span></label>
+            <label class="lbl" for="pt-sessoes">Sessões previstas <span class="text-rose-500">*</span></label>
             <input id="pt-sessoes" type="number" min="1" max="200" class="field" value="${plano?.sessoes_previstas ?? 1}" required>
           </div>
           <div>
-            <label class="lbl">Profissional</label>
+            <label class="lbl" for="pt-prof">Profissional</label>
             <select id="pt-prof" class="field">${profOpts}</select>
           </div>
         </div>
         ${isEdit ? `
           <div>
-            <label class="lbl">Status</label>
+            <label class="lbl" for="pt-status">Status</label>
             <select id="pt-status" class="field">
               <option value="ativo" ${plano.status === 'ativo' ? 'selected' : ''}>Ativo</option>
               <option value="concluido" ${plano.status === 'concluido' ? 'selected' : ''}>Concluído</option>
@@ -301,7 +301,7 @@ function promptMotivoCancel(nomePlano) {
       <div class="glass rounded-3xl shadow-2xl max-w-md w-full p-7">
         <h3 class="font-serif text-2xl text-ink-900 mb-2">Cancelar plano</h3>
         <p class="text-ink-600 text-sm mb-4">Informe o motivo do cancelamento de <strong>${escapeHtml(nomePlano)}</strong> (fica registrado no audit log LGPD).</p>
-        <textarea id="pt-motivo" class="field" rows="3" maxlength="500" placeholder="Ex: paciente desistiu, mudança de plano clínico..."></textarea>
+        <textarea id="pt-motivo" class="field" rows="3" maxlength="500" placeholder="Ex: paciente desistiu, mudança de plano clínico..." aria-label="Motivo do cancelamento"></textarea>
         <div class="flex gap-2 justify-end mt-5">
           <button data-cancel class="btn btn-ghost text-sm" style="padding:10px 18px;">Voltar</button>
           <button data-confirm class="btn btn-danger text-sm" style="padding:10px 18px;">

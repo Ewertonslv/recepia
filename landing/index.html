@@ -55,11 +55,6 @@
     {"@type": "Offer", "name": "Pro", "price": "197.00", "priceCurrency": "BRL", "url": "https://app.recepia.app.br/cadastro"},
     {"@type": "Offer", "name": "Enterprise", "price": "497.00", "priceCurrency": "BRL", "url": "https://app.recepia.app.br/cadastro"}
   ],
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.8",
-    "reviewCount": "23"
-  },
   "provider": {
     "@type": "Organization",
     "name": "Recepia Tecnologia Ltda",
@@ -70,30 +65,11 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          rose: { DEFAULT: '#E8B4B8', deep: '#D89195', soft: '#F5DDDE' },
-          graphite: { DEFAULT: '#2D3142', soft: '#5C5552', muted: '#7A7570' },
-          sage: { DEFAULT: '#7FB069', deep: '#5F8C4E' },
-          cream: { DEFAULT: '#FAF7F5', warm: '#F2EBE5' },
-          whatsapp: '#25D366',
-        },
-        fontFamily: {
-          serif: ['Fraunces', 'Georgia', 'serif'],
-          sans: ['Inter', 'system-ui', 'sans-serif'],
-        },
-      },
-    },
-  }
-</script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/recepia.tailwind.css">
 <style>
   html { scroll-behavior: smooth; }
-  body { font-family: 'Inter', system-ui, sans-serif; color: #2D3142; background: #FAF7F5; -webkit-font-smoothing: antialiased; }
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #2D3142; background: #FAF7F5; -webkit-font-smoothing: antialiased; }
   .font-display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; }
   /* pingo rosé no i de "recepia" */
   .logo-dot { display: inline-block; width: 0.42em; height: 0.42em; border-radius: 999px; background: #E8B4B8; vertical-align: 0.55em; margin-left: -0.05em; margin-right: 0.02em; }
@@ -117,6 +93,8 @@
 </head>
 <body class="bg-cream text-graphite">
 
+<a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:rounded-full focus:bg-graphite focus:text-cream focus:font-medium focus:shadow-lg">Pular para o conteúdo</a>
+
 <!-- ============ NAV ============ -->
 <header class="absolute top-0 inset-x-0 z-20">
   <div class="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -135,13 +113,15 @@
         ver planos
       </a>
       <!-- CTA principal: começar grátis -->
-      <a href="/cadastro" class="plausible-event-name=CTA+Cadastro hidden sm:inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full bg-graphite text-cream hover:bg-graphite/90 transition">
+      <a href="/cadastro" class="plausible-event-name=CTA+Cadastro inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full bg-graphite text-cream hover:bg-graphite/90 transition">
         começar grátis
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
       </a>
     </nav>
   </div>
 </header>
+
+<main id="main">
 
 <!-- ============ HERO ============ -->
 <section class="relative pt-28 pb-20 sm:pt-36 sm:pb-28 overflow-hidden">
@@ -181,7 +161,7 @@
           começar grátis
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </a>
-        <a href="https://wa.me/5511999999999?text=oi%2C%20quero%20saber%20mais%20da%20recepia" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-graphite font-medium ring-1 ring-graphite/15 hover:ring-graphite/40 transition">
+        <a href="https://wa.me/5584999004403?text=oi%2C%20quero%20saber%20mais%20da%20recepia" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-graphite font-medium ring-1 ring-graphite/15 hover:ring-graphite/40 transition">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#25D366"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91a9.86 9.86 0 0 0-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm5.79 14.18c-.25.69-1.43 1.31-1.99 1.4-.51.08-1.16.11-1.87-.12-.43-.14-.99-.32-1.7-.63-2.99-1.29-4.95-4.3-5.1-4.5-.15-.2-1.22-1.62-1.22-3.09s.77-2.19 1.05-2.49c.27-.3.6-.37.8-.37h.58c.18 0 .43-.07.67.51.25.6.85 2.07.92 2.22.08.15.13.32.03.52-.1.2-.15.32-.3.5-.15.18-.32.4-.45.54-.15.15-.3.31-.13.61.18.3.78 1.29 1.68 2.09 1.16 1.03 2.13 1.35 2.43 1.5.3.15.47.13.65-.08.18-.2.75-.87.95-1.17.2-.3.4-.25.67-.15.27.1 1.74.82 2.04.97.3.15.5.22.57.35.08.13.08.74-.17 1.43z"/></svg>
           chamar no whatsapp
         </a>
@@ -680,7 +660,7 @@
     </div>
 
     <div class="mt-12 text-center">
-      <p class="text-sm text-graphite-soft">não tem certeza ainda? <a href="https://wa.me/5511999999999?text=oi%2C%20quero%20tirar%20d%C3%BAvida%20sobre%20os%20planos%20da%20recepia" target="_blank" rel="noopener" class="text-rose-deep font-medium underline underline-offset-4">manda mensagem no whatsapp</a> que a gente conversa.</p>
+      <p class="text-sm text-graphite-soft">não tem certeza ainda? <a href="https://wa.me/5584999004403?text=oi%2C%20quero%20tirar%20d%C3%BAvida%20sobre%20os%20planos%20da%20recepia" target="_blank" rel="noopener" class="text-rose-deep font-medium underline underline-offset-4">manda mensagem no whatsapp</a> que a gente conversa.</p>
       <p class="mt-3 text-xs text-graphite-muted">⚡ 7 dias grátis em qualquer plano · cancela quando quiser · sem multa, sem letra miúda</p>
     </div>
   </div>
@@ -814,7 +794,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
             entrar no meu painel
           </a>
-          <a href="https://wa.me/5511999999999?text=oi%2C%20esqueci%20minha%20senha%20da%20recepia" target="_blank" rel="noopener" class="mt-3 text-center text-xs text-cream/70 hover:text-cream underline underline-offset-2">esqueci minha senha</a>
+          <a href="https://wa.me/5584999004403?text=oi%2C%20esqueci%20minha%20senha%20da%20recepia" target="_blank" rel="noopener" class="mt-3 text-center text-xs text-cream/70 hover:text-cream underline underline-offset-2">esqueci minha senha</a>
           <p class="mt-4 text-[11px] text-cream/50 text-center">login com o email e senha que a equipe da recepia te enviou no setup.</p>
         </div>
       </div>
@@ -838,7 +818,7 @@
           escolher meu plano
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </a>
-        <a href="https://wa.me/5511999999999?text=oi%2C%20quero%20tirar%20uma%20d%C3%BAvida%20sobre%20a%20recepia" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-whatsapp text-white font-medium hover:opacity-90 transition">
+        <a href="https://wa.me/5584999004403?text=oi%2C%20quero%20tirar%20uma%20d%C3%BAvida%20sobre%20a%20recepia" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-whatsapp text-white font-medium hover:opacity-90 transition">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91a9.86 9.86 0 0 0-2.9-7.01A9.82 9.82 0 0 0 12.04 2z"/></svg>
           tirar dúvida
         </a>
@@ -853,6 +833,8 @@
     <p class="mt-8 text-sm text-cream/60 italic">🎁 cadastra agora e ganha 7 dias grátis na hora, sem cartão. se gostar, escolhe um plano. se não, paga zero.</p>
   </div>
 </section>
+
+</main>
 
 <!-- ============ FOOTER ============ -->
 <footer class="bg-cream py-14 border-t border-graphite/10">
@@ -923,7 +905,7 @@
       a.rel = 'noopener';
     } else {
       // sem URL definido → manda pro WhatsApp dizendo qual plano quer
-      a.href = `https://wa.me/5511999999999?text=${encodeURIComponent('oi, quero assinar o plano ' + plano + ' da recepia')}`;
+      a.href = `https://wa.me/5584999004403?text=${encodeURIComponent('oi, quero assinar o plano ' + plano + ' da recepia')}`;
       a.target = '_blank';
       a.rel = 'noopener';
     }

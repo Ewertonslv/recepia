@@ -125,6 +125,7 @@ class SchedulerService:
         telefone = paciente.telefone
         clinica_id = clinica.id
         agendamento_id = agendamento.id
+        paciente_id = paciente.id
 
         # Claim: marca como enviado e persiste ANTES do disparo.
         setattr(agendamento, flag_attr, True)
@@ -143,6 +144,7 @@ class SchedulerService:
         self.db.add(Interacao(
             clinica_id=clinica_id,
             agendamento_id=agendamento_id,
+            paciente_id=paciente_id,
             tipo=tipo,
             mensagem_enviada=mensagem,
         ))
@@ -238,7 +240,7 @@ class SchedulerService:
         # ── Sem agendamento pendente → marca novo / recusa / cumprimenta ───
         if not agendamento:
             log_ok = self._safe_add_interacao(
-                clinica_id=clinica.id, agendamento_id=None,
+                clinica_id=clinica.id, agendamento_id=None, paciente_id=paciente.id,
                 tipo=TipoInteracao.RESPOSTA,
                 mensagem_recebida=mensagem,
                 evolution_message_id=evolution_message_id,
@@ -265,7 +267,7 @@ class SchedulerService:
 
         # ── Paciente com agendamento pendente → confirma/cancela/reagenda ──
         dedup_ok = self._safe_add_interacao(
-            clinica_id=clinica.id, agendamento_id=agendamento.id,
+            clinica_id=clinica.id, agendamento_id=agendamento.id, paciente_id=paciente.id,
             tipo=TipoInteracao.RESPOSTA,
             mensagem_recebida=mensagem,
             evolution_message_id=evolution_message_id,
@@ -380,7 +382,7 @@ class SchedulerService:
         servico_hint = estado.contexto.get("servico_hint", "")
 
         dedup_ok = self._safe_add_interacao(
-            clinica_id=clinica.id, agendamento_id=None,
+            clinica_id=clinica.id, agendamento_id=None, paciente_id=paciente.id,
             tipo=TipoInteracao.AGENDAMENTO,
             mensagem_recebida=mensagem,
             evolution_message_id=evolution_message_id,
@@ -450,7 +452,16 @@ class SchedulerService:
             servico=servico,
         )
         self.db.add(agendamento)
-        self.db.flush()
+        try:
+            self.db.flush()
+        except IntegrityError:
+            # TOCTOU: entre o check `ja_ocupado` e o insert, outro paciente pegou o
+            # slot. O índice único (uq_agendamento_slot_bot) barra a duplicata —
+            # aqui só reabrimos o fluxo com horários frescos.
+            self.db.rollback()
+            return self._iniciar_fluxo_agendamento(
+                clinica, paciente, paciente.telefone, None, servico_hint
+            )
         self.db.delete(estado)
 
         data_br = from_utc_to_br(data_utc).strftime("%d/%m às %H:%M")
@@ -549,7 +560,7 @@ class SchedulerService:
 
         # Log da resposta
         dedup_ok = self._safe_add_interacao(
-            clinica_id=clinica.id, agendamento_id=agendamento_id,
+            clinica_id=clinica.id, agendamento_id=agendamento_id, paciente_id=paciente.id,
             tipo=TipoInteracao.REAGENDAMENTO,
             mensagem_recebida=mensagem,
             evolution_message_id=evolution_message_id,
@@ -626,7 +637,7 @@ class SchedulerService:
         paciente.opt_out = True
         paciente.opt_out_em = agora_utc()
         self._safe_add_interacao(
-            clinica_id=clinica.id, agendamento_id=None,
+            clinica_id=clinica.id, agendamento_id=None, paciente_id=paciente.id,
             tipo=TipoInteracao.OPT_OUT,
             mensagem_recebida=mensagem,
             evolution_message_id=evolution_message_id,
@@ -686,7 +697,8 @@ class SchedulerService:
 
     def _enviar_msg(
         self, clinica: Clinica, telefone: str, mensagem: str,
-        *, agendamento_id: Optional[str] = None, tipo: str = TipoInteracao.RESPOSTA,
+        *, agendamento_id: Optional[str] = None, paciente_id: Optional[str] = None,
+        tipo: str = TipoInteracao.RESPOSTA,
     ) -> bool:
         result = self.whatsapp.enviar_mensagem(
             instance_name=clinica.evolution_instance_name,
@@ -700,6 +712,7 @@ class SchedulerService:
         self.db.add(Interacao(
             clinica_id=clinica.id,
             agendamento_id=agendamento_id,
+            paciente_id=paciente_id,
             tipo=tipo,
             mensagem_enviada=mensagem,
         ))
