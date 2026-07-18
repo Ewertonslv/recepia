@@ -111,6 +111,9 @@ class WhatsAppService:
                 "url": url_webhook,
                 "byEvents": False,
                 "base64": False,
+                # F2: o Evolution reenvia esse header estático em todo callback;
+                # a Recepia o valida em _validar_token. Vazio só em DEBUG local.
+                "headers": {"X-Webhook-Token": settings.EVOLUTION_WEBHOOK_SECRET},
                 "events": ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
             }
         }
