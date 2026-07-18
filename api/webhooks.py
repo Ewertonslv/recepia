@@ -1,10 +1,9 @@
 """Webhook callback da Evolution API.
 
-Autenticado via HMAC-SHA256 sobre o body (F2).
+Autenticado via token estático compartilhado no header X-Webhook-Token (F2).
 Idempotente por message_id (G9).
 Schema validado (F14).
 """
-import hashlib
 import hmac
 import logging
 
@@ -66,14 +65,21 @@ def _extrair_telefone(remote_jid: str) -> str:
     return remote_jid.split("@")[0]
 
 
-def _validar_assinatura_hmac(body_bytes: bytes, signature_header: str | None) -> bool:
-    """F2: valida assinatura HMAC-SHA256 do body com EVOLUTION_WEBHOOK_SECRET.
+def _validar_token(token_header: str | None) -> bool:
+    """F2: autentica o webhook por token estático compartilhado.
+
+    O Evolution API não assina o corpo (não faz HMAC por requisição); ele só
+    reenvia headers estáticos configurados em `webhook.headers`. Por isso a
+    autenticação é um segredo fixo (EVOLUTION_WEBHOOK_SECRET) comparado em tempo
+    constante — o mesmo valor que `configurar_webhook` injeta no X-Webhook-Token.
+    Sobre HTTPS o segredo não trafega em claro.
 
     Em produção o secret é obrigatório (config.py falha no boot sem ele quando
-    DEBUG=false). Só é permitido rodar sem assinatura em DEBUG — e mesmo assim
-    apenas quando o secret está de fato vazio.
+    DEBUG=false). Só é permitido rodar sem token em DEBUG — e mesmo assim apenas
+    quando o secret está de fato vazio.
     """
-    if not settings.EVOLUTION_WEBHOOK_SECRET:
+    secret = settings.EVOLUTION_WEBHOOK_SECRET
+    if not secret:
         # Sem secret só acontece em DEBUG (o boot bloqueia em prod). Aceita local.
         if settings.DEBUG:
             return True
@@ -81,16 +87,11 @@ def _validar_assinatura_hmac(body_bytes: bytes, signature_header: str | None) ->
         # de DEBUG, rejeita em vez de abrir o endpoint.
         log.error("Webhook sem EVOLUTION_WEBHOOK_SECRET fora de DEBUG — rejeitando.")
         return False
-    if not signature_header:
+    if not token_header:
         return False
-    expected = hmac.new(
-        settings.EVOLUTION_WEBHOOK_SECRET.encode(),
-        body_bytes,
-        hashlib.sha256,
-    ).hexdigest()
-    # Aceita formatos: "sha256=<hex>" ou "<hex>"
-    received = signature_header.replace("sha256=", "").strip()
-    return hmac.compare_digest(expected, received)
+    # Aceita "Bearer <token>" ou o token puro.
+    recebido = token_header.removeprefix("Bearer ").strip()
+    return hmac.compare_digest(secret, recebido)
 
 
 # ============================================================================
@@ -101,7 +102,7 @@ def _validar_assinatura_hmac(body_bytes: bytes, signature_header: str | None) ->
 @limiter.limit("120/minute")
 async def webhook_evolution(
     request: Request,
-    x_webhook_signature: str | None = Header(None),
+    x_webhook_token: str | None = Header(None),
     db: Session = Depends(get_db_dependency),
 ):
     # F14: limite de body antes de parsear
@@ -109,9 +110,9 @@ async def webhook_evolution(
     if len(body_bytes) > MAX_BODY_BYTES:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Body grande demais")
 
-    # F2: valida HMAC
-    if not _validar_assinatura_hmac(body_bytes, x_webhook_signature):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Assinatura inválida")
+    # F2: valida token estático compartilhado
+    if not _validar_token(x_webhook_token):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token inválido")
 
     # F14: parse com schema (rejeita junk).
     # Sprint 6: log.exception + 400 (em vez de silenciar) — schema da Evolution muda, queremos saber.

@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     # URL pública da Recepia (usada pra apontar webhook do Evolution pra cá)
     # Ex: https://recepia.app.br ou https://abc.trycloudflare.com
     PUBLIC_WEBHOOK_URL: str = ""
-    # Secret HMAC pro Evolution assinar o body do webhook (F2)
-    # Gera com: openssl rand -hex 32
+    # Token estático que o Evolution reenvia em X-Webhook-Token; a Recepia o
+    # valida no webhook (F2). Gera com: openssl rand -hex 32
     EVOLUTION_WEBHOOK_SECRET: str = ""
 
     # Groq (IA classificadora de respostas)
@@ -58,9 +58,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def exigir_webhook_secret_em_producao(self):
-        """F2: fora de DEBUG o webhook do Evolution NÃO pode ficar sem HMAC.
+        """F2: fora de DEBUG o webhook do Evolution NÃO pode ficar sem token.
 
-        Sem esse guard, `_validar_assinatura_hmac` aceitaria qualquer body e o
+        Sem esse guard, `_validar_token` aceitaria qualquer requisição e o
         endpoint de mutação (confirmar/cancelar/remarcar) ficaria aberto.
         """
         if not self.DEBUG and not self.EVOLUTION_WEBHOOK_SECRET:

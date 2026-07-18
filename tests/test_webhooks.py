@@ -1,16 +1,15 @@
-"""Testes do webhook /api/webhook/evolution — assinatura HMAC + roteamento.
+"""Testes do webhook /api/webhook/evolution — token estático + roteamento.
 
 Contrato de segurança (F2/B8/F14):
-- F2: o body é autenticado por HMAC-SHA256 (`EVOLUTION_WEBHOOK_SECRET`). Sem
-  assinatura válida → 401, ANTES de qualquer processamento.
+- F2: o webhook é autenticado por token estático (`EVOLUTION_WEBHOOK_SECRET`) no
+  header X-Webhook-Token. Sem token válido → 401, ANTES de qualquer
+  processamento. (O Evolution não assina o corpo; só reenvia headers estáticos.)
 - B8: para payload válido responde sempre `{"status": "ok"}` (não vaza se a
   clínica existe, nem a intenção/agendamento).
 - F14: payload que não bate no schema → 400.
 O valor dos testes de efeito está nos EFEITOS COLATERAIS (interação criada ou
 não, conexão atualizada, agendamento confirmado).
 """
-import hashlib
-import hmac
 import json
 from datetime import datetime, timedelta
 
@@ -18,24 +17,18 @@ from config import settings
 from models import Agendamento, Clinica, Interacao, Paciente, Status
 
 
-def _assinar(body_bytes: bytes) -> str:
-    return hmac.new(
-        settings.EVOLUTION_WEBHOOK_SECRET.encode(), body_bytes, hashlib.sha256
-    ).hexdigest()
+def _post(client, payload, *, autenticar=True, token=None):
+    """POST no webhook com o header de token estático.
 
-
-def _post(client, payload, *, assinar=True, assinatura=None):
-    """POST no webhook com corpo pré-serializado + assinatura HMAC do MESMO corpo.
-
-    Serializamos aqui (content=) pra que os bytes assinados sejam exatamente os
-    que o servidor lê em `await request.body()`.
+    Serializamos o corpo aqui (content=) pra bater exatamente com o que o
+    servidor lê em `await request.body()`.
     """
     body = json.dumps(payload).encode()
     headers = {"Content-Type": "application/json"}
-    if assinatura is not None:
-        headers["X-Webhook-Signature"] = assinatura
-    elif assinar:
-        headers["X-Webhook-Signature"] = _assinar(body)
+    if token is not None:
+        headers["X-Webhook-Token"] = token
+    elif autenticar:
+        headers["X-Webhook-Token"] = settings.EVOLUTION_WEBHOOK_SECRET
     return client.post("/api/webhook/evolution", content=body, headers=headers)
 
 
@@ -50,39 +43,31 @@ def _payload_msg(instance, from_jid, texto, from_me=False):
     }
 
 
-class TestWebhookAssinatura:
-    """F2: HMAC é a primeira barreira — vem antes do schema e do roteamento."""
+class TestWebhookToken:
+    """F2: o token é a primeira barreira — vem antes do schema e do roteamento."""
 
-    def test_sem_assinatura_rejeita_401(self, client, clinica_fake):
+    def test_sem_token_rejeita_401(self, client, clinica_fake):
         instance = clinica_fake["clinica"].evolution_instance_name
         resp = _post(client, _payload_msg(instance, "5511999990000@s.whatsapp.net", "sim"),
-                     assinar=False)
+                     autenticar=False)
         assert resp.status_code == 401
 
-    def test_assinatura_invalida_rejeita_401(self, client, clinica_fake):
+    def test_token_invalido_rejeita_401(self, client, clinica_fake):
         instance = clinica_fake["clinica"].evolution_instance_name
         resp = _post(client, _payload_msg(instance, "5511999990000@s.whatsapp.net", "sim"),
-                     assinatura="sha256=deadbeef")
+                     token="errado")
         assert resp.status_code == 401
 
-    def test_assinatura_de_outro_corpo_rejeita_401(self, client, clinica_fake):
-        # Assinatura válida PARA OUTRO body não pode passar (replay/adulteração).
-        instance = clinica_fake["clinica"].evolution_instance_name
-        outra = _assinar(json.dumps({"event": "x", "instance": instance}).encode())
-        resp = _post(client, _payload_msg(instance, "5511999990000@s.whatsapp.net", "sim"),
-                     assinatura=outra)
-        assert resp.status_code == 401
-
-    def test_assinatura_valida_processa(self, client, clinica_fake):
+    def test_token_valido_processa(self, client, clinica_fake):
         instance = clinica_fake["clinica"].evolution_instance_name
         resp = _post(client, _payload_msg(instance, "5511900000000@s.whatsapp.net", "oi"))
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok"}
 
-    def test_prefixo_sha256_aceito(self, client, clinica_fake):
+    def test_prefixo_bearer_aceito(self, client, clinica_fake):
         instance = clinica_fake["clinica"].evolution_instance_name
-        body = json.dumps(_payload_msg(instance, "5511900000000@s.whatsapp.net", "oi")).encode()
-        resp = _post(client, json.loads(body), assinatura="sha256=" + _assinar(body))
+        resp = _post(client, _payload_msg(instance, "5511900000000@s.whatsapp.net", "oi"),
+                     token="Bearer " + settings.EVOLUTION_WEBHOOK_SECRET)
         assert resp.status_code == 200
 
 

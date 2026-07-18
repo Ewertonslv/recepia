@@ -11,8 +11,6 @@ Cada teste referencia o achado que o motivou:
 - Webhook: clínica inativa/trial expirado não processam; extendedTextMessage
   com text não-string não pode derrubar o endpoint.
 """
-import hashlib
-import hmac
 import json
 from datetime import date, datetime, timedelta
 
@@ -75,18 +73,12 @@ def _horario_todos_os_dias(db, clinica):
     db.flush()
 
 
-def _assinar(body_bytes: bytes) -> str:
-    return hmac.new(
-        settings.EVOLUTION_WEBHOOK_SECRET.encode(), body_bytes, hashlib.sha256
-    ).hexdigest()
-
-
 def _post_webhook(client, payload):
     body = json.dumps(payload).encode()
     return client.post(
         "/api/webhook/evolution", content=body,
         headers={"Content-Type": "application/json",
-                 "X-Webhook-Signature": _assinar(body)},
+                 "X-Webhook-Token": settings.EVOLUTION_WEBHOOK_SECRET},
     )
 
 
