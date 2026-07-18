@@ -2,12 +2,68 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="0;url=/dashboard/">
 <title>Entrar — Recepia</title>
-<link rel="icon" href="data:,">
+<meta name="robots" content="noindex" />
+<meta name="theme-color" content="#E8B4B8" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23E8B4B8'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-family='Georgia' font-size='40' fill='%23fff'%3Er%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --rose: #E8B4B8;
+    --rose-deep: #D89195;
+    --rose-soft: #F5DDDE;
+    --ink: #2b2426;
+    --muted: #8a7e80;
+    --bg: #fbf7f7;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 600px at 50% -10%, var(--rose-soft), transparent 60%),
+      var(--bg);
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card { text-align: center; max-width: 420px; }
+  .mark {
+    width: 72px; height: 72px; margin: 0 auto 20px;
+    border-radius: 50%;
+    background: linear-gradient(150deg, var(--rose), var(--rose-deep));
+    display: grid; place-items: center;
+    color: #fff;
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 700;
+    font-size: 36px;
+    line-height: 1;
+    box-shadow: 0 10px 30px rgba(216,145,149,.35);
+  }
+  .mark span { transform: translateY(2px); }
+  h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    font-size: 22px;
+    margin: 0 0 8px;
+    letter-spacing: -.01em;
+  }
+  p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
+  p a { color: var(--rose-deep); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--rose); }
+</style>
 </head>
 <body>
 <script>window.location.replace("/dashboard/");</script>
-<p>Redirecionando pra <a href="/dashboard/">/dashboard</a>...</p>
+<div class="card">
+  <div class="mark" aria-hidden="true"><span>r</span></div>
+  <h1>Entrando na Recepia</h1>
+  <p>Redirecionando pra <a href="/dashboard/">/dashboard</a>…</p>
+</div>
 </body>
 </html>

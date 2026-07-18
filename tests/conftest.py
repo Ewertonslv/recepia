@@ -25,6 +25,9 @@ os.environ["ADMIN_API_KEY"] = "test-admin-key"
 os.environ["GROQ_API_KEY"] = ""  # força fallback regex no processor
 os.environ["EVOLUTION_API_URL"] = "http://fake-evolution"
 os.environ["EVOLUTION_API_KEY"] = "fake-key"
+# Secret do webhook setado → suíte roda no modo "produção-like" (DEBUG=false),
+# então o webhook EXIGE assinatura HMAC válida (ver tests/test_webhooks.py).
+os.environ["EVOLUTION_WEBHOOK_SECRET"] = "test-webhook-secret-0123456789abcdef"
 
 
 # ===========================================================================

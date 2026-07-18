@@ -14,7 +14,7 @@ Sprint 2:
 from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import case, func, literal, select, union_all
+from sqlalchemy import case, func, literal, or_, select, union_all
 from sqlalchemy.orm import Session
 
 from core.deps import audit_context, clinica_atual, requer_clinica_ativa
@@ -428,19 +428,22 @@ def timeline_paciente(
         Prontuario.clinica_id == clinica.id,
         Prontuario.paciente_id == paciente_id,
     )
-    # Interacao tem clinica_id próprio (FK direto) — filtra por ele E pelo paciente
-    # via join no Agendamento (interações de outros pacientes da mesma clínica não entram).
+    # Interações ligadas ao paciente por 2 caminhos: direto (paciente_id — inclui
+    # mensagens fora de fluxo, agendamento_id NULL) OU via agendamento. O outerjoin
+    # cobre os dois sem descartar as que não têm agendamento.
     q_in = (
         select(
             Interacao.id.label("id"),
             literal("interacao").label("tipo"),
             Interacao.quando.label("quando"),
         )
-        .join(Agendamento, Interacao.agendamento_id == Agendamento.id)
+        .outerjoin(Agendamento, Interacao.agendamento_id == Agendamento.id)
         .where(
             Interacao.clinica_id == clinica.id,
-            Agendamento.clinica_id == clinica.id,
-            Agendamento.paciente_id == paciente_id,
+            or_(
+                Interacao.paciente_id == paciente_id,
+                Agendamento.paciente_id == paciente_id,
+            ),
         )
     )
 
@@ -550,11 +553,17 @@ def exportar_dados(
         Agendamento.clinica_id == clinica.id,
     ).all()
     agendamento_ids = [a.id for a in agendamentos]
+    # Portabilidade (Art. 18 V): TODAS as interações do paciente — ligadas direto
+    # (paciente_id) ou via um dos seus agendamentos. Antes só pegava as com
+    # agendamento_id, então boas-vindas/opt-out/bot ficavam de fora do export.
     interacoes = (
         db.query(Interacao)
         .filter(
             Interacao.clinica_id == clinica.id,
-            Interacao.agendamento_id.in_(agendamento_ids) if agendamento_ids else False,
+            or_(
+                Interacao.paciente_id == paciente_id,
+                Interacao.agendamento_id.in_(agendamento_ids) if agendamento_ids else False,
+            ),
         )
         .all()
     )

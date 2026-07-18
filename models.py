@@ -236,6 +236,10 @@ class Interacao(Base):
     id = Column(String, primary_key=True, default=gen_id)
     clinica_id = Column(String, ForeignKey("clinicas.id", ondelete="CASCADE"), nullable=False, index=True)
     agendamento_id = Column(String, ForeignKey("agendamentos.id", ondelete="CASCADE"), nullable=True, index=True)
+    # LGPD: liga a interação direto ao paciente. Sem isso, mensagens fora de fluxo
+    # (agendamento_id NULL — boas-vindas, opt-out, agendamento via bot) ficavam
+    # órfãs e sumiam do timeline e do export de portabilidade (Art. 18 V).
+    paciente_id = Column(String, ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=True, index=True)
     tipo = Column(String, nullable=False)  # ver TipoInteracao
     mensagem_enviada = Column(Text)
     mensagem_recebida = Column(Text)
