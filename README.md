@@ -141,9 +141,9 @@ CI runs lint (ruff) + the full suite on every push via [GitHub Actions](.github/
 ## Roadmap
 
 - [ ] Public live demo on AWS (HTTPS + seeded test credentials)
-- [ ] Structured LLM output (JSON mode) instead of free-text parsing
-- [ ] Cost/latency observability for LLM calls (e.g. Langfuse)
-- [ ] Explicit prompt-injection guardrails (OWASP LLM Top 10)
+- [x] Structured LLM output (JSON mode) instead of free-text parsing
+- [x] Cost/latency observability for LLM calls (in-process token/latency/cost metrics)
+- [x] Explicit prompt-injection guardrails (OWASP LLM Top 10)
 
 ## License
 
