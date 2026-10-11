@@ -39,3 +39,10 @@ env/
 # Logs
 *.log
 logs/
+
+# Local tooling / internal notes (never published)
+.claude/
+CLAUDE.md
+graphify-out/
+PLANO_ADAPTACAO.md
+docs/marketing/

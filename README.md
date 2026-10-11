@@ -4,8 +4,7 @@
 
 [![CI](https://github.com/Ewertonslv/recepia/actions/workflows/ci.yml/badge.svg)](https://github.com/Ewertonslv/recepia/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
-![Tests](https://img.shields.io/badge/tests-266%20passing-success)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688)
 ![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-lightgrey)
 
 **🔗 Live demo:** https://recepia.app.br — **test login:** `demo@recepia.app.br` / `demo123456`
@@ -22,7 +21,7 @@ Clinics lose money on no-shows and spend hours manually confirming appointments 
 
 ## Features
 
-- **Multi-tenant by design** — three auth modes (user JWT, clinic API key, master admin key); every query is scoped by `clinica_id`, with isolation covered by automated tests (two clinics, no data bleed).
+- **Multi-tenant by design** — two auth modes (user JWT, master admin key); every query is scoped by `clinica_id`, with isolation covered by automated tests (two clinics, no data bleed).
 - **AI intent classification** — Groq / Llama 3.3 70B classifies patient replies; a deterministic regex engine is the automatic fallback, so the bot never goes silent if the LLM is down or rate-limited.
 - **WhatsApp integration** via self-hosted [Evolution API](https://github.com/EvolutionAPI/evolution-api) — QR-code pairing, send/receive, per-clinic instances.
 - **LGPD / privacy first** — PII (phone, CPF, email, ZIP) is **masked before it ever reaches the LLM** (which runs on US servers); patient data export and message opt-out (LGPD Art. 8 §5) are built in.
@@ -35,7 +34,7 @@ Clinics lose money on no-shows and spend hours manually confirming appointments 
 ```mermaid
 flowchart LR
     Patient([Patient on WhatsApp]) <--> Evo[Evolution API]
-    Evo -- webhook (HMAC) --> API[FastAPI - Recepia]
+    Evo -- "webhook (static token)" --> API[FastAPI - Recepia]
     Worker[APScheduler worker] -- "send confirmations/reminders" --> Evo
     API -- "mask PII then classify" --> Groq[Groq LLM<br/>Llama 3.3 70B]
     Groq -- intent --> API
@@ -45,15 +44,17 @@ flowchart LR
     Dash <--> API
 ```
 
+The Evolution webhook is authenticated with a static shared secret sent in the `X-Webhook-Token` header and compared in constant time. Evolution API does not sign the request body, so there is no HMAC; the token travels over HTTPS and is required in production.
+
 ## Tech stack
 
 | Layer | Tech |
 |---|---|
 | API | FastAPI · Pydantic v2 · Uvicorn |
-| Data | PostgreSQL · SQLAlchemy 2.0 · Alembic |
+| Data | PostgreSQL · SQLAlchemy 2.0 (schema from `create_all` plus idempotent `ALTER TABLE` at boot; no migration tool) |
 | AI | Groq (Llama 3.3 70B) + regex fallback |
 | Messaging | Evolution API (WhatsApp) |
-| Auth | JWT (python-jose) · bcrypt · API keys |
+| Auth | JWT (python-jose) · bcrypt · master admin key |
 | Docs | WeasyPrint + Jinja2 (PDF) |
 | Jobs | APScheduler |
 | Infra | Docker Compose (api · worker · postgres · evolution) |
@@ -62,7 +63,7 @@ flowchart LR
 
 1. Patient sends a free-text WhatsApp message → Evolution delivers it to `/api/webhook/evolution`.
 2. **PII is masked** (`mascara_pii`) so phone/CPF/email/ZIP never leave the country in plaintext.
-3. The masked text is sent to Groq with a constrained prompt (`temperature=0`, `max_tokens=10`) returning a single category.
+3. The masked text is sent to Groq with a constrained prompt (`temperature=0`, `max_tokens=20`, JSON mode) returning a single category.
 4. Intents are mapped with careful ordering (e.g. `OPT_OUT` and `REAGENDAR` are checked before `CANCELADO`/`AGENDAR` to avoid substring collisions).
 5. If Groq errors or is rate-limited, a deterministic **regex classifier** takes over — same categories, zero downtime.
 6. The schedule is updated and the patient gets the appropriate reply.
@@ -86,7 +87,7 @@ Every classification call is measured — latency, token usage and estimated cos
 
 - **Cost & latency are first-class** — you can see exactly what the LLM layer costs and how fast it responds, per process. No guessing the bill.
 - **`fallbacks_regex`** counts how often the deterministic classifier took over (Groq down or rate-limited) — the bot never goes silent.
-- **`injecoes_bloqueadas`** counts prompt-injection attempts routed straight to the safe deterministic path (OWASP LLM01 guardrail) — the LLM never even sees a crafted message.
+- **`injecoes_bloqueadas`** counts messages the regex guardrail flagged as prompt injection and routed to the safe fallback (`nao_entendido`, no state change). It is a first line, not a filter: measured recall is 15.6% on a public dataset, see [guardrail-bench](https://github.com/Ewertonslv/guardrail-bench).
 
 ## Quickstart (Docker)
 
@@ -111,7 +112,7 @@ Create your first clinic, log in, add a patient and connect WhatsApp — the ful
 
 ```bash
 pip install -r requirements.txt pytest
-pytest -q          # 266 tests, SQLite in-memory, WhatsApp/LLM mocked — no external services needed
+pytest -q          # SQLite in-memory, WhatsApp/LLM mocked, no external services needed (see CI for the current count)
 ```
 
 CI runs lint (ruff) + the full suite on every push via [GitHub Actions](.github/workflows/ci.yml).
@@ -140,7 +141,7 @@ CI runs lint (ruff) + the full suite on every push via [GitHub Actions](.github/
 
 ## Roadmap
 
-- [ ] Public live demo on AWS (HTTPS + seeded test credentials)
+- [ ] Move off the free tier (cold start)
 - [x] Structured LLM output (JSON mode) instead of free-text parsing
 - [x] Cost/latency observability for LLM calls (in-process token/latency/cost metrics)
 - [x] Explicit prompt-injection guardrails (OWASP LLM Top 10)
