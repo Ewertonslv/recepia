@@ -171,7 +171,7 @@ curl http://localhost:8000/api/agendamentos/ID_AG/interacoes \
 | POST | `/api/whatsapp/conectar` | Cria instância + QR Code |
 | GET | `/api/whatsapp/status` | Conectado? |
 | POST | `/api/whatsapp/desconectar` | Logout |
-| POST | `/api/webhook/evolution` | Callback Evolution (HMAC) |
+| POST | `/api/webhook/evolution` | Callback Evolution (token estático em `X-Webhook-Token`) |
 | GET | `/api/relatorios/dashboard` | Métricas do dia |
 | GET | `/health` | Health (pinga DB) |
 

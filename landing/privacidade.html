@@ -48,10 +48,10 @@
 <main class="max-w-3xl mx-auto px-6 py-12">
   <p class="text-xs uppercase tracking-wider text-graphite-muted">documentos legais</p>
   <h1 class="mt-2 font-display text-4xl sm:text-5xl font-semibold leading-tight">Política de Privacidade</h1>
-  <p class="mt-3 text-sm text-graphite-muted">Última atualização: 17 de maio de 2026</p>
+  <p class="mt-3 text-sm text-graphite-muted">Última atualização: 11 de outubro de 2026</p>
 
   <div class="prose-recepia mt-8">
-    <p>Essa política descreve como a <strong>Recepia Tecnologia Ltda.</strong> coleta, usa, armazena e compartilha dados pessoais. A gente leva privacidade a sério porque a maior parte do que a recepia processa é informação sensível: nome, telefone, histórico de consulta e, em muitos casos, dados de saúde de pacientes. Tudo isso é tratado conforme a <strong>LGPD (Lei nº 13.709/2018)</strong>.</p>
+    <p>Essa política descreve como a <strong>Recepia</strong> (serviço mantido pela pessoa física responsável, Ewerton Silva) coleta, usa, armazena e compartilha dados pessoais. A gente leva privacidade a sério porque a maior parte do que a recepia processa é informação sensível: nome, telefone, histórico de consulta e, em muitos casos, dados de saúde de pacientes. Tudo isso é tratado conforme a <strong>LGPD (Lei nº 13.709/2018)</strong>.</p>
 
     <h2>1. Quais dados a gente coleta</h2>
     <p>A gente coleta dois grupos de dados:</p>
@@ -73,9 +73,9 @@
     <p>A Recepia não vende dados pessoais — nunca. O compartilhamento acontece só com prestadores de serviço estritamente necessários pra entrega do produto:</p>
     <ul>
       <li><strong>Hotmart:</strong> processamento de pagamentos (dados de cobrança).</li>
-      <li><strong>OpenAI e Groq:</strong> provedores de modelos de linguagem (LLM) que processam as mensagens em tempo real. Os dados não são usados pra treinar modelos (configuração contratual).</li>
+      <li><strong>Groq:</strong> provedor de modelo de linguagem (LLM), nos Estados Unidos, que classifica a intenção de cada mensagem. Antes do envio, telefone, CPF, email e CEP são mascarados; o provedor recebe só o texto mascarado.</li>
       <li><strong>Evolution API e Meta (WhatsApp):</strong> envio e recebimento de mensagens.</li>
-      <li><strong>Provedores de infraestrutura:</strong> hospedagem em servidores nacionais e backups.</li>
+      <li><strong>Provedores de infraestrutura:</strong> a aplicação e o banco de dados ficam nos provedores de hospedagem contratados (hoje Render e Neon), com backups.</li>
     </ul>
     <p>Todos os parceiros operam sob acordos de confidencialidade e cláusulas de proteção de dados.</p>
 
@@ -93,13 +93,12 @@
     <p><strong>Importante:</strong> a Recepia atua como <strong>operadora dos dados</strong> das pacientes (LGPD Art. 5º, VIII). A <strong>controladora</strong> é a clínica contratante. Por isso, solicitações de pacientes sobre seus próprios dados clínicos devem ser direcionadas à clínica onde foram atendidas — a gente apoia, mas não decide sozinha sobre esses dados.</p>
 
     <h2>5. Cookies e Analytics</h2>
-    <p>O site institucional usa cookies essenciais (pra manter sessão) e cookies de análise (Google Analytics ou equivalente) pra entender quais páginas são mais visitadas. Esses dados são agregados e não identificam pessoas individualmente. Dá pra desativar cookies não-essenciais pelo navegador.</p>
+    <p>O site institucional usa o Plausible Analytics pra medir visitas. Ele não usa cookies e não identifica pessoas individualmente; os dados são agregados. O painel guarda a sessão de login no navegador pra manter você conectada.</p>
 
     <h2>6. Segurança</h2>
     <ul>
       <li>todas as conexões usam <strong>HTTPS/TLS</strong>;</li>
       <li>senhas são armazenadas com hash (bcrypt);</li>
-      <li>dados sensíveis em repouso são cifrados;</li>
       <li>a gente mantém <strong>audit log</strong> de operações sensíveis (quem acessou o quê, quando);</li>
       <li>acesso à infraestrutura é restrito por princípio do menor privilégio.</li>
     </ul>
