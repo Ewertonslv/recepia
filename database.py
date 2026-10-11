@@ -40,7 +40,7 @@ def get_db_dependency():
 
 
 def init_db():
-    """Cria todas as tabelas + aplica migrations idempotentes. Use Alembic em produção."""
+    """Cria todas as tabelas (create_all) + aplica ALTERs idempotentes no Postgres."""
     import models  # noqa: F401 — registra as classes no Base
     Base.metadata.create_all(bind=engine)
     # As migrations idempotentes usam sintaxe PostgreSQL (ADD COLUMN IF NOT EXISTS,
