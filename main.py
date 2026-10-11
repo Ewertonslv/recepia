@@ -5,12 +5,13 @@ Multi-tenant. Cada request precisa identificar a clínica via:
 - API key da clínica (integrações automáticas) → X-Api-Key: ...
 - Admin master (você) → X-Admin-Key: ...
 """
+import logging
 import os
 import sys
 from datetime import timedelta
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -103,16 +104,26 @@ app.include_router(whatsapp.router)        # /api/whatsapp (clínica conecta seu
 app.include_router(webhooks.router)        # /api/webhook (Evolution callback)
 
 
+logger = logging.getLogger(__name__)
+
+
 @app.get("/health")
-def health(db: Session = Depends(get_db_dependency)):
-    """G7: health real — ping DB. Usado por k8s/uptime."""
+def health(response: Response, db: Session = Depends(get_db_dependency)):
+    """G7: health real — ping DB. Usado por k8s/uptime.
+
+    Sem banco responde 503 (mantendo o corpo) pra o healthcheck do Docker,
+    o Render e o uptime monitor marcarem a instância como fora, em vez de
+    um 200 "degraded" que ninguém lê.
+    """
     from sqlalchemy import text
     db_ok = False
     try:
         db.execute(text("SELECT 1"))
         db_ok = True
     except Exception:
-        pass
+        logger.exception("health: ping no banco falhou")
+    if not db_ok:
+        response.status_code = 503
     return {
         "status": "ok" if db_ok else "degraded",
         "service": "Recepia API",

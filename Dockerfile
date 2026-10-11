@@ -43,4 +43,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # --proxy-headers + --forwarded-allow-ips: atrás do proxy (Render/Cloudflare) o
 # uvicorn passa a usar o IP real do cliente (X-Forwarded-For) em vez do IP do
 # proxy — essencial pro rate-limit por-cliente (SlowAPI) e pro audit log (LGPD).
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips=${FORWARDED_ALLOW_IPS:-*}"]
+# O default 127.0.0.1 só confia no proxy local. Se o proxy roda em outro host
+# (Render, Cloudflare, compose), informe o IP/CIDR dele em FORWARDED_ALLOW_IPS;
+# "*" confia em qualquer origem e permite forjar o IP (burla o rate-limit).
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips=${FORWARDED_ALLOW_IPS:-127.0.0.1}"]
