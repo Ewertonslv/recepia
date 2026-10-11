@@ -1,6 +1,6 @@
 # API
-fastapi==0.116.1
-starlette==0.47.3
+fastapi==0.143.0
+starlette==1.7.0
 uvicorn[standard]==0.32.0
 pydantic[email]==2.10.0
 pydantic-settings==2.6.1
@@ -26,13 +26,13 @@ setuptools>=70
 slowapi==0.1.9
 
 # Util
-python-dotenv==1.0.0
-python-multipart==0.0.20
+python-dotenv==1.2.2
+python-multipart==0.0.32
 
 # Image processing (Sprint 1 D4 — fotos de prontuário)
-Pillow==11.3.0
+Pillow==12.3.0
 
 # PDF generation (Sprint 2 — atestado, prontuário, declaração de comparecimento)
-weasyprint==66.0
-pydyf==0.11.0
+weasyprint==70.0
+pydyf==0.12.1
 Jinja2==3.1.6
