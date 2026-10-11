@@ -4,4 +4,4 @@ Disallow: /dashboard/
 Disallow: /admin/
 Disallow: /api/
 
-Sitemap: https://app.recepia.app.br/sitemap.xml
+Sitemap: https://recepia.app.br/sitemap.xml

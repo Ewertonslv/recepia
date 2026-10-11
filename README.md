@@ -5,7 +5,7 @@
 [![CI](https://github.com/Ewertonslv/recepia/actions/workflows/ci.yml/badge.svg)](https://github.com/Ewertonslv/recepia/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
-![Tests](https://img.shields.io/badge/tests-109%20passing-success)
+![Tests](https://img.shields.io/badge/tests-266%20passing-success)
 ![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-lightgrey)
 
 **🔗 Live demo:** https://recepia.app.br — **test login:** `demo@recepia.app.br` / `demo123456`
@@ -111,7 +111,7 @@ Create your first clinic, log in, add a patient and connect WhatsApp — the ful
 
 ```bash
 pip install -r requirements.txt pytest
-pytest -q          # 109 tests, SQLite in-memory, WhatsApp/LLM mocked — no external services needed
+pytest -q          # 266 tests, SQLite in-memory, WhatsApp/LLM mocked — no external services needed
 ```
 
 CI runs lint (ruff) + the full suite on every push via [GitHub Actions](.github/workflows/ci.yml).
